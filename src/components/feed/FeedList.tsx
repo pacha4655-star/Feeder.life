@@ -218,7 +218,7 @@ export default function FeedList({ user, onOpenComposer, onOpenStory }: FeedList
             No posts yet.
           </h3>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 16px auto', lineHeight: 1.5 }}>
-            Follow welfare communities, connect with local animal guardians, or be the first to share an update from your feeding rounds.
+            Be the first to share something with the Feeder community.
           </p>
           {user ? (
             <button className="btn-primary" onClick={() => onOpenComposer('NORMAL')}>

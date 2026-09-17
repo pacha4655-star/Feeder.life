@@ -260,9 +260,29 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    setShowMenu(false);
+    const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/#${post.id}` : `https://feeder.life/#${post.id}`;
+    const shareTitle = post.title || `Post by ${post.author_name} on Feeder.life`;
+    const shareText = post.body ? (post.body.length > 120 ? post.body.substring(0, 117) + '...' : post.body) : 'Check out this post on Feeder.life';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: postUrl,
+        });
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2200);
+        return;
+      } catch (err: any) {
+        if (err.name === 'AbortError') return;
+      }
+    }
+
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(`${window.location.origin}/#${post.id}`);
+      await navigator.clipboard.writeText(postUrl);
       setShareToast(true);
       setTimeout(() => setShareToast(false), 2200);
     }
@@ -376,6 +396,11 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
               <button className="sidebar-nav-item" onClick={handleToggleSave} style={{ padding: '8px' }}>
                 <Bookmark size={16} color="var(--brand-accent)" />
                 <span style={{ fontSize: '13px' }}>{isSaved ? 'Remove from Saved' : 'Save Post'}</span>
+              </button>
+
+              <button className="sidebar-nav-item" onClick={handleShare} style={{ padding: '8px' }}>
+                <Share2 size={16} color="var(--brand-primary)" />
+                <span style={{ fontSize: '13px' }}>Share Post</span>
               </button>
 
               {isAuthorOrStaff && (
