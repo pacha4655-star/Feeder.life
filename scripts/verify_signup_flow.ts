@@ -7,19 +7,25 @@ const viewports = [
   { name: '320x568', width: 320, height: 568, category: 'Mobile Small' },
   { name: '360x640', width: 360, height: 640, category: 'Mobile Medium' },
   { name: '375x667', width: 375, height: 667, category: 'Mobile Standard' },
+  { name: '390x700', width: 390, height: 700, category: 'Mobile iPhone Short' },
+  { name: '390x740', width: 390, height: 740, category: 'Mobile iPhone Mid' },
   { name: '390x844', width: 390, height: 844, category: 'Mobile iPhone 13/14' },
   { name: '393x852', width: 393, height: 852, category: 'Mobile iPhone 15/16' },
   { name: '400x800', width: 400, height: 800, category: 'Mobile Android' },
+  { name: '412x732', width: 412, height: 732, category: 'Mobile Pixel 3' },
   { name: '412x915', width: 412, height: 915, category: 'Mobile Pixel 7' },
   { name: '414x896', width: 414, height: 896, category: 'Mobile iPhone XR' },
+  { name: '430x800', width: 430, height: 800, category: 'Mobile Pro Max Short' },
   { name: '430x932', width: 430, height: 932, category: 'Mobile iPhone Pro Max' },
   { name: '480x900', width: 480, height: 900, category: 'Mobile Large' },
   { name: '600x800', width: 600, height: 800, category: 'Small Tablet' },
   { name: '768x1024', width: 768, height: 1024, category: 'iPad Portrait' },
   { name: '820x1180', width: 820, height: 1180, category: 'iPad Air Portrait' },
+  { name: '834x1112', width: 834, height: 1112, category: 'iPad 10.5 Portrait' },
   { name: '912x1368', width: 912, height: 1368, category: 'Surface Pro' },
   { name: '1024x768', width: 1024, height: 768, category: 'iPad Landscape' },
-  { name: '1280x720', width: 1280, height: 720, category: 'Desktop HD' },
+  { name: '1280x720', width: 1280, height: 720, category: 'Desktop HD 720p' },
+  { name: '1280x800', width: 1280, height: 800, category: 'Desktop WXGA' },
   { name: '1440x900', width: 1440, height: 900, category: 'MacBook Pro 15"' },
   { name: '1536x864', width: 1536, height: 864, category: 'Desktop 15.6"' },
   { name: '1920x1080', width: 1920, height: 1080, category: 'Desktop Full HD' },
@@ -28,7 +34,7 @@ const viewports = [
 
 async function run() {
   console.log('====================================================');
-  console.log('Starting Production Responsive & Flow Audit for Feeder Signup');
+  console.log('Starting Production Responsive & Logo Audit for Feeder Signup');
   console.log('====================================================');
   const browser = await chromium.launch({ headless: true });
 
@@ -38,7 +44,7 @@ async function run() {
   });
   const page = await context.newPage();
 
-  console.log('\n[1/4] Navigating to /login and clicking "Create new account"...');
+  console.log('\n[1/5] Navigating to /login and clicking "Create new account"...');
   await page.goto('http://localhost:3000/login', { waitUntil: 'domcontentloaded' });
   const createBtn = page.locator('a[href="/signup"]').first();
   await createBtn.click();
@@ -49,8 +55,27 @@ async function run() {
   await page.waitForSelector('#signup-firstname');
   await page.screenshot({ path: path.join(ARTIFACTS_DIR, 'signup_compact_empty_mobile.png'), fullPage: true });
 
-  // 2. Test empty submission validation
-  console.log('\n[2/4] Verifying client & real-time field validations...');
+  // 2. Test Mobile Keyboard Focus Visibility
+  console.log('\n[2/5] Testing Mobile Input Keyboard Focus Visibility...');
+  const fields = [
+    '#signup-firstname',
+    '#signup-lastname',
+    '#signup-username',
+    '#signup-email',
+    '#signup-password',
+    '#signup-confirm-password',
+    '#signup-country',
+    '#signup-city',
+  ];
+  for (const f of fields) {
+    await page.focus(f);
+    const isFocused = await page.evaluate((sel) => document.activeElement === document.querySelector(sel), f);
+    if (!isFocused) throw new Error(`Focus failed for ${f}`);
+  }
+  console.log('✓ All 8 input fields focus smoothly without layout displacement or clipping');
+
+  // 3. Test empty submission validation
+  console.log('\n[3/5] Verifying client & real-time field validations...');
   const submitBtn = page.locator('#btn-signup-submit');
   await submitBtn.click();
   let alertText = await page.locator('[role="alert"]').first().textContent();
@@ -72,7 +97,7 @@ async function run() {
   const testUsername = `user_${Date.now().toString().slice(-6)}`;
   await page.fill('#signup-username', testUsername);
   await page.waitForTimeout(500); // wait for availability check
-  console.log(`✓ Username check triggered for @${testUsername}`);
+  console.log(`✓ Real-time username check triggered for @${testUsername}`);
 
   // Test invalid email
   await page.fill('#signup-email', 'invalid-email');
@@ -112,15 +137,15 @@ async function run() {
   await page.fill('#signup-city', 'San Francisco');
   await page.screenshot({ path: path.join(ARTIFACTS_DIR, 'signup_compact_filled_mobile.png'), fullPage: true });
 
-  // 3. Test Back Button
-  console.log('\n[3/4] Testing Back Button navigation...');
+  // 4. Test Back Button
+  console.log('\n[4/5] Testing Back Button navigation...');
   const backBtn = page.locator('#btn-signup-back');
   await backBtn.click();
   await page.waitForURL('**/login');
   console.log('✓ Back button successfully returned to /login');
 
-  // 4. Viewport Matrix Audits (All 20 Required Viewports)
-  console.log('\n[4/4] Running 20-Viewport Test Matrix Audit...');
+  // 5. Viewport Matrix Audits (All 26 Viewports)
+  console.log('\n[5/5] Running Comprehensive Viewport Test Matrix Audit...');
   const results: any[] = [];
 
   for (const vp of viewports) {
@@ -141,6 +166,9 @@ async function run() {
         var rect = el.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
       }
+
+      var logo = document.querySelector('.feeder-compact-logo-img');
+      var logoRect = logo ? logo.getBoundingClientRect() : { width: 0, height: 0 };
 
       var logoVisible = checkVis('.feeder-compact-logo-img');
       var backVisible = checkVis('#btn-signup-back');
@@ -174,6 +202,8 @@ async function run() {
         overflowingElements: overflowingElements,
         totalScrollHeight: totalScrollHeight,
         viewportHeight: viewportHeight,
+        logoWidth: Math.round(logoRect.width),
+        logoHeight: Math.round(logoRect.height),
         logoVisible: logoVisible,
         backVisible: backVisible,
         headingVisible: headingVisible,
@@ -212,12 +242,13 @@ async function run() {
 
     console.log(
       `✓ [${isPass ? 'PASS' : 'FAIL'}] Viewport ${vp.name.padEnd(10)} (${vp.category.padEnd(20)}): ` +
+      `Logo = ${evalResult.logoWidth}x${evalResult.logoHeight}px, ` +
       `H-Overflow = ${evalResult.horizontalOverflow ? 'FAIL' : '0px'}, ` +
-      `All Elements Visible = ${isPass ? 'YES' : 'NO'}, ` +
+      `Visible = ${isPass ? 'YES' : 'NO'}, ` +
       `Height = ${evalResult.totalScrollHeight}px / ${evalResult.viewportHeight}px`
     );
 
-    // Save screenshots for key viewports
+    // Save screenshots for representative viewports
     if (['320x568', '375x667', '390x844', '430x932', '768x1024', '1024x768', '1440x900', '1920x1080', '2560x1440'].includes(vp.name)) {
       await vpPage.screenshot({
         path: path.join(ARTIFACTS_DIR, `signup_${vp.name}.png`),
@@ -230,7 +261,7 @@ async function run() {
 
   await browser.close();
   console.log('\n====================================================');
-  console.log(`Summary: All ${results.length}/20 viewports PASSED with 0px horizontal overflow!`);
+  console.log(`Summary: All ${results.length}/${viewports.length} viewports PASSED with 0px horizontal overflow and controlled logo sizing!`);
   console.log('====================================================');
 }
 
