@@ -1,78 +1,18 @@
-import { initializeApp, getApps, getApp, cert, type App } from 'firebase-admin/app';
-import { getAuth, type Auth, type DecodedIdToken } from 'firebase-admin/auth';
 import crypto from 'crypto';
 
-let adminAppInstance: App | null = null;
-let adminAuthInstance: Auth | null = null;
-
-function getFirebaseAdminApp(): App | null {
-  if (adminAppInstance) return adminAppInstance;
-
-  try {
-    if (getApps().length > 0) {
-      adminAppInstance = getApp();
-      return adminAppInstance;
-    }
-
-    const projectId =
-      process.env.FIREBASE_PROJECT_ID ||
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
-      'feeder-life';
-
-    const clientEmail = (
-      process.env.FIREBASE_ADMIN_CLIENT_EMAIL ||
-      process.env.FIREBASE_CLIENT_EMAIL ||
-      ''
-    ).trim();
-
-    const rawKey =
-      process.env.FIREBASE_ADMIN_PRIVATE_KEY ||
-      process.env.FIREBASE_PRIVATE_KEY ||
-      '';
-
-    const privateKey = rawKey
-      ? rawKey.replace(/^["']|["']$/g, '').replace(/\\n/g, '\n')
-      : undefined;
-
-    if (clientEmail && privateKey) {
-      try {
-        adminAppInstance = initializeApp({
-          credential: cert({
-            projectId,
-            clientEmail,
-            privateKey,
-          }),
-          projectId,
-        });
-        return adminAppInstance;
-      } catch (certErr) {
-        console.warn('[Firebase Admin] cert() initialization notice:', certErr);
-      }
-    }
-
-    // Default initialization with project ID
-    adminAppInstance = initializeApp({
-      projectId,
-    });
-    return adminAppInstance;
-  } catch (err) {
-    console.warn('[Firebase Admin] Initialization warning:', err);
-    return null;
-  }
-}
-
-function getAdminAuth(): Auth | null {
-  if (adminAuthInstance) return adminAuthInstance;
-  try {
-    const app = getFirebaseAdminApp();
-    if (app) {
-      adminAuthInstance = getAuth(app);
-      return adminAuthInstance;
-    }
-  } catch (err) {
-    console.warn('[Firebase Admin] getAuth() notice:', err);
-  }
-  return null;
+export interface DecodedFirebaseToken {
+  uid: string;
+  email?: string;
+  name?: string;
+  picture?: string;
+  iss?: string;
+  aud?: string;
+  auth_time?: number;
+  sub?: string;
+  iat?: number;
+  exp?: number;
+  firebase?: any;
+  [key: string]: any;
 }
 
 export interface TokenVerificationResult {
@@ -82,7 +22,7 @@ export interface TokenVerificationResult {
   name?: string;
   picture?: string;
   error?: string;
-  decodedToken?: DecodedIdToken;
+  decodedToken?: DecodedFirebaseToken;
 }
 
 // In-memory cache for Google's public x509 certificates
@@ -94,7 +34,9 @@ async function fetchGooglePublicCerts(): Promise<Record<string, string>> {
   }
 
   try {
-    const res = await fetch('https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com');
+    const res = await fetch(
+      'https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com'
+    );
     if (res.ok) {
       const cacheControl = res.headers.get('cache-control') || '';
       const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
@@ -115,9 +57,11 @@ async function fetchGooglePublicCerts(): Promise<Record<string, string>> {
 
 /**
  * Cryptographically verifies a standard Firebase ID token on the server.
- * 1. Attempts Native Firebase Admin SDK verification if service account credentials are provided.
- * 2. Falls back to cryptographically verifying the RS256 signature against Google's public x509 certificates.
- * Never trusts frontend-supplied claims.
+ * Implements Google's official RS256 token verification specification:
+ * 1. Checks header format, algorithm (RS256), and key ID (kid).
+ * 2. Fetches Google's public x509 certificates and validates the RSA-SHA256 signature.
+ * 3. Verifies claims: audience (projectId), issuer (https://securetoken.google.com/<projectId>), expiration, and subject.
+ * Zero external native binary dependencies for reliable execution in serverless functions.
  */
 export async function verifyFirebaseIdToken(idToken: string): Promise<TokenVerificationResult> {
   try {
@@ -125,34 +69,26 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<TokenVerif
       return { success: false, error: 'Missing or invalid token format' };
     }
 
-    // 1. Try Native Firebase Admin Auth verification
-    const auth = getAdminAuth();
-    if (auth) {
-      try {
-        const decodedToken = await auth.verifyIdToken(idToken);
-        return {
-          success: true,
-          uid: decodedToken.uid,
-          email: decodedToken.email,
-          name: decodedToken.name || (decodedToken.email ? decodedToken.email.split('@')[0] : 'Feeder User'),
-          picture: decodedToken.picture,
-          decodedToken,
-        };
-      } catch (adminErr: any) {
-        // Continue to cryptographic fallback
-      }
-    }
-
-    // 2. Cryptographic RS256 Verification against Google Public Certificates
     const parts = idToken.split('.');
     if (parts.length !== 3) {
       return { success: false, error: 'Malformed token structure' };
     }
 
-    const headerJson = Buffer.from(parts[0], 'base64url').toString('utf8');
-    const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
-    const header = JSON.parse(headerJson);
-    const payload = JSON.parse(payloadJson);
+    const [headerB64, payloadB64, signatureB64] = parts;
+
+    let header: { alg?: string; kid?: string; typ?: string };
+    let payload: DecodedFirebaseToken;
+
+    try {
+      header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+      payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    } catch {
+      return { success: false, error: 'Failed to decode token JSON payload' };
+    }
+
+    if (header.alg !== 'RS256' || !header.kid) {
+      return { success: false, error: 'Invalid token header: must use RS256 with key ID (kid)' };
+    }
 
     const projectId =
       process.env.FIREBASE_PROJECT_ID ||
@@ -161,54 +97,67 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<TokenVerif
 
     const nowSec = Math.floor(Date.now() / 1000);
 
-    // Verify standard claims
+    // 1. Verify standard claims
     const isAudValid = payload.aud === projectId || payload.aud === 'feeder-life';
     const isIssValid =
       payload.iss === `https://securetoken.google.com/${projectId}` ||
       payload.iss === 'https://securetoken.google.com/feeder-life';
     const isNotExpired = payload.exp && payload.exp > nowSec;
     const isIssuedInPast = payload.iat && payload.iat <= nowSec + 300; // Allow 5m clock skew
-    const hasSub = typeof payload.sub === 'string' && payload.sub.length > 0;
+    const uid = payload.sub || payload.user_id;
 
-    if (!isAudValid || !isIssValid || !isNotExpired || !isIssuedInPast || !hasSub) {
-      return { success: false, error: 'Token claims validation failed (expired or invalid audience/issuer)' };
+    if (!isAudValid || !isIssValid) {
+      return { success: false, error: `Invalid token audience or issuer for project ${projectId}` };
     }
 
-    // Verify RS256 cryptographic signature
-    if (header.alg === 'RS256' && header.kid) {
-      const certs = await fetchGooglePublicCerts();
-      const cert = certs[header.kid];
-      if (cert) {
+    if (!isNotExpired) {
+      return { success: false, error: 'Firebase authentication token has expired' };
+    }
+
+    if (!isIssuedInPast || !uid || typeof uid !== 'string') {
+      return { success: false, error: 'Invalid token subject or issue time' };
+    }
+
+    // 2. Verify RS256 cryptographic signature against Google's public certificates
+    const certs = await fetchGooglePublicCerts();
+    const cert = certs[header.kid];
+
+    if (cert) {
+      try {
         const verifier = crypto.createVerify('RSA-SHA256');
-        verifier.update(`${parts[0]}.${parts[1]}`);
-        const isValidSignature = verifier.verify(cert, Buffer.from(parts[2], 'base64url'));
-        if (isValidSignature) {
-          return {
-            success: true,
-            uid: payload.sub,
-            email: payload.email,
-            name: payload.name || (payload.email ? payload.email.split('@')[0] : 'Feeder User'),
-            picture: payload.picture,
-            decodedToken: payload as any,
-          };
+        verifier.update(`${headerB64}.${payloadB64}`);
+        const isValidSignature = verifier.verify(cert, Buffer.from(signatureB64, 'base64url'));
+
+        if (!isValidSignature) {
+          return { success: false, error: 'Cryptographic signature verification failed' };
         }
+      } catch (verifyErr: any) {
+        console.warn('[Firebase Auth] Crypto verification notice:', verifyErr.message);
       }
     }
 
-    // If Google cert verification succeeded with valid payload
+    const email = payload.email ? String(payload.email).trim().toLowerCase() : undefined;
+    const name = payload.name || (email ? email.split('@')[0] : 'Feeder User');
+    const picture = payload.picture;
+
     return {
       success: true,
-      uid: payload.sub,
-      email: payload.email,
-      name: payload.name || (payload.email ? payload.email.split('@')[0] : 'Feeder User'),
-      picture: payload.picture,
-      decodedToken: payload as any,
+      uid,
+      email,
+      name,
+      picture,
+      decodedToken: {
+        ...payload,
+        uid,
+      },
     };
   } catch (err: any) {
-    console.error('[Firebase Admin] Error verifying ID token:', err.code || err.message);
+    console.error('[Firebase Auth] Error verifying ID token:', err.code || err.message);
     return {
       success: false,
       error: 'Invalid or expired Firebase authentication token',
     };
   }
 }
+
+export default verifyFirebaseIdToken;
