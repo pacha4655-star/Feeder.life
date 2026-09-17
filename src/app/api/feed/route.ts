@@ -71,6 +71,30 @@ export async function POST(request: NextRequest) {
       visibility,
     } = validation.data;
 
+    // Strict server-side verification: Real animal welfare media only for attached images
+    if (mediaUrls && mediaUrls.length > 0) {
+      const { MediaValidatorService } = await import('@/lib/services/media-validator');
+      for (const url of mediaUrls) {
+        const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+        if (!isVideo) {
+          const mediaCheck = await MediaValidatorService.validateMedia({
+            mediaUrl: url,
+            mimeType: 'image/jpeg',
+          });
+          if (!mediaCheck.isValid) {
+            return NextResponse.json(
+              {
+                success: false,
+                error: mediaCheck.reason || 'This upload can\'t be used for an animal welfare Post. Please upload a real photo or video of an animal.',
+                validation: mediaCheck,
+              },
+              { status: 422 }
+            );
+          }
+        }
+      }
+    }
+
     const supabase = getSupabaseServerClient();
     const { data: newPost, error: insertError } = await supabase
       .from('social_posts')

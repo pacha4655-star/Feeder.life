@@ -1223,11 +1223,13 @@ a {
   inset: 0;
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  overflow: hidden;
 }
 
 .modal-dialog {
@@ -1235,11 +1237,22 @@ a {
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 580px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: min(90dvh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-xl);
   border: 1px solid var(--border-subtle);
   animation: modalEnter 0.22s var(--transition-snappy);
+  position: relative;
+}
+
+.modal-dialog form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-header {
@@ -1248,6 +1261,8 @@ a {
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--bg-card);
 }
 
 .modal-title {
@@ -1266,6 +1281,7 @@ a {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .modal-close-btn:hover {
@@ -1275,6 +1291,11 @@ a {
 
 .modal-body {
   padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .modal-footer {
@@ -1284,6 +1305,11 @@ a {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 /* Form Controls */

@@ -29,7 +29,27 @@ export async function POST(request: NextRequest) {
     const { mediaUrl, mediaType = 'IMAGE', caption } = body;
 
     if (!mediaUrl || !mediaUrl.trim()) {
-      return NextResponse.json({ success: false, error: 'Story image or video URL is required' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Story image or video is required' }, { status: 400 });
+    }
+
+    // Strict server-side verification: Real animal welfare media only
+    if (mediaType === 'IMAGE') {
+      const { MediaValidatorService } = await import('@/lib/services/media-validator');
+      const validation = await MediaValidatorService.validateMedia({
+        mediaUrl: mediaUrl.trim(),
+        mimeType: 'image/jpeg',
+      });
+
+      if (!validation.isValid) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: validation.reason || 'This upload can\'t be used for an animal welfare Story. Please upload a real photo or video of an animal.',
+            validation,
+          },
+          { status: 422 }
+        );
+      }
     }
 
     const storyId = await StoryService.createStory({

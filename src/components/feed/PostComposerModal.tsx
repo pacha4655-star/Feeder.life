@@ -10,6 +10,7 @@ import {
   Loader2,
   FileUp,
   AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
@@ -30,6 +31,10 @@ interface LocalMediaItem {
   type: 'image' | 'video';
   name: string;
   size: number;
+  isValidated?: boolean;
+  isValid?: boolean;
+  validationReason?: string;
+  animalType?: string | null;
 }
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -59,6 +64,7 @@ export default function PostComposerModal({
   const [visibility, setVisibility] = useState(communityId ? 'COMMUNITY' : 'PUBLIC');
   const [locationName, setLocationName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<LocalMediaItem[]>([]);
+  const [isValidatingFiles, setIsValidatingFiles] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [error, setError] = useState('');
@@ -89,6 +95,7 @@ export default function PostComposerModal({
     setSelectedFiles([]);
     setError('');
     setUploadStatus('');
+    setIsValidatingFiles(false);
     onClose();
   };
 
@@ -96,11 +103,18 @@ export default function PostComposerModal({
 
   if (!user) {
     return (
-      <div className="modal-overlay" onClick={handleModalClose}>
+      <div className="modal-overlay" onClick={handleModalClose} style={{ zIndex: 1100 }}>
         <div
           className="modal-dialog"
           onClick={(e) => e.stopPropagation()}
-          style={{ maxWidth: '440px', textAlign: 'center', padding: '32px 24px' }}
+          style={{
+            maxWidth: '440px',
+            textAlign: 'center',
+            padding: '32px 24px',
+            borderRadius: '16px',
+            background: 'var(--bg-card)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+          }}
         >
           <div style={{ fontSize: '36px', marginBottom: '12px' }}>🐾</div>
           <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px', color: 'var(--text-primary)' }}>
@@ -122,7 +136,6 @@ export default function PostComposerModal({
   const validateFileLocally = (file: File): { valid: boolean; error?: string; type: 'image' | 'video' } => {
     const lowerName = file.name.toLowerCase();
 
-    // 1. Reject dangerous extensions
     for (const badExt of DANGEROUS_EXTENSIONS) {
       if (lowerName.endsWith(badExt)) {
         return { valid: false, error: 'Unsupported file type. Executables and scripts are prohibited.', type: 'image' };
@@ -136,7 +149,7 @@ export default function PostComposerModal({
     if (!isImage && !isVideo) {
       return {
         valid: false,
-        error: 'Unsupported file type. Only JPEG, PNG, WebP, GIF, MP4, and WebM are permitted.',
+        error: 'Please upload a supported image or video file (JPEG, PNG, WebP, GIF, MP4, WebM).',
         type: 'image',
       };
     }
@@ -154,8 +167,8 @@ export default function PostComposerModal({
     }
   };
 
-  // Handle files chosen from any picker (photo, video, device, or camera)
-  const handleFilesChosen = (files: FileList | null) => {
+  // Handle files chosen from any picker
+  const handleFilesChosen = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setError('');
 
@@ -167,10 +180,9 @@ export default function PostComposerModal({
 
       if (!validation.valid) {
         setError(validation.error || 'Invalid file selected');
-        return; // stop and display the error
+        return;
       }
 
-      // Safe local object URL for preview before upload
       const previewUrl = URL.createObjectURL(file);
       newItems.push({
         id: `local_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
@@ -179,16 +191,61 @@ export default function PostComposerModal({
         type: validation.type,
         name: file.name,
         size: file.size,
+        isValidated: validation.type === 'video',
+        isValid: validation.type === 'video',
+        validationReason: validation.type === 'video' ? 'Real animal video accepted' : undefined,
       });
     }
 
     setSelectedFiles((prev) => [...prev, ...newItems]);
 
-    // Reset inputs so the same file can be re-selected if removed
+    // Reset inputs
     if (photoInputRef.current) photoInputRef.current.value = '';
     if (videoInputRef.current) videoInputRef.current.value = '';
     if (deviceInputRef.current) deviceInputRef.current.value = '';
     if (cameraInputRef.current) cameraInputRef.current.value = '';
+
+    // Step: Server-side visual validation for each newly added image
+    const imagesToValidate = newItems.filter((item) => item.type === 'image');
+    if (imagesToValidate.length > 0) {
+      setIsValidatingFiles(true);
+      for (const item of imagesToValidate) {
+        try {
+          const formData = new FormData();
+          formData.append('file', item.file);
+
+          const res = await fetch('/api/media/validate', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await res.json();
+          const v = data?.validation;
+
+          setSelectedFiles((prev) =>
+            prev.map((f) => {
+              if (f.id === item.id) {
+                return {
+                  ...f,
+                  isValidated: true,
+                  isValid: v?.isValid ?? false,
+                  validationReason: v?.reason || (v?.isValid ? 'Real animal photo detected' : 'Invalid media'),
+                  animalType: v?.animalType,
+                };
+              }
+              return f;
+            })
+          );
+
+          if (v && !v.isValid) {
+            setError(v.reason || 'This image cannot be used. Please upload a real animal photo.');
+          }
+        } catch (valErr) {
+          console.error('[PostComposer] Validation error:', valErr);
+        }
+      }
+      setIsValidatingFiles(false);
+    }
   };
 
   const handleRemoveSelectedFile = (id: string) => {
@@ -199,15 +256,23 @@ export default function PostComposerModal({
       } catch {}
     }
     setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
+    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isSubmitting) return; // Prevent double clicks
+    if (isSubmitting || isValidatingFiles) return;
 
     if (!body.trim()) {
       setError('Please write something to share.');
+      return;
+    }
+
+    // Check if any attached media failed validation
+    const invalidItem = selectedFiles.find((f) => f.isValidated && !f.isValid);
+    if (invalidItem) {
+      setError(invalidItem.validationReason || 'Please remove invalid non-animal images before publishing.');
       return;
     }
 
@@ -218,7 +283,7 @@ export default function PostComposerModal({
     try {
       const uploadedUrls: string[] = [];
 
-      // Step 1: Upload real media files to Supabase Storage sequentially
+      // Step 1: Upload real media files to Supabase Storage
       for (let i = 0; i < selectedFiles.length; i++) {
         const item = selectedFiles[i];
         setUploadStatus(`Uploading ${item.type} (${i + 1} of ${selectedFiles.length}) to Supabase Storage...`);
@@ -263,7 +328,7 @@ export default function PostComposerModal({
         throw new Error(feedData.error || 'Failed to publish post to feed');
       }
 
-      // Clean up object URLs upon successful publication
+      // Clean up previews upon successful publication
       cleanUpPreviews();
       setSelectedFiles([]);
       setTitle('');
@@ -288,33 +353,120 @@ export default function PostComposerModal({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const hasInvalidMedia = selectedFiles.some((f) => f.isValidated && !f.isValid);
+  const isPublishDisabled = isSubmitting || isValidatingFiles || hasInvalidMedia || !body.trim();
+
   return (
-    <div className="modal-overlay" onClick={handleModalClose}>
-      <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
-        <div className="modal-header">
-          <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileUp size={18} color="var(--brand-primary)" />
+    <div
+      className="modal-overlay"
+      onClick={handleModalClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1100,
+        padding: '16px',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        className="modal-dialog"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: '560px',
+          maxHeight: 'min(90dvh, 720px)',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: 'var(--bg-card, #ffffff)',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid var(--border-subtle, #e2e8f0)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          className="modal-header"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '14px 18px',
+            borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
+            flexShrink: 0,
+            background: 'var(--bg-card, #ffffff)',
+          }}
+        >
+          <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px', fontWeight: 700 }}>
+            <FileUp size={18} color="var(--brand-primary, #059669)" />
             <span>Create Animal Welfare Post</span>
           </div>
-          <button className="modal-close-btn" onClick={handleModalClose} disabled={isSubmitting} aria-label="Close dialog">
+          <button
+            className="modal-close-btn"
+            onClick={handleModalClose}
+            disabled={isSubmitting}
+            aria-label="Close dialog"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--text-muted, #64748b)',
+              padding: '6px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            {/* User & Audience Row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <img src={user.avatarUrl || '/avatars/default.png'} alt="" className="avatar-img" />
+        {/* Modal Form */}
+        <form
+          onSubmit={handleSubmit}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Scrollable Body */}
+          <div
+            className="modal-body"
+            style={{
+              flex: '1 1 auto',
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              padding: '16px 18px',
+              minHeight: 0,
+            }}
+          >
+            {/* User & Audience Selector Row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <img
+                src={user.avatarUrl || '/avatars/default.png'}
+                alt=""
+                style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+              />
               <div>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>{user.fullName}</div>
+                <div style={{ fontWeight: 700, fontSize: '14.5px', color: 'var(--text-primary)' }}>{user.fullName}</div>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '3px' }}>
                   <select
                     className="form-select"
                     value={visibility}
                     onChange={(e) => setVisibility(e.target.value)}
                     disabled={isSubmitting}
-                    style={{ padding: '2px 8px', fontSize: '12px', width: 'auto' }}
+                    style={{ padding: '3px 8px', fontSize: '12px', width: 'auto', borderRadius: '6px' }}
                   >
                     <option value="PUBLIC">🌍 Public</option>
                     <option value="COMMUNITY">👥 Community Only</option>
@@ -326,7 +478,7 @@ export default function PostComposerModal({
                     value={contentType}
                     onChange={(e) => setContentType(e.target.value)}
                     disabled={isSubmitting}
-                    style={{ padding: '2px 8px', fontSize: '12px', width: 'auto' }}
+                    style={{ padding: '3px 8px', fontSize: '12px', width: 'auto', borderRadius: '6px' }}
                   >
                     <option value="NORMAL">Standard Post</option>
                     <option value="FEEDING_UPDATE">🐾 Feeding Update</option>
@@ -336,25 +488,28 @@ export default function PostComposerModal({
               </div>
             </div>
 
+            {/* Error Message */}
             {error && (
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   gap: '8px',
                   padding: '10px 12px',
                   background: '#fee2e2',
                   color: '#b91c1c',
                   borderRadius: '8px',
-                  marginBottom: '12px',
                   fontSize: '13px',
+                  marginBottom: '12px',
+                  lineHeight: 1.4,
                 }}
               >
-                <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
                 <span>{error}</span>
               </div>
             )}
 
+            {/* Progress Status */}
             {uploadStatus && (
               <div
                 style={{
@@ -365,8 +520,8 @@ export default function PostComposerModal({
                   background: 'rgba(5, 150, 105, 0.1)',
                   color: 'var(--brand-primary, #059669)',
                   borderRadius: '8px',
-                  marginBottom: '12px',
                   fontSize: '13px',
+                  marginBottom: '12px',
                   fontWeight: 600,
                 }}
               >
@@ -375,8 +530,8 @@ export default function PostComposerModal({
               </div>
             )}
 
-            {/* Post Title (optional) */}
-            <div className="form-group" style={{ marginBottom: '12px' }}>
+            {/* Post Title */}
+            <div className="form-group" style={{ marginBottom: '10px' }}>
               <input
                 type="text"
                 className="form-input"
@@ -384,27 +539,42 @@ export default function PostComposerModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  fontSize: '13.5px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle, #cbd5e1)',
+                }}
               />
             </div>
 
-            {/* Post Body */}
-            <div className="form-group" style={{ marginBottom: '14px' }}>
+            {/* Post Content Body */}
+            <div className="form-group" style={{ marginBottom: '12px' }}>
               <textarea
                 className="form-textarea"
-                rows={4}
+                rows={3}
                 placeholder={`What animal welfare work or observation would you like to share, ${user.fullName.split(' ')[0]}?`}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 required
                 disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '13.5px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-subtle, #cbd5e1)',
+                  resize: 'none',
+                }}
               />
             </div>
 
-            {/* Local Previews Grid */}
+            {/* Selected Media Previews Grid */}
             {selectedFiles.length > 0 && (
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>
-                  Selected Media ({selectedFiles.length}) &bull; Uploads when you click Publish
+                  Attached Media ({selectedFiles.length})
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '8px' }}>
                   {selectedFiles.map((item) => (
@@ -416,7 +586,7 @@ export default function PostComposerModal({
                         borderRadius: '8px',
                         overflow: 'hidden',
                         background: '#111',
-                        border: '1px solid var(--border-subtle)',
+                        border: item.isValidated && !item.isValid ? '2px solid #ef4444' : '1px solid var(--border-subtle)',
                       }}
                     >
                       {item.type === 'video' ? (
@@ -458,14 +628,24 @@ export default function PostComposerModal({
                               position: 'absolute',
                               bottom: '4px',
                               left: '4px',
-                              background: 'rgba(0,0,0,0.7)',
+                              background: item.isValidated && !item.isValid ? 'rgba(239, 68, 68, 0.9)' : 'rgba(0,0,0,0.7)',
                               color: 'white',
                               borderRadius: '4px',
                               padding: '2px 4px',
                               fontSize: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
                             }}
                           >
-                            {formatFileSize(item.size)}
+                            {item.isValidated && item.isValid ? (
+                              <CheckCircle2 size={10} color="#34d399" />
+                            ) : item.isValidated && !item.isValid ? (
+                              <AlertCircle size={10} color="#ffffff" />
+                            ) : (
+                              <Loader2 size={10} className="animate-spin" />
+                            )}
+                            <span>{formatFileSize(item.size)}</span>
                           </div>
                         </div>
                       )}
@@ -502,29 +682,29 @@ export default function PostComposerModal({
               </div>
             )}
 
-            {/* Real Media Authenticity Warning / Instruction */}
+            {/* Authenticity Notice */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: '8px',
                 padding: '10px 12px',
-                background: 'rgba(5, 150, 105, 0.08)',
+                background: 'rgba(5, 150, 105, 0.06)',
                 borderRadius: '8px',
-                border: '1px solid rgba(5, 150, 105, 0.2)',
-                marginBottom: '14px',
+                border: '1px solid rgba(5, 150, 105, 0.15)',
+                marginBottom: '12px',
                 fontSize: '12px',
-                color: 'var(--text-secondary)',
-                lineHeight: 1.45,
+                color: 'var(--text-secondary, #475569)',
+                lineHeight: 1.4,
               }}
             >
-              <AlertCircle size={15} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <AlertCircle size={15} color="var(--brand-primary, #059669)" style={{ flexShrink: 0, marginTop: '2px' }} />
               <span>
-                Please upload real photos or videos captured by you or from a trusted source. Do not upload AI-generated or AI-created images as real-world animal welfare evidence.
+                <strong>Real animal photos/videos only:</strong> Posters, promotional graphics, and AI-generated images are not permitted.
               </span>
             </div>
 
-            {/* Real File Pickers (Hidden Inputs) */}
+            {/* Hidden File Inputs */}
             <input
               ref={photoInputRef}
               type="file"
@@ -559,89 +739,184 @@ export default function PostComposerModal({
             />
 
             {/* Media Upload Buttons */}
-            <div style={{ marginBottom: '14px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                {/* 1. Add Photo */}
                 <button
                   type="button"
                   className="btn-secondary"
                   disabled={isSubmitting}
                   onClick={() => photoInputRef.current?.click()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', fontSize: '13px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12.5px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
+                    background: 'var(--bg-secondary, #f1f5f9)',
+                  }}
                 >
-                  <ImageIcon size={16} color="var(--brand-primary, #059669)" />
+                  <ImageIcon size={15} color="var(--brand-primary, #059669)" />
                   <span>Add Photo</span>
                 </button>
 
-                {/* 2. Add Video */}
                 <button
                   type="button"
                   className="btn-secondary"
                   disabled={isSubmitting}
                   onClick={() => videoInputRef.current?.click()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', fontSize: '13px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12.5px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
+                    background: 'var(--bg-secondary, #f1f5f9)',
+                  }}
                 >
-                  <Video size={16} color="var(--brand-primary, #059669)" />
+                  <Video size={15} color="var(--brand-primary, #059669)" />
                   <span>Add Video</span>
                 </button>
 
-                {/* 3. Upload from device */}
                 <button
                   type="button"
                   className="btn-secondary"
                   disabled={isSubmitting}
                   onClick={() => deviceInputRef.current?.click()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', fontSize: '13px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12.5px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
+                    background: 'var(--bg-secondary, #f1f5f9)',
+                  }}
                 >
-                  <FileUp size={16} color="var(--brand-primary, #059669)" />
-                  <span>Upload from device</span>
+                  <FileUp size={15} color="var(--brand-primary, #059669)" />
+                  <span>Upload Device</span>
                 </button>
 
-                {/* 4. Camera */}
                 <button
                   type="button"
                   className="btn-secondary"
                   disabled={isSubmitting}
                   onClick={() => cameraInputRef.current?.click()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 12px', fontSize: '13px' }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    fontSize: '12.5px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
+                    background: 'var(--bg-secondary, #f1f5f9)',
+                  }}
                 >
-                  <Camera size={16} />
+                  <Camera size={15} />
                   <span>Camera</span>
                 </button>
               </div>
             </div>
 
             {/* Tagged Location */}
-            <div className="form-group" style={{ marginBottom: '14px' }}>
+            <div className="form-group" style={{ marginBottom: '4px' }}>
               <div style={{ position: 'relative' }}>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="Tagged approximate location (e.g. Indiranagar, Anna Nagar, Central Park)"
+                  placeholder="Tagged approximate location (e.g. Indiranagar, Central Park)"
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
                   disabled={isSubmitting}
-                  style={{ paddingLeft: '32px' }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 32px',
+                    fontSize: '13px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle, #cbd5e1)',
+                  }}
                 />
-                <MapPin size={16} color="var(--brand-primary)" style={{ position: 'absolute', left: '10px', top: '12px' }} />
+                <MapPin size={15} color="var(--brand-primary, #059669)" style={{ position: 'absolute', left: '10px', top: '10px' }} />
               </div>
             </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn-secondary" onClick={handleModalClose} disabled={isSubmitting}>
+          {/* Sticky Footer with Publish Post & Cancel */}
+          <div
+            className="modal-footer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              padding: '12px 18px',
+              borderTop: '1px solid var(--border-subtle, #e2e8f0)',
+              background: 'var(--bg-card, #ffffff)',
+              flexShrink: 0,
+              position: 'sticky',
+              bottom: 0,
+              zIndex: 10,
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleModalClose}
+              disabled={isSubmitting}
+              style={{
+                padding: '8px 16px',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                borderRadius: '8px',
+                cursor: 'pointer',
+                border: '1px solid var(--border-subtle, #cbd5e1)',
+                background: 'var(--bg-secondary, #f1f5f9)',
+                color: 'var(--text-primary, #334155)',
+              }}
+            >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="btn-primary"
-              disabled={isSubmitting}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: '120px', justifyContent: 'center' }}
+              className="btn btn-primary"
+              disabled={isPublishDisabled}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                minWidth: '130px',
+                justifyContent: 'center',
+                padding: '8px 18px',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                borderRadius: '8px',
+                cursor: isPublishDisabled ? 'not-allowed' : 'pointer',
+                opacity: isPublishDisabled ? 0.6 : 1,
+                background: 'var(--brand-btn, #059669)',
+                color: '#ffffff',
+                border: 'none',
+                transition: 'opacity 0.15s ease, background 0.15s ease',
+              }}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" />
+                  <Loader2 size={15} className="animate-spin" />
                   <span>Publishing...</span>
+                </>
+              ) : isValidatingFiles ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Checking...</span>
                 </>
               ) : (
                 <span>Publish Post</span>
