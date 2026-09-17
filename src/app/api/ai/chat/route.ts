@@ -4,9 +4,12 @@ import { AiChatService } from '@/lib/services/ai-chat';
 import { checkRateLimit, RATE_LIMIT_CONFIG } from '@/lib/security/rate-limit';
 
 export async function POST(request: NextRequest) {
+  const tStart = Date.now();
   try {
     // 1. Verify Authentication Server-side
     const user = await resolveAuthenticatedUser(request);
+    const authDurationMs = Date.now() - tStart;
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Please sign in to chat with Feeder AI.' },
@@ -71,11 +74,33 @@ export async function POST(request: NextRequest) {
       conversationId = rawConvId;
     }
 
-    // 4. Execute AI pipeline with Google Gemini & conversation memory
+    const wantsStream = body.stream === true || request.headers.get('accept')?.includes('text/event-stream');
+
+    // 4. Stream Response (Ultra-Low TTFT)
+    if (wantsStream) {
+      const { stream, conversationId: activeConvId } = await AiChatService.streamMessage({
+        userId: user.id,
+        conversationId,
+        messageText: cleanMessage,
+        authDurationMs,
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Conversation-Id': activeConvId,
+          'Cache-Control': 'no-cache, no-transform',
+          'Transfer-Encoding': 'chunked',
+        },
+      });
+    }
+
+    // 5. Standard Non-Streaming JSON Response (Optimized parallel persistence)
     const response = await AiChatService.sendMessage({
       userId: user.id,
       conversationId,
       messageText: cleanMessage,
+      authDurationMs,
     });
 
     return NextResponse.json({
@@ -85,6 +110,7 @@ export async function POST(request: NextRequest) {
       content: response.content,
       role: response.role,
       createdAt: response.createdAt,
+      metrics: response.metrics,
     });
   } catch (error: any) {
     if (error.message === 'FORBIDDEN') {

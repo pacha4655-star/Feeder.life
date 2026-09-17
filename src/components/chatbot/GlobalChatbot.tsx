@@ -42,7 +42,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
     if (isOpen) {
       scrollToBottom();
       if (textareaRef.current) {
-        setTimeout(() => textareaRef.current?.focus(), 150);
+        setTimeout(() => textareaRef.current?.focus(), 100);
       }
     }
   }, [isOpen, messages, isThinking]);
@@ -58,6 +58,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
     const text = (textToSend || inputQuery).trim();
     if (!text || isThinking) return;
 
+    // 1. Immediate local render (0ms delay)
     const userMessage: ChatMessage = {
       id: `usr_msg_${Date.now()}`,
       role: 'user',
@@ -79,30 +80,76 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
         body: JSON.stringify({
           message: text,
           conversationId,
+          stream: true,
         }),
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        if (data.conversationId) {
-          setConversationId(data.conversationId);
-        }
-
-        const aiMessage: ChatMessage = {
-          id: data.messageId || `ai_msg_${Date.now()}`,
-          role: 'assistant',
-          content: data.content,
-          createdAt: data.createdAt || new Date().toISOString(),
-        };
-
-        setMessages((prev) => [...prev, aiMessage]);
-      } else if (res.status === 401) {
+      if (res.status === 401) {
         setErrorMessage('Please sign in to chat with Feeder AI.');
-      } else if (res.status === 429) {
+        setIsThinking(false);
+        return;
+      }
+      if (res.status === 429) {
         setErrorMessage("You're sending messages too quickly. Please try again in a moment.");
+        setIsThinking(false);
+        return;
+      }
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setErrorMessage(errData.error || "Sorry, I couldn't process that right now. Please try again.");
+        setIsThinking(false);
+        return;
+      }
+
+      const returnedConvId = res.headers.get('X-Conversation-Id');
+      if (returnedConvId) {
+        setConversationId(returnedConvId);
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('text/plain') && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        const aiMsgId = `ai_msg_${Date.now()}`;
+
+        // Initialize empty assistant bubble immediately on first stream chunk
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: aiMsgId,
+            role: 'assistant',
+            content: '',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setIsThinking(false);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          accumulated += chunk;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === aiMsgId ? { ...m, content: accumulated } : m))
+          );
+        }
       } else {
-        setErrorMessage(data.error || "Sorry, I couldn't process that right now. Please try again.");
+        const data = await res.json();
+        if (data.success) {
+          if (data.conversationId) setConversationId(data.conversationId);
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: data.messageId || `ai_msg_${Date.now()}`,
+              role: 'assistant',
+              content: data.content,
+              createdAt: data.createdAt || new Date().toISOString(),
+            },
+          ]);
+        } else {
+          setErrorMessage(data.error || "Sorry, I couldn't process that right now. Please try again.");
+        }
       }
     } catch {
       setErrorMessage('Network connection error. Please check your internet connection.');
@@ -156,7 +203,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
                   <span className="global-chatbot-status-dot" title="Gemini-Powered AI Companion" />
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--brand-primary)', fontWeight: 600 }}>
-                  Multilingual AI Companion
+                  Fast Multilingual AI
                 </div>
               </div>
             </div>
@@ -231,7 +278,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
               </div>
             ))}
 
-            {/* Thinking State */}
+            {/* Thinking Indicator */}
             {isThinking && (
               <div className="global-chatbot-msg-row msg-assistant">
                 <div className="global-chatbot-msg-avatar">
