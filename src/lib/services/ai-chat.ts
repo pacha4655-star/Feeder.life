@@ -54,13 +54,12 @@ export class AiChatService {
     const apiKey =
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_GENAI_API_KEY ||
-      process.env.AI_API_KEY ||
-      process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+      process.env.AI_API_KEY;
 
     const model =
       process.env.GEMINI_MODEL ||
       process.env.AI_MODEL ||
-      'gemini-1.5-flash';
+      'gemini-3.6-flash';
 
     return { apiKey, model };
   }
