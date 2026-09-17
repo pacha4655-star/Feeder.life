@@ -17,6 +17,7 @@ import type { NextRequest } from 'next/server';
 const PUBLIC_PATHS = [
   '/login',
   '/signup',
+  '/reset-password',
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/sync',

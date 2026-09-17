@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
@@ -47,11 +47,22 @@ export default function LoginPage() {
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   // Forgot password modal state
+  // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [resolvedEmailDisplay, setResolvedEmailDisplay] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState('');
+
+  // Cooldown countdown for password reset resend button
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -126,30 +137,59 @@ export default function LoginPage() {
     }
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!resetEmail.trim()) {
-      setResetError(t('errors.invalidEmail'));
+  const handlePasswordReset = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanInput = resetEmail.trim();
+    if (!cleanInput) {
+      setResetError(t('errors.missingCredentials') || 'Please enter your email or username.');
       return;
     }
 
     setResetLoading(true);
     setResetError('');
-    setResetSuccess(false);
 
     try {
-      await sendPasswordResetEmail(auth, resetEmail.trim());
+      let targetEmail = cleanInput;
+
+      // If user entered a username without @, securely look up their registered email address
+      if (!targetEmail.includes('@')) {
+        try {
+          const lookupRes = await fetch(`/api/auth/lookup?username=${encodeURIComponent(targetEmail)}`);
+          const lookupData = await lookupRes.json();
+          if (lookupRes.ok && lookupData.success && lookupData.email) {
+            targetEmail = lookupData.email;
+          }
+        } catch (lookupErr) {
+          console.warn('[Password Reset] Username lookup notice:', lookupErr);
+        }
+      }
+
+      // Call real Firebase sendPasswordResetEmail with canonical continue URL
+      if (targetEmail.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
+        await sendPasswordResetEmail(auth, targetEmail, {
+          url: 'https://feeder.life/login',
+          handleCodeInApp: false,
+        });
+      }
+
+      setResolvedEmailDisplay(targetEmail.includes('@') ? targetEmail : cleanInput);
       setResetSuccess(true);
+      setResendCooldown(30);
     } catch (err: any) {
       console.error('[Password Reset Error]:', err);
       if (err.code === 'auth/user-not-found') {
+        // Privacy-preserving non-enumeration
+        setResolvedEmailDisplay(cleanInput);
         setResetSuccess(true);
+        setResendCooldown(30);
       } else if (err.code === 'auth/invalid-email') {
-        setResetError(t('errors.invalidEmail'));
+        setResetError(t('errors.invalidEmail') || 'Please enter a valid email address.');
       } else if (err.code === 'auth/too-many-requests') {
-        setResetError(t('errors.tooManyRequests'));
+        setResetError(t('errors.tooManyRequests') || 'Too many reset attempts. Please wait a moment before trying again.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setResetError(t('errors.networkError') || 'Network error. Please check your internet connection.');
       } else {
-        setResetError(t('errors.resetFailed'));
+        setResetError(t('errors.resetFailed') || 'Unable to send password reset email. Please try again.');
       }
     } finally {
       setResetLoading(false);
@@ -364,7 +404,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setResetEmail(identifier.includes('@') ? identifier : '');
+                        setResetEmail(identifier.trim());
                         setResetError('');
                         setResetSuccess(false);
                         setShowForgotModal(true);
@@ -548,7 +588,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setResetEmail(identifier.includes('@') ? identifier : '');
+                      setResetEmail(identifier.trim());
                       setResetError('');
                       setResetSuccess(false);
                       setShowForgotModal(true);
@@ -609,7 +649,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setResetEmail(identifier.includes('@') ? identifier : '');
+                  setResetEmail(identifier.trim());
                   setResetError('');
                   setResetSuccess(false);
                   setShowForgotModal(true);
@@ -660,25 +700,41 @@ export default function LoginPage() {
 
             {resetSuccess ? (
               <div className="feeder-reset-success-box">
-                <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
-                <div>
-                  <p className="font-semibold text-emerald-900 text-sm">{t('forgotPassword.successTitle')}</p>
-                  <p className="text-xs text-emerald-800 mt-1">
-                    {t('forgotPassword.successDesc', { email: resetEmail })}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 size={22} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-emerald-950 text-sm">{t('forgotPassword.successTitle')}</h4>
+                    <p className="text-xs text-emerald-900 mt-1 leading-relaxed">
+                      {t('forgotPassword.successDesc', { email: resolvedEmailDisplay || resetEmail })}
+                    </p>
+                    <p className="text-[11.5px] text-emerald-800/90 mt-2">
+                      The link may take a few moments to arrive. Please check your <strong>Spam, Junk, or Promotions</strong> folder if you do not see it in your inbox.
+                    </p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(false)}
-                  className="feeder-exact-btn-continue mt-4 w-full"
-                >
-                  {t('forgotPassword.backToSignIn')}
-                </button>
+
+                <div className="mt-4 pt-3 border-t border-emerald-200/60 flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handlePasswordReset()}
+                    disabled={resetLoading || resendCooldown > 0}
+                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-center py-1"
+                  >
+                    {resendCooldown > 0 ? `Resend link in ${resendCooldown}s` : "Didn't get the email? Resend link"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="feeder-exact-btn-continue w-full"
+                  >
+                    {t('forgotPassword.backToSignIn')}
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handlePasswordReset} className="feeder-modal-form">
                 {resetError && (
-                  <div className="feeder-exact-alert-error mb-3">
+                  <div className="feeder-exact-alert-error mb-3" role="alert">
                     <AlertCircle size={15} className="shrink-0" />
                     <span>{resetError}</span>
                   </div>
@@ -692,7 +748,7 @@ export default function LoginPage() {
                     <Mail size={16} className="feeder-exact-input-icon" />
                     <input
                       id="exact-reset-email"
-                      type="email"
+                      type="text"
                       className="feeder-exact-input"
                       placeholder={t('forgotPassword.emailPlaceholder')}
                       value={resetEmail}
