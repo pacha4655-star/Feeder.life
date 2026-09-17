@@ -47,7 +47,7 @@ export default function LeftSidebar({
     { label: 'Saved', href: '/saved', icon: Bookmark, color: '#4B5563' },
     { label: 'Notifications', href: '/notifications', icon: Bell, color: '#4B5563' },
     { label: 'Settings', href: '/settings', icon: Settings, color: '#4B5563' },
-    { label: 'Help & Support', href: '/help', icon: HelpCircle, color: '#4B5563' },
+    { label: 'Help & Support', href: '/ask-feeder', icon: HelpCircle, color: '#4B5563' },
   ];
 
   return (
