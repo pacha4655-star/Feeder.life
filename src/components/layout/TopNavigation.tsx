@@ -32,6 +32,8 @@ import type { UserSession } from '@/lib/auth/session';
 import FeederLogo from '@/components/common/FeederLogo';
 import FeederAvatar from '@/components/common/FeederAvatar';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 
 interface TopNavProps {
   user: UserSession | null;
@@ -863,6 +865,11 @@ export default function TopNavigation({
                         className="sidebar-nav-item"
                         style={{ color: 'var(--brand-sos)' }}
                         onClick={async () => {
+                          try {
+                            await signOut(auth);
+                          } catch (e) {
+                            console.warn('Firebase signout notice:', e);
+                          }
                           await fetch('/api/auth/logout', { method: 'POST' });
                           window.location.href = '/';
                         }}

@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://feeder.life')
+  ),
   title: 'Feeder.life | Social Platform for Animals, Feeders & Rescue Action',
   description:
     'The modern social animal-welfare network connecting street animal feeders, rescuers, volunteers, and communities. Log feedings, respond to emergency SOS, and protect community animals.',
@@ -9,7 +13,7 @@ export const metadata: Metadata = {
     title: 'Feeder.life | Social Platform for Animals, Feeders & Rescue Action',
     description:
       'The modern social animal-welfare network connecting street animal feeders, rescuers, volunteers, and communities.',
-    url: 'https://feeder.life',
+    url: '/',
     siteName: 'Feeder.life',
     type: 'website',
   },

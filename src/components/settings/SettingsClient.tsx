@@ -14,6 +14,8 @@ import {
   LogOut,
   Camera,
 } from 'lucide-react';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import type { UserSession } from '@/lib/auth/session';
 
 interface SettingsClientProps {
@@ -193,6 +195,11 @@ export default function SettingsClient({ user }: SettingsClientProps) {
 
           <button
             onClick={async () => {
+              try {
+                await signOut(auth);
+              } catch (e) {
+                console.warn('Firebase signout notice:', e);
+              }
               await fetch('/api/auth/logout', { method: 'POST' });
               window.location.href = '/login';
             }}

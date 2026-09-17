@@ -58,9 +58,8 @@ export function verifySessionToken(token: string): { id: string; uid?: string; e
 }
 
 /**
- * Returns the currently authenticated user session from the real database.
- * 1. Checks Supabase PostgreSQL using signed session token.
- * 2. Falls back to local SQLite session store if not found in Supabase.
+ * Returns the currently authenticated user session from Supabase PostgreSQL.
+ * Uses cryptographically verified session token.
  * Returns null if no valid session cookie exists.
  * ZERO fake or hardcoded fallbacks.
  */

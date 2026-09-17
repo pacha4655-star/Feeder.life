@@ -24,7 +24,7 @@ const MONTH_NAMES_SHORT = [
 
 function parseDate(dateInput: string | number | Date | null | undefined): Date | null {
   if (!dateInput) return null;
-  // Handle SQLite timestamp format like "2026-09-13 18:30:00"
+  // Handle SQL/ISO timestamp formats like "2026-09-13 18:30:00" or ISO-8601 strings
   let parsedInput = dateInput;
   if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(dateInput)) {
     parsedInput = dateInput.replace(' ', 'T') + 'Z';
