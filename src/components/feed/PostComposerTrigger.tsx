@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Image as ImageIcon, Utensils, PawPrint, Users, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 
 interface PostComposerTriggerProps {
@@ -33,7 +33,7 @@ export default function PostComposerTrigger({ user, onOpen }: PostComposerTrigge
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Top row: Avatar + Pill Input */}
+      {/* Avatar + Pill Input */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {avatarUrl ? (
           <img
@@ -68,59 +68,25 @@ export default function PostComposerTrigger({ user, onOpen }: PostComposerTrigge
             flex: 1,
             background: 'var(--bg-secondary)',
             borderRadius: '9999px',
-            padding: '10px 18px',
+            padding: '11px 20px',
             color: 'var(--text-muted)',
-            fontSize: '13.5px',
+            fontSize: '14px',
             cursor: 'pointer',
-            transition: 'background 0.15s ease',
+            transition: 'background 0.15s ease, color 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
           }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = '#E4E6E9')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)')}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--brand-primary-light, #EBF7EE)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--brand-primary)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)';
+            (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
+          }}
         >
           {firstName ? `What would you like to share, ${firstName}?` : 'What would you like to share? Sign in to post...'}
         </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '12px 0 8px 0' }} />
-
-      {/* Bottom actions row: 4 buttons with signature green icons */}
-      <div className="composer-actions-row composer-actions-grid">
-        <button
-          type="button"
-          onClick={() => handleClick('PHOTO')}
-          className="composer-action-btn"
-        >
-          <ImageIcon size={18} color="var(--brand-primary)" />
-          <span>Photo / Video</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleClick('FEEDING_UPDATE')}
-          className="composer-action-btn"
-        >
-          <Utensils size={18} color="var(--brand-primary)" />
-          <span>Feeding Update</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleClick('HELP_REQUEST')}
-          className="composer-action-btn"
-        >
-          <PawPrint size={18} color="var(--brand-primary)" />
-          <span>Ask for Help</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleClick('NORMAL')}
-          className="composer-action-btn"
-        >
-          <Users size={18} color="var(--brand-primary)" />
-          <span>Community Post</span>
-        </button>
       </div>
     </div>
   );

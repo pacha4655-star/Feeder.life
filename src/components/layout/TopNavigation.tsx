@@ -28,6 +28,11 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
+  Newspaper,
+  Image as ImageIcon,
+  ExternalLink,
+  MessageSquare,
+  Heart,
 } from 'lucide-react';
 import { formatTime } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
@@ -60,9 +65,12 @@ export default function TopNavigation({
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any>(null);
+  const [searchTab, setSearchTab] = useState<'all' | 'people' | 'communities' | 'posts' | 'news' | 'images'>('all');
   const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const latestQueryRef = useRef('');
 
   // Dropdowns state
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -132,6 +140,45 @@ export default function TopNavigation({
     return () => clearInterval(interval);
   }, [user]);
 
+  // Execute search with race-condition prevention
+  const executeSearch = (query: string, tab: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSearchResults(null);
+      setIsSearching(false);
+      setSearchError(null);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError(null);
+    const queryKey = `${trimmed}::${tab}`;
+    latestQueryRef.current = queryKey;
+
+    fetch(`/api/search?q=${encodeURIComponent(trimmed)}&type=${tab}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (latestQueryRef.current === queryKey) {
+          if (data.success) {
+            setSearchResults(data.results);
+            setShowSearchDropdown(true);
+          } else {
+            setSearchError(data.error || "Search couldn't be completed. Please try again.");
+          }
+        }
+      })
+      .catch(() => {
+        if (latestQueryRef.current === queryKey) {
+          setSearchError("Search couldn't be completed. Check network connection.");
+        }
+      })
+      .finally(() => {
+        if (latestQueryRef.current === queryKey) {
+          setIsSearching(false);
+        }
+      });
+  };
+
   // Handle Search Input with debounce
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -139,20 +186,11 @@ export default function TopNavigation({
       return;
     }
     const timer = setTimeout(() => {
-      setIsSearching(true);
-      fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setSearchResults(data.results);
-            setShowSearchDropdown(true);
-          }
-        })
-        .finally(() => setIsSearching(false));
-    }, 250);
+      executeSearch(searchQuery, searchTab);
+    }, 280);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, searchTab]);
 
   // Click outside listener for dropdowns
   useEffect(() => {
@@ -190,6 +228,23 @@ export default function TopNavigation({
     document.documentElement.setAttribute('data-theme', nextTheme ? 'dark' : 'light');
   };
 
+  const searchTabs = [
+    { id: 'all', label: 'All' },
+    { id: 'people', label: 'People' },
+    { id: 'communities', label: 'Communities' },
+    { id: 'posts', label: 'Posts' },
+    { id: 'news', label: 'News' },
+    { id: 'images', label: 'Images' },
+  ] as const;
+
+  const totalResultsCount = searchResults
+    ? (searchResults.people?.length || 0) +
+      (searchResults.communities?.length || 0) +
+      (searchResults.posts?.length || 0) +
+      (searchResults.news?.length || 0) +
+      (searchResults.images?.length || 0)
+    : 0;
+
   return (
     <header className="app-topbar">
       {/* Top Left: Brand Logo & Single Header Global Search */}
@@ -203,7 +258,7 @@ export default function TopNavigation({
           <input
             type="text"
             className="global-search-input"
-            placeholder="Search people, communities, posts..."
+            placeholder="Search people, communities, posts, news, images..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => {
@@ -257,17 +312,17 @@ export default function TopNavigation({
             </button>
           ) : null}
 
-          {/* Real Search Autocomplete Dropdown */}
-          {showSearchDropdown && searchResults && (
+          {/* Real Global Search Dropdown */}
+          {showSearchDropdown && (searchResults || isSearching || searchError) && (
             <div
               className="card glass-panel"
               style={{
                 position: 'absolute',
                 top: '46px',
                 left: 0,
-                width: '360px',
-                maxWidth: 'calc(100vw - 32px)',
-                maxHeight: '440px',
+                width: '460px',
+                maxWidth: 'calc(100vw - 24px)',
+                maxHeight: '480px',
                 overflowY: 'auto',
                 zIndex: 250,
                 padding: '12px',
@@ -277,14 +332,73 @@ export default function TopNavigation({
                 background: 'var(--bg-card)',
               }}
             >
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.05em' }}>
-                SEARCH RESULTS
+              {/* Search Category Tabs Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  paddingBottom: '10px',
+                  marginBottom: '10px',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                }}
+              >
+                {searchTabs.map((tab) => {
+                  const isActive = searchTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setSearchTab(tab.id)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        background: isActive ? 'var(--brand-primary-light, #EBF7EE)' : 'transparent',
+                        color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)',
+                        fontWeight: isActive ? 700 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* 1. Real Users / People Results First */}
-              {searchResults.people?.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {/* Error State */}
+              {searchError && (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#dc2626', fontSize: '13px' }}>
+                  <AlertTriangle size={24} style={{ margin: '0 auto 6px auto', opacity: 0.8 }} />
+                  <div>{searchError}</div>
+                  <button
+                    type="button"
+                    onClick={() => executeSearch(searchQuery, searchTab)}
+                    className="btn btn-secondary"
+                    style={{ marginTop: '8px', padding: '4px 12px', fontSize: '12px' }}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Loading State Skeleton */}
+              {isSearching && !searchResults && (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px auto', color: 'var(--brand-primary)' }} />
+                  Searching across Feeder...
+                </div>
+              )}
+
+              {/* 1. Real Users / People Section */}
+              {searchResults && (searchTab === 'all' || searchTab === 'people') && searchResults.people?.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.04em' }}>
                     People & Guardians
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -333,10 +447,10 @@ export default function TopNavigation({
                 </div>
               )}
 
-              {/* 2. Real Communities Results */}
-              {searchResults.communities?.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              {/* 2. Real Communities Section */}
+              {searchResults && (searchTab === 'all' || searchTab === 'communities') && searchResults.communities?.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.04em' }}>
                     Communities
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -387,24 +501,24 @@ export default function TopNavigation({
                 </div>
               )}
 
-              {/* 3. Real Active SOS Emergency Results */}
-              {searchResults.sos?.length > 0 && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-sos)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    Active SOS
+              {/* 3. Real Posts Section */}
+              {searchResults && (searchTab === 'all' || searchTab === 'posts') && searchResults.posts?.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.04em' }}>
+                    Posts
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {searchResults.sos.map((s: any) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {searchResults.posts.map((post: any) => (
                       <Link
-                        key={s.id}
-                        href="/sos"
+                        key={post.id}
+                        href={post.author_username ? `/profile/${post.author_username}` : '/'}
                         onClick={() => {
                           setShowSearchDropdown(false);
                           setSearchQuery('');
                         }}
                         style={{
                           display: 'flex',
-                          alignItems: 'center',
+                          alignItems: 'flex-start',
                           gap: '10px',
                           padding: '8px 10px',
                           borderRadius: '10px',
@@ -412,27 +526,30 @@ export default function TopNavigation({
                         }}
                         className="sidebar-user-card"
                       >
-                        <div
-                          style={{
-                            width: '34px',
-                            height: '34px',
-                            borderRadius: '8px',
-                            background: '#fee2e2',
-                            color: 'var(--brand-sos)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <AlertTriangle size={18} />
-                        </div>
+                        <FeederAvatar src={post.author_avatar} alt={post.author_name} size={32} className="avatar-img" />
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--brand-sos)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {s.title}
+                          <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-main)' }}>
+                            {post.author_name}
                           </div>
-                          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
-                            {s.animal_type || 'Animal'} {s.approx_location_name ? `• ${s.approx_location_name}` : ''}
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: 'var(--text-muted)',
+                              marginTop: '2px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            {post.body}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            <span>{formatTime(post.created_at)}</span>
+                            {post.reaction_count > 0 && <span>• {post.reaction_count} likes</span>}
+                            {post.comment_count > 0 && <span>• {post.comment_count} comments</span>}
                           </div>
                         </div>
                       </Link>
@@ -441,15 +558,160 @@ export default function TopNavigation({
                 </div>
               )}
 
-              {/* Empty Search Result State */}
-              {searchResults.communities?.length === 0 &&
-                searchResults.sos?.length === 0 &&
-                searchResults.people?.length === 0 &&
-                searchResults.posts?.length === 0 && (
-                  <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                    No users or results found for &ldquo;{searchQuery}&rdquo;
+              {/* 4. Real News Section */}
+              {searchResults && (searchTab === 'all' || searchTab === 'news') && searchResults.news?.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.04em' }}>
+                    News & Updates
                   </div>
-                )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {searchResults.news.map((item: any) => (
+                      <a
+                        key={item.id || item.url}
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          padding: '9px 10px',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                          border: '1px solid var(--border-subtle)',
+                          background: 'var(--bg-secondary)',
+                          transition: 'background 0.15s ease',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              color: 'var(--brand-primary)',
+                              background: 'var(--brand-primary-light, #EBF7EE)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                            }}
+                          >
+                            {item.source}
+                          </span>
+                          <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            {formatTime(item.published_at)}
+                            <ExternalLink size={11} />
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            color: 'var(--text-main)',
+                            lineHeight: 1.35,
+                            marginBottom: '2px',
+                          }}
+                        >
+                          {item.title}
+                        </div>
+                        {item.snippet && (
+                          <div
+                            style={{
+                              fontSize: '11.5px',
+                              color: 'var(--text-muted)',
+                              lineHeight: 1.35,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}
+                          >
+                            {item.snippet}
+                          </div>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Real Images Section */}
+              {searchResults && (searchTab === 'all' || searchTab === 'images') && searchResults.images?.length > 0 && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.04em' }}>
+                    Images
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                      gap: '8px',
+                    }}
+                  >
+                    {searchResults.images.map((img: any) => (
+                      <a
+                        key={img.id || img.url}
+                        href={img.source_url || img.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          textDecoration: 'none',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          border: '1px solid var(--border-subtle)',
+                          background: 'var(--bg-secondary)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                      >
+                        <div style={{ width: '100%', height: '88px', overflow: 'hidden', background: '#000' }}>
+                          <img
+                            src={img.thumbnail_url || img.url}
+                            alt={img.title}
+                            loading="lazy"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              transition: 'transform 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.transform = 'scale(1.05)')}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.transform = 'scale(1)')}
+                          />
+                        </div>
+                        <div style={{ padding: '6px 8px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 600,
+                              color: 'var(--text-main)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                            title={img.title}
+                          >
+                            {img.title}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {img.author ? `By ${img.author}` : img.license}
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty Search Result State */}
+              {searchResults && !isSearching && !searchError && totalResultsCount === 0 && (
+                <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  <Search size={32} style={{ margin: '0 auto 8px auto', opacity: 0.4 }} />
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>
+                    No {searchTab === 'all' ? 'results' : searchTab} found for &ldquo;{searchQuery}&rdquo;
+                  </div>
+                  <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                    Try checking your spelling or searching for another keyword.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
