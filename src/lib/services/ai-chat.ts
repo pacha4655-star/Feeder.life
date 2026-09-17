@@ -50,7 +50,7 @@ export class AiChatService {
   /**
    * Resolve Gemini API configuration server-side
    */
-  private static getGeminiConfig() {
+  public static getGeminiConfig() {
     const apiKey =
       process.env.GEMINI_API_KEY ||
       process.env.GOOGLE_GENAI_API_KEY ||
@@ -193,19 +193,18 @@ export class AiChatService {
     const { apiKey, model } = this.getGeminiConfig();
 
     if (!apiKey) {
+      console.error('[Feeder AI] provider=gemini status=500 error=GEMINI_API_KEY is not configured');
       throw new Error('GEMINI_API_KEY_MISSING');
     }
 
     // Build Gemini contents array from conversation history
     const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
-    // Ensure alternating user/model turns without consecutive duplicate roles
     let lastRole: string | null = null;
     for (const h of history) {
       if (!h.content.trim()) continue;
       const role = h.role === 'user' ? 'user' : 'model';
       if (role === lastRole && contents.length > 0) {
-        // Merge consecutive parts
         contents[contents.length - 1].parts[0].text += `\n${h.content}`;
       } else {
         contents.push({
@@ -216,7 +215,6 @@ export class AiChatService {
       }
     }
 
-    // If history didn't end with the latest message, add it
     if (contents.length === 0 || contents[contents.length - 1].role !== 'user') {
       contents.push({
         role: 'user',
@@ -244,19 +242,36 @@ export class AiChatService {
     });
 
     if (res.status === 429) {
+      console.error(`[Feeder AI] provider=gemini model=${model} status=429 error=Rate limited`);
       throw new Error('RATE_LIMITED');
     }
 
     if (!res.ok) {
       const errorBody = await res.text().catch(() => '');
-      console.error(`[AiChatService] Gemini API call failed (${res.status}):`, errorBody);
+      console.error(`[Feeder AI] provider=gemini model=${model} status=${res.status} error=${errorBody}`);
+
+      let parsedError: any = null;
+      try {
+        parsedError = JSON.parse(errorBody);
+      } catch {}
+
+      const errorMsg = parsedError?.error?.message || '';
+      if (res.status === 403 || errorMsg.includes('has not been used') || errorMsg.includes('disabled')) {
+        throw new Error('GEMINI_API_NOT_ENABLED');
+      }
+      if (res.status === 404 || errorMsg.includes('not found') || errorMsg.includes('models/')) {
+        throw new Error('GEMINI_MODEL_NOT_FOUND');
+      }
+      if (res.status === 401 || errorMsg.includes('API key not valid')) {
+        throw new Error('GEMINI_INVALID_API_KEY');
+      }
+
       throw new Error(`GEMINI_API_ERROR_${res.status}`);
     }
 
     const data = await res.json();
     const candidate = data.candidates?.[0];
 
-    // Check for safety filter blocks
     if (candidate?.finishReason === 'SAFETY') {
       return "I cannot provide a response to that query in accordance with safety guidelines. Please ask another question.";
     }

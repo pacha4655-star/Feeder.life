@@ -105,8 +105,44 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
+    if (error.message === 'GEMINI_API_NOT_ENABLED') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Google Gemini API is not enabled for the configured Google Cloud project or GEMINI_API_KEY is not set. Please set GEMINI_API_KEY in Vercel environment variables or enable Generative Language API in Google Cloud Console.",
+        },
+        { status: 503 }
+      );
+    }
+    if (error.message === 'GEMINI_API_KEY_MISSING') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Gemini API key is not configured. Please set GEMINI_API_KEY in Vercel environment variables.",
+        },
+        { status: 503 }
+      );
+    }
+    if (error.message === 'GEMINI_INVALID_API_KEY') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid Google Gemini API key. Please check your GEMINI_API_KEY in Vercel environment variables.",
+        },
+        { status: 503 }
+      );
+    }
+    if (error.message === 'GEMINI_MODEL_NOT_FOUND') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Configured Gemini model is not available. Please verify GEMINI_MODEL.",
+        },
+        { status: 503 }
+      );
+    }
 
-    console.error('[POST /api/ai/chat] Gemini API error:', error);
+    console.error('[POST /api/ai/chat] Unexpected error:', error);
     return NextResponse.json(
       { success: false, error: "Sorry, I couldn't process that right now. Please try again." },
       { status: 500 }
