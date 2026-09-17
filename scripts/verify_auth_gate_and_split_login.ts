@@ -86,19 +86,15 @@ async function runBrowserTests() {
       const title = await page.title();
       console.log(`  Page Title: "${title}"`);
 
-      // Verify Feeder headline presence
-      const headline = await page.locator('.feeder-split-headline').textContent().catch(() => null);
-      console.log(`  Feeder Headline: "${headline?.trim()}"`);
+      // Verify elements
+      const continueBtn = await page.locator('.feeder-exact-btn-continue').isVisible();
+      const anotherProfileBtn = await page.locator('.feeder-exact-btn-secondary').isVisible();
+      const googleBtn = await page.locator('.feeder-exact-google-btn').isVisible();
+      const createAccountBtn = await page.locator('.feeder-exact-btn-create-account').isVisible();
+      const userName = await page.locator('.feeder-exact-user-name').textContent().catch(() => null);
+      const leftHeroImg = await page.locator('.feeder-exact-left-hero-image').isVisible();
 
-      // Verify form elements
-      const emailInput = await page.locator('#feeder-identifier').isVisible();
-      const passwordInput = await page.locator('#feeder-password').isVisible();
-      const loginBtn = await page.locator('button[type="submit"]').isVisible();
-      const googleBtn = await page.locator('.btn-google').isVisible();
-      const forgotBtn = await page.locator('.feeder-forgot-link-btn').isVisible();
-      const createAccountBtn = await page.locator('.feeder-create-account-btn').isVisible();
-
-      console.log(`  UI Elements: EmailInput=${emailInput}, PwdInput=${passwordInput}, LoginBtn=${loginBtn}, GoogleBtn=${googleBtn}, ForgotBtn=${forgotBtn}, CreateAccBtn=${createAccountBtn}`);
+      console.log(`  UI Elements: HeroImg=${leftHeroImg}, ContinueBtn=${continueBtn}, AnotherProfileBtn=${anotherProfileBtn}, GoogleBtn=${googleBtn}, CreateAccBtn=${createAccountBtn}, User="${userName?.trim()}"`);
 
       // Check horizontal overflow
       const overflow = await page.evaluate(() => {
@@ -119,13 +115,23 @@ async function runBrowserTests() {
       await page.close();
     }
 
-    // Test Forgot Password Modal Interaction
-    console.log('Testing Forgot Password Modal Interaction...');
+    // Test "Use another profile" credentials view and Forgot Password Modal Interaction
+    console.log('Testing "Use another profile" Switch & Forgot Password Modal Interaction...');
     const modalPage = await context.newPage();
     await modalPage.setViewportSize({ width: 1280, height: 800 });
     await modalPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
 
-    await modalPage.click('.feeder-forgot-link-btn');
+    // Click "Use another profile"
+    await modalPage.click('.feeder-exact-btn-secondary');
+    await modalPage.waitForSelector('.feeder-exact-credentials-form', { state: 'visible' });
+    console.log('  Switched to credentials form: PASS');
+
+    const credShotPath = path.join(screenshotsDir, 'login_credentials_mode_1280.png');
+    await modalPage.screenshot({ path: credShotPath });
+    console.log(`  Saved credentials mode screenshot to ${credShotPath}`);
+
+    // Click "Forgot password?"
+    await modalPage.click('.feeder-exact-forgot-btn');
     await modalPage.waitForSelector('.feeder-modal-card', { state: 'visible' });
     const modalVisible = await modalPage.locator('.feeder-modal-card').isVisible();
     console.log(`  Forgot Password Modal opened: ${modalVisible ? 'PASS' : 'FAIL'}`);
