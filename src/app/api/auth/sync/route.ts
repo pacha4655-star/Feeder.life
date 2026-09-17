@@ -7,7 +7,7 @@ import crypto from 'crypto';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { idToken } = body;
+    const { idToken, username: customUsername, fullName: customFullName } = body;
 
     if (!idToken || typeof idToken !== 'string') {
       return NextResponse.json(
@@ -21,24 +21,26 @@ export async function POST(request: NextRequest) {
     const verification = await verifyFirebaseIdToken(idToken);
     if (!verification.success || !verification.uid) {
       return NextResponse.json(
-        { success: false, error: 'Unable to sign in with Google. Please try again.' },
+        { success: false, error: verification.error || 'Authentication verification failed. Please try again.' },
         { status: 401 }
       );
     }
 
     const firebaseUid = verification.uid;
     const email = (verification.email || '').trim().toLowerCase();
-    const displayName = verification.name || (email ? email.split('@')[0] : 'Feeder Guardian');
+    const displayName = (customFullName || verification.name || (email ? email.split('@')[0] : 'Feeder Guardian')).trim();
     const avatarUrl =
       verification.picture ||
       `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`;
 
     // 2. Synchronize user with Supabase PostgreSQL (users table)
+    // Zero passwords or password hashes stored in Supabase.
     const supaResult = await syncUserWithSupabase({
       firebase_uid: firebaseUid,
       email,
       display_name: displayName,
       avatar_url: avatarUrl,
+      username: customUsername,
     });
 
     const supaUser = supaResult.user;

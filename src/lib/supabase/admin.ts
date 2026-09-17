@@ -6,6 +6,7 @@ export interface SupabaseSyncInput {
   email?: string | null;
   display_name?: string | null;
   avatar_url?: string | null;
+  username?: string | null;
 }
 
 export interface SupabaseSyncResult {
@@ -20,6 +21,7 @@ export interface SupabaseSyncResult {
  * Uses the server-only service-role client.
  * If the user does not exist, creates a real user record with required defaults.
  * If the user already exists, returns the existing user without creating duplicates.
+ * NO passwords or password hashes are ever stored in Supabase.
  */
 export async function syncUserWithSupabase(input: SupabaseSyncInput): Promise<SupabaseSyncResult> {
   try {
@@ -80,9 +82,12 @@ export async function syncUserWithSupabase(input: SupabaseSyncInput): Promise<Su
 
     // 3. Create new user record in Supabase with required PostgreSQL defaults
     const now = new Date().toISOString();
-    let baseUsername = input.email
-      ? input.email.split('@')[0].replace(/[^a-z0-9_]/gi, '').toLowerCase()
-      : (input.display_name || 'feeder').replace(/[^a-z0-9_]/gi, '').toLowerCase();
+    let baseUsername = (input.username || '').trim().toLowerCase().replace(/[^a-z0-9_]/gi, '');
+    if (!baseUsername) {
+      baseUsername = input.email
+        ? input.email.split('@')[0].replace(/[^a-z0-9_]/gi, '').toLowerCase()
+        : (input.display_name || 'feeder').replace(/[^a-z0-9_]/gi, '').toLowerCase();
+    }
 
     if (!baseUsername || baseUsername.length < 3) {
       baseUsername = `feeder_${Date.now().toString().slice(-4)}`;

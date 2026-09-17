@@ -1,94 +1,80 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hashPassword } from '@/lib/auth/password';
+import { verifyFirebaseIdToken } from '@/lib/firebase/admin';
+import { syncUserWithSupabase } from '@/lib/supabase/admin';
 import { createSessionToken } from '@/lib/auth/session';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import crypto from 'crypto';
 
+/**
+ * Production Signup Endpoint
+ * Authenticates solely through Firebase Authentication ID token.
+ * ZERO passwords or password hashes stored in Supabase PostgreSQL.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { email, username, fullName, password } = body;
+    const { idToken, username, fullName } = body;
 
-    if (!email || !email.includes('@')) {
-      return NextResponse.json({ success: false, error: 'Valid email address is required' }, { status: 400 });
-    }
-    if (!username || username.trim().length < 3) {
-      return NextResponse.json({ success: false, error: 'Username must be at least 3 characters' }, { status: 400 });
-    }
-    if (!fullName || fullName.trim().length < 2) {
-      return NextResponse.json({ success: false, error: 'Full name is required' }, { status: 400 });
-    }
-    if (!password || password.length < 8) {
-      return NextResponse.json({ success: false, error: 'Password must be at least 8 characters' }, { status: 400 });
+    if (!idToken || typeof idToken !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Firebase authentication token is required' },
+        { status: 400 }
+      );
     }
 
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    const cleanEmail = email.trim().toLowerCase();
-
-    const supabase = getSupabaseServerClient();
-
-    // Check unique constraints
-    const { data: existingUsers } = await supabase
-      .from('users')
-      .select('id, email, username')
-      .or(`email.eq.${cleanEmail},username.eq.${cleanUsername}`)
-      .limit(1);
-
-    if (existingUsers && existingUsers.length > 0) {
-      const existing = existingUsers[0];
-      if (existing.email?.toLowerCase() === cleanEmail) {
-        return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 });
-      }
-      return NextResponse.json({ success: false, error: 'This username is already taken' }, { status: 409 });
+    // 1. Cryptographically verify Firebase ID token
+    const verification = await verifyFirebaseIdToken(idToken);
+    if (!verification.success || !verification.uid) {
+      return NextResponse.json(
+        { success: false, error: verification.error || 'Authentication verification failed' },
+        { status: 401 }
+      );
     }
 
-    const userId = crypto.randomUUID();
-    const passwordHash = await hashPassword(password);
-    const defaultAvatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanUsername}`;
-    const firebaseUid = body.firebaseUid || `local_${userId}`;
+    const firebaseUid = verification.uid;
+    const email = (verification.email || '').trim().toLowerCase();
+    const displayName = (fullName || verification.name || (email ? email.split('@')[0] : 'Feeder Guardian')).trim();
+    const avatarUrl =
+      verification.picture ||
+      `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`;
 
-    const { data: newUser, error: insertErr } = await supabase
-      .from('users')
-      .insert({
-        id: userId,
-        firebase_uid: firebaseUid,
-        email: cleanEmail,
-        username: cleanUsername,
-        display_name: fullName.trim(),
-        avatar_url: defaultAvatar,
-        is_active: true,
-        is_verified: false,
-        profile_data: {
-          area_name: '',
-          feeder_level: 'Grassroots Feeder',
-          feeding_count: 0,
-          sos_count: 0,
-          password_hash: passwordHash,
-        },
-      })
-      .select()
-      .single();
+    // 2. Synchronize user in Supabase PostgreSQL (users table)
+    const supaResult = await syncUserWithSupabase({
+      firebase_uid: firebaseUid,
+      email,
+      display_name: displayName,
+      avatar_url: avatarUrl,
+      username: username ? username.trim() : undefined,
+    });
 
-    if (insertErr || !newUser) {
-      return NextResponse.json({ success: false, error: insertErr?.message || 'Registration failed' }, { status: 400 });
+    const supaUser = supaResult.user;
+    if (!supaUser) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to synchronize user profile in database' },
+        { status: 500 }
+      );
     }
 
+    // 3. Create session token & cookie
     const sessionToken = createSessionToken({
-      id: userId,
-      email: cleanEmail,
-      username: cleanUsername,
+      id: supaUser.id,
+      email: supaUser.email,
+      username: supaUser.username || undefined,
       firebase_uid: firebaseUid,
     });
 
+    const isNew = supaResult.isNewUser || !supaUser.onboarding_completed;
+    const redirectTo = isNew ? '/onboarding' : '/';
+
     const response = NextResponse.json({
       success: true,
+      isNewUser: isNew,
+      redirectTo,
       user: {
-        id: userId,
-        email: cleanEmail,
-        username: cleanUsername,
-        fullName: fullName.trim(),
+        id: supaUser.id,
+        email: supaUser.email,
+        username: supaUser.username,
+        fullName: supaUser.display_name,
+        avatarUrl: supaUser.avatar_url,
       },
-      redirectTo: '/onboarding',
     });
 
     response.cookies.set('feeder_session', sessionToken, {
@@ -101,7 +87,8 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error('Signup error:', error);
+    console.error('Signup API error:', error);
     return NextResponse.json({ success: false, error: 'Registration failed. Please try again.' }, { status: 500 });
   }
 }
+

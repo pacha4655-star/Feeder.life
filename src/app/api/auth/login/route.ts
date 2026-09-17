@@ -1,60 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyPassword } from '@/lib/auth/password';
+import { verifyFirebaseIdToken } from '@/lib/firebase/admin';
+import { syncUserWithSupabase } from '@/lib/supabase/admin';
 import { createSessionToken } from '@/lib/auth/session';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 
+/**
+ * Production Login Endpoint
+ * Authenticates solely through Firebase Authentication ID token.
+ * ZERO passwords or password hashes stored in Supabase PostgreSQL.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { identifier, password } = body;
+    const { idToken } = body;
 
-    if (!identifier || !password) {
-      return NextResponse.json({ success: false, error: 'Email/username and password are required' }, { status: 400 });
+    if (!idToken || typeof idToken !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Firebase authentication token is required' },
+        { status: 400 }
+      );
     }
 
-    const cleanId = identifier.trim().toLowerCase();
-    const supabase = getSupabaseServerClient();
-
-    const { data: userRows, error } = await supabase
-      .from('users')
-      .select('*')
-      .or(`email.ilike.${cleanId},username.ilike.${cleanId}`)
-      .limit(1);
-
-    const user = userRows && userRows[0];
-
-    if (error || !user) {
-      return NextResponse.json({ success: false, error: 'Invalid login credentials' }, { status: 401 });
+    // 1. Cryptographically verify Firebase ID token
+    const verification = await verifyFirebaseIdToken(idToken);
+    if (!verification.success || !verification.uid) {
+      return NextResponse.json(
+        { success: false, error: verification.error || 'Authentication verification failed' },
+        { status: 401 }
+      );
     }
 
-    if (user.is_active === false) {
-      return NextResponse.json({ success: false, error: 'Your account is suspended or deactivated' }, { status: 403 });
-    }
+    const firebaseUid = verification.uid;
+    const email = (verification.email || '').trim().toLowerCase();
 
-    const passwordHash = user.profile_data?.password_hash;
-    if (passwordHash) {
-      const isValid = await verifyPassword(password, passwordHash);
-      if (!isValid) {
-        return NextResponse.json({ success: false, error: 'Invalid login credentials' }, { status: 401 });
-      }
-    }
-
-    const sessionToken = createSessionToken({
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      firebase_uid: user.firebase_uid,
+    // 2. Lookup or sync user in Supabase PostgreSQL (users table)
+    const supaResult = await syncUserWithSupabase({
+      firebase_uid: firebaseUid,
+      email,
+      display_name: verification.name,
+      avatar_url: verification.picture,
     });
+
+    const supaUser = supaResult.user;
+    if (!supaUser) {
+      return NextResponse.json(
+        { success: false, error: 'Failed to synchronize user session in database' },
+        { status: 500 }
+      );
+    }
+
+    if (supaUser.is_active === false) {
+      return NextResponse.json(
+        { success: false, error: 'Your account has been deactivated' },
+        { status: 403 }
+      );
+    }
+
+    // 3. Issue secure session token & cookie
+    const sessionToken = createSessionToken({
+      id: supaUser.id,
+      email: supaUser.email,
+      username: supaUser.username || undefined,
+      firebase_uid: firebaseUid,
+    });
+
+    const isNew = supaResult.isNewUser || !supaUser.onboarding_completed;
+    const redirectTo = isNew ? '/onboarding' : '/';
 
     const response = NextResponse.json({
       success: true,
+      redirectTo,
       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        fullName: user.display_name || user.username,
-        avatarUrl: user.avatar_url,
-        role: user.role || 'USER',
+        id: supaUser.id,
+        email: supaUser.email,
+        username: supaUser.username,
+        fullName: supaUser.display_name || supaUser.username,
+        avatarUrl: supaUser.avatar_url,
+        role: supaUser.profile_data?.role || 'USER',
       },
     });
 
@@ -68,7 +89,8 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('Login API error:', error);
     return NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 500 });
   }
 }
+

@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import FeederLogo from '@/components/common/FeederLogo';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
-import { Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,21 +27,57 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/login', {
+      let targetEmail = identifier.trim();
+
+      // If user provided a username instead of an email, resolve to their email address
+      if (!targetEmail.includes('@')) {
+        const lookupRes = await fetch(`/api/auth/lookup?username=${encodeURIComponent(targetEmail)}`);
+        const lookupData = await lookupRes.json();
+        if (!lookupRes.ok || !lookupData.success || !lookupData.email) {
+          throw new Error(lookupData.error || 'No account found with this username');
+        }
+        targetEmail = lookupData.email;
+      }
+
+      // 1. Authenticate with Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(auth, targetEmail, password);
+      
+      // 2. Obtain verified Firebase ID token
+      const idToken = await userCredential.user.getIdToken(true);
+
+      // 3. Synchronize user profile into Supabase & issue secure session cookie
+      const res = await fetch('/api/auth/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim(), password }),
+        body: JSON.stringify({ idToken }),
       });
 
       const data = await res.json();
-      if (data.success) {
-        router.push('/');
-        router.refresh();
-      } else {
-        setError(data.error || 'Invalid credentials');
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Unable to sign in. Please try again.');
       }
-    } catch {
-      setError('Network error. Please try again.');
+
+      router.push(data.redirectTo || (data.isNewUser ? '/onboarding' : '/'));
+      router.refresh();
+    } catch (err: any) {
+      console.error('[Firebase Login Error]:', err);
+      if (
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/invalid-credential'
+      ) {
+        setError('Invalid email/username or password.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/user-disabled') {
+        setError('This account has been disabled.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed login attempts. Please try again later.');
+      } else if (err.message && !err.message.includes('object Object')) {
+        setError(err.message);
+      } else {
+        setError('Invalid credentials. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

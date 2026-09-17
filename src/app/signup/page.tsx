@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import FeederLogo from '@/components/common/FeederLogo';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -22,8 +24,8 @@ export default function SignupPage() {
       setError('Please fill in all fields');
       return;
     }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
       return;
     }
 
@@ -31,26 +33,52 @@ export default function SignupPage() {
     setError('');
 
     try {
-      const res = await fetch('/api/auth/signup', {
+      // 1. Create user in Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      
+      // 2. Set Firebase Auth display name
+      try {
+        await updateProfile(userCredential.user, { displayName: fullName.trim() });
+      } catch (profileErr) {
+        console.warn('[Signup] Firebase updateProfile notice:', profileErr);
+      }
+
+      // 3. Obtain verified Firebase ID token
+      const idToken = await userCredential.user.getIdToken(true);
+
+      // 4. Synchronize user profile into Supabase PostgreSQL (zero passwords in Supabase)
+      const res = await fetch('/api/auth/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName: fullName.trim(),
-          email: email.trim(),
+          idToken,
           username: username.trim(),
-          password,
+          fullName: fullName.trim(),
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
-        router.push(data.redirectTo || '/onboarding');
-        router.refresh();
-      } else {
-        setError(data.error || 'Failed to create account');
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to complete registration');
       }
-    } catch {
-      setError('Network error. Please try again.');
+
+      router.push(data.redirectTo || '/onboarding');
+      router.refresh();
+    } catch (err: any) {
+      console.error('[Firebase Signup Error]:', err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists. Please sign in.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password must be at least 6 characters.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setError('Email/password authentication is not enabled in Firebase Console.');
+      } else if (err.message && !err.message.includes('object Object')) {
+        setError(err.message);
+      } else {
+        setError('Failed to create account. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
