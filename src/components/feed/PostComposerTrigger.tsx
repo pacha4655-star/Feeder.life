@@ -6,20 +6,12 @@ import type { UserSession } from '@/lib/auth/session';
 
 interface PostComposerTriggerProps {
   user: UserSession | null;
-  onOpen: (type?: string) => void;
+  onOpen?: (type?: string) => void;
 }
 
-export default function PostComposerTrigger({ user, onOpen }: PostComposerTriggerProps) {
+export default function PostComposerTrigger({ user }: PostComposerTriggerProps) {
   const firstName = user?.fullName ? user.fullName.split(' ')[0] : null;
   const avatarUrl = user?.avatarUrl;
-
-  const handleClick = (type = 'NORMAL') => {
-    if (!user) {
-      window.location.href = '/login';
-      return;
-    }
-    onOpen(type);
-  };
 
   return (
     <div
@@ -33,7 +25,7 @@ export default function PostComposerTrigger({ user, onOpen }: PostComposerTrigge
         boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Avatar + Pill Input */}
+      {/* Avatar + Pill Preview */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {avatarUrl ? (
           <img
@@ -61,9 +53,6 @@ export default function PostComposerTrigger({ user, onOpen }: PostComposerTrigge
           </div>
         )}
         <div
-          onClick={() => handleClick('NORMAL')}
-          role="button"
-          tabIndex={0}
           style={{
             flex: 1,
             background: 'var(--bg-secondary)',
@@ -71,18 +60,10 @@ export default function PostComposerTrigger({ user, onOpen }: PostComposerTrigge
             padding: '11px 20px',
             color: 'var(--text-muted)',
             fontSize: '14px',
-            cursor: 'pointer',
-            transition: 'background 0.15s ease, color 0.15s ease',
+            cursor: 'default',
+            userSelect: 'none',
             display: 'flex',
             alignItems: 'center',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = 'var(--brand-primary-light, #EBF7EE)';
-            (e.currentTarget as HTMLElement).style.color = 'var(--brand-primary)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = 'var(--bg-secondary)';
-            (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)';
           }}
         >
           {firstName ? `What would you like to share, ${firstName}?` : 'What would you like to share? Sign in to post...'}
