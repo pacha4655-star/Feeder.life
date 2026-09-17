@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 import { getSupabaseServerClient } from '../supabase/server';
-import { getDb } from '../db';
 import type { DbUser } from '@/types/database';
 
 export interface UserSession {
@@ -25,7 +24,7 @@ export interface UserSession {
  * Generates a tamper-proof cryptographically signed session token for a user.
  * Encodes the Supabase UUID and Firebase UID.
  */
-export function createSessionToken(user: { id: string; firebase_uid?: string; email?: string | null }): string {
+export function createSessionToken(user: { id: string; firebase_uid?: string; email?: string | null; username?: string }): string {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'feeder-life-session-secret-2026';
   const payload = {
     id: user.id,
@@ -72,78 +71,46 @@ export async function getCurrentUser(): Promise<UserSession | null> {
     return null;
   }
 
-  // 1. Try Supabase signed session token
   const payload = verifySessionToken(sessionToken);
-  if (payload && payload.id) {
-    try {
-      const supabase = getSupabaseServerClient();
-      let query = supabase.from('users').select('*');
-      
-      if (payload.id) {
-        query = query.eq('id', payload.id);
-      } else if (payload.uid) {
-        query = query.eq('firebase_uid', payload.uid);
-      }
-
-      const { data: dbUser, error } = await query.maybeSingle();
-
-      if (!error && dbUser && dbUser.is_active) {
-        const u = dbUser as DbUser;
-        return {
-          id: u.id,
-          email: u.email || '',
-          username: u.username || '',
-          fullName: u.display_name || u.username || 'Feeder Guardian',
-          avatarUrl: u.avatar_url || '',
-          role: (u.profile_data?.role as any) || 'USER',
-          bio: u.bio || '',
-          areaName: u.profile_data?.area_name || '',
-          city: u.city || '',
-          feederLevel: u.profile_data?.feeder_level || 'Grassroots Feeder',
-          feedingCount: u.profile_data?.feeding_count || 0,
-          sosCount: u.profile_data?.sos_count || 0,
-          onboardingCompleted: u.onboarding_completed ?? false,
-          firebaseUid: u.firebase_uid,
-        };
-      }
-    } catch (supaErr) {
-      console.warn('[getCurrentUser] Supabase lookup notice:', supaErr);
-    }
+  if (!payload) {
+    return null;
   }
 
-  // 2. Fallback to local database session (for local users/testing)
   try {
-    const db = getDb();
-    const session = db
-      .prepare(`
-        SELECT s.*, u.id as u_id, u.firebase_uid, u.email, u.username, u.full_name, u.avatar_url, u.role, u.status,
-               p.bio, p.area_name, p.city, p.feeder_level, p.feeding_count, p.sos_responses_count
-        FROM user_sessions s
-        JOIN users u ON s.user_id = u.id
-        LEFT JOIN user_profiles p ON u.id = p.user_id
-        WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP AND u.status = 'ACTIVE'
-      `)
-      .get(sessionToken) as any;
+    const supabase = getSupabaseServerClient();
+    let query = supabase.from('users').select('*');
 
-    if (session) {
+    if (payload.id) {
+      query = query.eq('id', payload.id);
+    } else if (payload.uid) {
+      query = query.eq('firebase_uid', payload.uid);
+    } else {
+      return null;
+    }
+
+    const { data: dbUser, error } = await query.maybeSingle();
+
+    if (!error && dbUser && dbUser.is_active) {
+      const u = dbUser as DbUser;
       return {
-        id: session.u_id,
-        email: session.email,
-        username: session.username,
-        fullName: session.full_name,
-        avatarUrl: session.avatar_url,
-        role: session.role,
-        bio: session.bio,
-        areaName: session.area_name,
-        city: session.city,
-        feederLevel: session.feeder_level,
-        feedingCount: session.feeding_count || 0,
-        sosCount: session.sos_responses_count || 0,
-        firebaseUid: session.firebase_uid,
+        id: u.id,
+        email: u.email || '',
+        username: u.username || '',
+        fullName: u.display_name || u.username || 'Feeder Guardian',
+        avatarUrl: u.avatar_url || '',
+        role: (u.profile_data?.role as any) || 'USER',
+        bio: u.bio || '',
+        areaName: u.profile_data?.area_name || '',
+        city: u.city || '',
+        feederLevel: u.profile_data?.feeder_level || 'Grassroots Feeder',
+        feedingCount: u.profile_data?.feeding_count || 0,
+        sosCount: u.profile_data?.sos_count || 0,
+        onboardingCompleted: u.onboarding_completed ?? false,
+        firebaseUid: u.firebase_uid,
       };
     }
-  } catch (sqliteErr) {
-    // SQLite not configured or table missing
+  } catch (supaErr) {
+    console.warn('[getCurrentUser] Supabase lookup error:', supaErr);
   }
 
   return null;

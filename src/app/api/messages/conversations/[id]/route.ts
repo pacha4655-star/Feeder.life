@@ -13,7 +13,7 @@ export async function GET(
     }
 
     const { id: conversationId } = await context.params;
-    const messages = MessagingService.getMessages(conversationId, user.id);
+    const messages = await MessagingService.getMessages(conversationId, user.id);
 
     return NextResponse.json({ success: true, messages });
   } catch (error: any) {
@@ -42,7 +42,7 @@ export async function POST(
       return NextResponse.json({ error: 'Message cannot be empty' }, { status: 400 });
     }
 
-    const message = MessagingService.sendMessage(conversationId, user.id, text.trim(), mediaUrl);
+    const message = await MessagingService.sendMessage(conversationId, user.id, text.trim(), mediaUrl);
 
     return NextResponse.json({ success: true, message });
   } catch (error: any) {

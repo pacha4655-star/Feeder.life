@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { isValidCommunityType } from '@/lib/validation/schemas';
@@ -11,26 +10,42 @@ import type { CommunityType } from '@/types/database';
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const db = getDb();
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
 
-    let query = `
-      SELECT c.*,
-             (SELECT COUNT(*) FROM community_members WHERE community_id = c.id) as actual_member_count,
-             EXISTS(SELECT 1 FROM community_members WHERE community_id = c.id AND user_id = ?) as is_joined
-      FROM communities c
-    `;
-    const params: any[] = [user ? user.id : ''];
+    const supabase = getSupabaseServerClient();
+    let query = supabase.from('communities').select('*').order('created_at', { ascending: false });
 
     if (category && category !== 'ALL') {
-      query += ` WHERE c.category = ?`;
-      params.push(category);
+      query = query.eq('community_type', category.toLowerCase());
     }
 
-    query += ` ORDER BY actual_member_count DESC`;
+    const { data: rows, error } = await query;
+    if (error) {
+      logger.error('Error fetching communities from Supabase', error);
+      return NextResponse.json({ success: true, communities: [] });
+    }
 
-    const communities = db.prepare(query).all(...params);
+    const communities = (rows || []).map((c: any) => {
+      const members: string[] = Array.isArray(c.members) ? c.members : [];
+      return {
+        id: c.id,
+        name: c.name,
+        slug: c.slug,
+        description: c.description,
+        category: c.community_type || 'COMMUNITY',
+        location_area: c.city || '',
+        cover_image: c.cover_url,
+        avatar_image: c.avatar_url,
+        is_private: c.is_private ? 1 : 0,
+        rules_text: Array.isArray(c.rules) ? c.rules.join('\n') : (c.rules || ''),
+        created_by: c.created_by,
+        member_count: members.length || c.stats?.members_count || 1,
+        post_count: c.stats?.post_count || 0,
+        actual_member_count: members.length || c.stats?.members_count || 1,
+        is_joined: user ? members.includes(user.id) : false,
+      };
+    });
 
     return NextResponse.json({ success: true, communities });
   } catch (error: any) {
@@ -55,7 +70,6 @@ export async function POST(request: NextRequest) {
     const {
       name,
       description,
-      category = 'COMMUNITY',
       communityType = 'general',
       locationArea,
       city,
@@ -81,18 +95,15 @@ export async function POST(request: NextRequest) {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)+/g, '') + `-${Date.now().toString().slice(-4)}`;
 
-    const communityId = `comm_${Date.now()}`;
-    const db = getDb();
-
-    // 1. Dual-sync with Supabase communities table
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('communities').insert({
+    const supabase = getSupabaseServerClient();
+    const { data: newComm, error } = await supabase
+      .from('communities')
+      .insert({
         name: sanitizedName,
         slug,
         description: sanitizedDesc,
         community_type: validCommType,
-        city: city ? sanitizeText(city).slice(0, 100) : null,
+        city: (city || locationArea) ? sanitizeText(city || locationArea).slice(0, 100) : null,
         region: region ? sanitizeText(region).slice(0, 100) : null,
         country_code: countryCode ? sanitizeText(countryCode).toUpperCase().slice(0, 2) : null,
         avatar_url: avatarImage ? sanitizeUrl(avatarImage) : null,
@@ -105,44 +116,18 @@ export async function POST(request: NextRequest) {
         is_private: !!isPrivate,
         is_active: true,
         stats: { members_count: 1, post_count: 0 },
-      });
-    } catch (supaErr) {
-      console.warn('[Community POST] Supabase notice:', supaErr);
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Error inserting community to Supabase', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
 
-    // 2. Insert into local DB
-    const run = db.transaction(() => {
-      db.prepare(`
-        INSERT INTO communities (
-          id, name, slug, description, category, location_area,
-          cover_image, avatar_image, is_private, rules_text, created_by, member_count, post_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
-      `).run(
-        communityId,
-        sanitizedName,
-        slug,
-        sanitizedDesc,
-        category,
-        locationArea || '',
-        coverImage || null,
-        avatarImage || null,
-        isPrivate ? 1 : 0,
-        rulesText || '',
-        user.id
-      );
+    logger.info('Community created', { userId: user.id, communityId: newComm?.id, slug });
 
-      // Add creator as ADMIN
-      db.prepare(`
-        INSERT INTO community_members (id, community_id, user_id, role, status)
-        VALUES (?, ?, ?, 'ADMIN', 'APPROVED')
-      `).run(`mem_${Date.now()}`, communityId, user.id);
-    });
-
-    run();
-
-    logger.info('Community created', { userId: user.id, communityId, slug });
-
-    return NextResponse.json({ success: true, communityId, slug });
+    return NextResponse.json({ success: true, communityId: newComm?.id, slug });
   } catch (error: any) {
     logger.error('Create community error', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

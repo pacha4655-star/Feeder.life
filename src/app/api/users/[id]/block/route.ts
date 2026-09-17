@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { getDb } from '@/lib/db';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/security/rate-limit';
 
 export async function POST(
@@ -25,28 +24,16 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Cannot block yourself' }, { status: 400 });
     }
 
-    // 1. Record block in Supabase platform_data
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('platform_data').insert({
-        data_type: 'block',
-        user_id: user.id,
-        target_user_id: targetUserId,
-        status: 'ACTIVE',
-        data: {
-          blocked_at: new Date().toISOString(),
-        },
-      });
-    } catch {}
-
-    // 2. Record in local DB if user_relationships table exists
-    try {
-      const db = getDb();
-      db.prepare(`
-        INSERT OR REPLACE INTO user_relationships (id, user_id, target_id, relationship_type, status)
-        VALUES (?, ?, ?, 'BLOCK', 'ACTIVE')
-      `).run(`rel_block_${Date.now()}`, user.id, targetUserId);
-    } catch {}
+    const supabase = getSupabaseServerClient();
+    await supabase.from('platform_data').insert({
+      data_type: 'block',
+      user_id: user.id,
+      target_id: targetUserId,
+      status: 'active',
+      data: {
+        blocked_at: new Date().toISOString(),
+      },
+    });
 
     return NextResponse.json({ success: true, blockedUserId: targetUserId, isBlocked: true });
   } catch (error: any) {
@@ -65,26 +52,14 @@ export async function DELETE(
     }
 
     const { id: targetUserId } = await context.params;
+    const supabase = getSupabaseServerClient();
 
-    // Delete block in Supabase
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase
-        .from('platform_data')
-        .delete()
-        .eq('data_type', 'block')
-        .eq('user_id', user.id)
-        .eq('target_user_id', targetUserId);
-    } catch {}
-
-    // Delete in local DB
-    try {
-      const db = getDb();
-      db.prepare(`
-        DELETE FROM user_relationships
-        WHERE user_id = ? AND target_id = ? AND relationship_type = 'BLOCK'
-      `).run(user.id, targetUserId);
-    } catch {}
+    await supabase
+      .from('platform_data')
+      .delete()
+      .eq('data_type', 'block')
+      .eq('user_id', user.id)
+      .eq('target_id', targetUserId);
 
     return NextResponse.json({ success: true, unblockedUserId: targetUserId, isBlocked: false });
   } catch (error: any) {

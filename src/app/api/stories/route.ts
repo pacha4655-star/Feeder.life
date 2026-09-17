@@ -6,7 +6,7 @@ import { checkRateLimit, createRateLimitResponse } from '@/lib/security/rate-lim
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const stories = StoryService.getActiveStories(user ? user.id : undefined);
+    const stories = await StoryService.getActiveStories(user ? user.id : undefined);
     return NextResponse.json({ success: true, stories });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

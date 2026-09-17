@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,29 +12,44 @@ export async function GET(request: NextRequest) {
         unreadCount: 0,
       });
     }
-    const db = getDb();
 
-    const notifications = db
-      .prepare(`
-        SELECT n.*,
-               u.full_name as sender_name,
-               u.avatar_url as sender_avatar
-        FROM notifications n
-        LEFT JOIN users u ON n.sender_id = u.id
-        WHERE n.recipient_id = ?
-        ORDER BY n.created_at DESC
-        LIMIT 30
-      `)
-      .all(user.id);
+    const supabase = getSupabaseServerClient();
+    const { data: rows, error } = await supabase
+      .from('platform_data')
+      .select('*')
+      .eq('data_type', 'notification')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
 
-    const unreadCount = db
-      .prepare('SELECT COUNT(*) as count FROM notifications WHERE recipient_id = ? AND is_read = 0')
-      .get(user.id) as { count: number };
+    if (error) {
+      return NextResponse.json({
+        success: true,
+        notifications: [],
+        unreadCount: 0,
+      });
+    }
+
+    const notifications = (rows || []).map((r: any) => ({
+      id: r.id,
+      recipient_id: r.user_id,
+      sender_id: r.target_id || null,
+      type: r.data?.type || 'SYSTEM',
+      title: r.data?.title || 'Notification',
+      body: r.data?.body || '',
+      target_url: r.data?.target_url || '/notifications',
+      is_read: r.status === 'read' ? 1 : 0,
+      created_at: r.created_at,
+      sender_name: r.data?.sender_name || null,
+      sender_avatar: r.data?.sender_avatar || null,
+    }));
+
+    const unreadCount = notifications.filter((n) => !n.is_read).length;
 
     return NextResponse.json({
       success: true,
       notifications,
-      unreadCount: unreadCount ? unreadCount.count : 0,
+      unreadCount,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -47,9 +62,13 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const db = getDb();
 
-    db.prepare('UPDATE notifications SET is_read = 1 WHERE recipient_id = ?').run(user.id);
+    const supabase = getSupabaseServerClient();
+    await supabase
+      .from('platform_data')
+      .update({ status: 'read' })
+      .eq('data_type', 'notification')
+      .eq('user_id', user.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

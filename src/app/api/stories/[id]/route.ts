@@ -44,7 +44,7 @@ export async function GET(
     const { id: storyId } = await context.params;
 
     try {
-      const viewers = StoryService.getStoryViewers(storyId, user.id);
+      const viewers = await StoryService.getStoryViewers(storyId, user.id);
       return NextResponse.json({ success: true, viewers });
     } catch (err: any) {
       if (err.message === 'FORBIDDEN') {

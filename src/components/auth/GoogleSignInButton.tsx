@@ -58,7 +58,12 @@ export default function GoogleSignInButton({
       router.push(destination);
       router.refresh();
     } catch (err: any) {
-      console.error('[Google Auth Error]:', err);
+      console.error('[Google Auth Diagnostic Error]:', {
+        code: err.code,
+        message: err.message,
+        name: err.name,
+      });
+
       if (
         err.code === 'auth/popup-closed-by-user' ||
         err.code === 'auth/cancelled-popup-request' ||
@@ -66,7 +71,15 @@ export default function GoogleSignInButton({
       ) {
         onError?.('Sign-in cancelled. Please select your Google account to proceed.');
       } else if (err.code === 'auth/popup-blocked') {
-        onError?.('Pop-up was blocked by your browser. Please allow pop-ups for this site.');
+        onError?.('Pop-up was blocked by your browser. Please allow pop-ups for feeder.life.');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        onError?.('feeder.life domain is not authorized in Firebase Authentication Console. Please add feeder.life to Authorized Domains.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        onError?.('Google Sign-In provider is disabled in Firebase Console.');
+      } else if (err.code === 'auth/network-request-failed') {
+        onError?.('Network connection failed. Please check your internet connection and try again.');
+      } else if (err.message && !err.message.includes('object Object')) {
+        onError?.(err.message);
       } else {
         onError?.('Unable to sign in with Google. Please try again.');
       }

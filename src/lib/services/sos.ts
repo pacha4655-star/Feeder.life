@@ -1,4 +1,4 @@
-import { getDb } from '../db';
+import { getSupabaseServerClient } from '../supabase/server';
 
 export interface CreateSosInput {
   reporterId: string;
@@ -44,218 +44,211 @@ export interface SosCaseView {
   }>;
 }
 
+function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
 export class SosService {
-  static getActiveCases(userLat?: number | null, userLon?: number | null, userId?: string): SosCaseView[] {
-    const db = getDb();
-    const rows = db
-      .prepare(`
-        SELECT s.*,
-               u.full_name as reporter_name,
-               u.avatar_url as reporter_avatar,
-               u.role as reporter_role,
-               haversine_km(?, ?, s.approx_lat, s.approx_lon) as distance_km
-        FROM sos_cases s
-        JOIN users u ON s.reporter_id = u.id
-        ORDER BY
-          CASE s.urgency
-            WHEN 'CRITICAL' THEN 1
-            WHEN 'HIGH' THEN 2
-            WHEN 'MEDIUM' THEN 3
-            ELSE 4
-          END,
-          s.created_at DESC
-      `)
-      .all(userLat, userLon) as any[];
+  static async getActiveCases(userLat?: number | null, userLon?: number | null, userId?: string): Promise<SosCaseView[]> {
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: rows, error } = await supabase
+        .from('animals')
+        .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, role)')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
-    return rows.map((r) => {
-      let media: string[] = [];
-      try {
-        media = JSON.parse(r.media_urls_json || '[]');
-      } catch {
-        media = [];
-      }
+      if (error || !rows) return [];
 
-      // Fetch case updates
-      const updates = db
-        .prepare(`
-          SELECT u.id, usr.full_name as user_name, u.update_text, u.status_change, u.created_at
-          FROM sos_updates u
-          JOIN users usr ON u.user_id = usr.id
-          WHERE u.sos_id = ?
-          ORDER BY u.created_at ASC
-        `)
-        .all(r.id) as any[];
+      return rows
+        .filter((r: any) => r.sos_data && Object.keys(r.sos_data).length > 0)
+        .map((r: any) => {
+          const sos = r.sos_data || {};
+          const approxLat = sos.approx_lat || 12.9784;
+          const approxLon = sos.approx_lon || 77.6408;
+          let dist: number | undefined = undefined;
+          if (userLat != null && userLon != null) {
+            dist = haversineDistanceKm(userLat, userLon, approxLat, approxLon);
+          }
 
-      // Check if user is responding
-      let isUserResponding = false;
-      if (userId) {
-        const resp = db
-          .prepare('SELECT 1 FROM sos_responders WHERE sos_id = ? AND user_id = ?')
-          .get(r.id, userId);
-        isUserResponding = !!resp;
-      }
+          const media: string[] = Array.isArray(r.media)
+            ? r.media.map((m: any) => (typeof m === 'string' ? m : m.url))
+            : [];
 
-      return {
-        id: r.id,
-        reporter_id: r.reporter_id,
-        reporter_name: r.reporter_name,
-        reporter_avatar: r.reporter_avatar,
-        reporter_role: r.reporter_role,
-        emergency_type: r.emergency_type,
-        animal_type: r.animal_type,
-        urgency: r.urgency,
-        title: r.title,
-        description: r.description,
-        approx_location_name: r.approx_location_name,
-        approx_lat: r.approx_lat,
-        approx_lon: r.approx_lon,
-        distance_km: r.distance_km,
-        media_urls: media,
-        contact_preference: r.contact_preference,
-        status: r.status,
-        responder_count: r.responder_count || 0,
-        is_user_responding: isUserResponding,
-        created_at: r.created_at,
-        updates,
-      };
-    });
+          return {
+            id: r.id,
+            reporter_id: r.created_by,
+            reporter_name: r.users?.display_name || 'Guardian',
+            reporter_avatar: r.users?.avatar_url || '',
+            reporter_role: r.users?.role || 'USER',
+            emergency_type: sos.emergency_type || 'INJURED_ANIMAL',
+            animal_type: r.species || 'Canine',
+            urgency: sos.urgency || 'HIGH',
+            title: r.name || sos.title || 'Emergency Case',
+            description: r.description || sos.description || '',
+            approx_location_name: r.city || sos.approx_location_name || '',
+            approx_lat: approxLat,
+            approx_lon: approxLon,
+            distance_km: dist,
+            media_urls: media,
+            contact_preference: sos.contact_preference || 'IN_APP',
+            status: (sos.status || 'OPEN') as any,
+            responder_count: Array.isArray(r.followers) ? r.followers.length : 0,
+            is_user_responding: userId ? Array.isArray(r.followers) && r.followers.includes(userId) : false,
+            created_at: r.created_at,
+            updates: [],
+          };
+        });
+    } catch {
+      return [];
+    }
   }
 
-  static createCase(input: CreateSosInput): string {
-    const db = getDb();
-    const caseId = `sos_${Date.now()}`;
+  static async createCase(input: CreateSosInput): Promise<string> {
+    const supabase = getSupabaseServerClient();
+    const nowIso = new Date().toISOString();
+    const mediaList = (input.mediaUrls || []).map((url) => ({ url, type: 'image' }));
 
-    // Rate-limit check: maximum 3 active SOS reports per user in 1 hour
-    const recentReports = db
-      .prepare(`
-        SELECT COUNT(*) as count
-        FROM sos_cases
-        WHERE reporter_id = ? AND created_at > datetime('now', '-1 hour')
-      `)
-      .get(input.reporterId) as { count: number };
+    // Insert into Supabase animals table
+    const { data: newAnimal, error } = await supabase
+      .from('animals')
+      .insert({
+        name: input.title.slice(0, 80),
+        species: input.animalType.toLowerCase().slice(0, 50),
+        description: input.description,
+        city: input.approxLocationName.slice(0, 100),
+        created_by: input.reporterId,
+        status: 'active',
+        profile_data: {},
+        medical_data: {},
+        feeding_data: {},
+        sos_data: {
+          emergency_type: input.emergencyType,
+          urgency: input.urgency,
+          title: input.title,
+          description: input.description,
+          approx_location_name: input.approxLocationName,
+          approx_lat: input.approxLat,
+          approx_lon: input.approxLon,
+          contact_preference: input.contactPreference || 'IN_APP',
+          status: 'OPEN',
+          created_at: nowIso,
+        },
+        rescue_data: {},
+        adoption_data: {},
+        veterinary_data: {},
+        media: mediaList,
+        followers: [input.reporterId],
+      })
+      .select('id')
+      .single();
 
-    if (recentReports.count >= 5) {
-      throw new Error('Rate limit exceeded: You have submitted multiple SOS alerts recently.');
+    if (error || !newAnimal) {
+      console.error('SOS insert error:', error);
+      throw new Error(error?.message || 'Failed to create SOS emergency');
     }
 
-    const run = db.transaction(() => {
-      db.prepare(`
-        INSERT INTO sos_cases (
-          id, reporter_id, emergency_type, animal_type, urgency, title, description,
-          approx_location_name, approx_lat, approx_lon, media_urls_json, contact_preference,
-          status, responder_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', 0)
-      `).run(
-        caseId,
-        input.reporterId,
-        input.emergencyType,
-        input.animalType,
-        input.urgency,
-        input.title,
-        input.description,
-        input.approxLocationName,
-        input.approxLat,
-        input.approxLon,
-        JSON.stringify(input.mediaUrls || []),
-        input.contactPreference || 'IN_APP'
-      );
-
-      // Create an audit log
-      db.prepare(`
-        INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details_json)
-        VALUES (?, ?, 'SOS_CREATED', 'SOS_CASE', ?, ?)
-      `).run(
-        `audit_${Date.now()}`,
-        input.reporterId,
-        caseId,
-        JSON.stringify({ urgency: input.urgency, animal: input.animalType })
-      );
-
-      // Create a feed post so the community sees the emergency
-      db.prepare(`
-        INSERT INTO posts (
-          id, author_id, content_type, title, body, media_urls_json, location_name,
-          approx_lat, approx_lon, visibility, reaction_count, comment_count
-        ) VALUES (?, ?, 'HELP_REQUEST', ?, ?, ?, ?, ?, ?, 'PUBLIC', 0, 0)
-      `).run(
-        `post_${caseId}`,
-        input.reporterId,
-        `[URGENT SOS] ${input.title}`,
-        input.description,
-        JSON.stringify(input.mediaUrls || []),
-        input.approxLocationName,
-        input.approxLat,
-        input.approxLon
-      );
+    // Insert into Supabase social_posts table so the community sees it
+    await supabase.from('social_posts').insert({
+      user_id: input.reporterId,
+      record_type: 'post',
+      content: input.description,
+      data: {
+        title: `[URGENT SOS] ${input.title}`,
+        content_type: 'HELP_REQUEST',
+        location_name: input.approxLocationName,
+        approx_lat: input.approxLat,
+        approx_lon: input.approxLon,
+      },
+      media: mediaList,
+      reactions: {},
+      comments: {},
+      hashtags: ['sos', 'emergency'],
+      mentions: [],
+      visibility: 'public',
+      is_active: true,
+      is_deleted: false,
+      stats: {},
     });
 
-    run();
-    return caseId;
+    return newAnimal.id;
   }
 
-  static respondToSos(sosId: string, userId: string, notes?: string) {
-    const db = getDb();
-    const run = db.transaction(() => {
-      db.prepare(`
-        INSERT OR IGNORE INTO sos_responders (id, sos_id, user_id, status, notes)
-        VALUES (?, ?, ?, 'COMMITTED', ?)
-      `).run(`resp_${Date.now()}`, sosId, userId, notes || '');
+  static async respondToSos(sosId: string, userId: string, notes?: string): Promise<void> {
+    const supabase = getSupabaseServerClient();
+    const { data: animal } = await supabase
+      .from('animals')
+      .select('id, followers, sos_data')
+      .eq('id', sosId)
+      .maybeSingle();
 
-      // Increment responder count & advance status to HELP_REQUESTED or RESPONDING
-      db.prepare(`
-        UPDATE sos_cases
-        SET responder_count = responder_count + 1,
-            status = CASE WHEN status = 'OPEN' THEN 'HELP_REQUESTED' ELSE status END,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(sosId);
-
-      // Record update
-      db.prepare(`
-        INSERT INTO sos_updates (id, sos_id, user_id, update_text, status_change)
-        VALUES (?, ?, ?, 'Volunteer joined as emergency responder.', 'RESPONDING')
-      `).run(`upd_${Date.now()}`, sosId, userId);
-    });
-
-    run();
+    if (animal) {
+      const followers: string[] = Array.isArray(animal.followers) ? animal.followers : [];
+      if (!followers.includes(userId)) {
+        followers.push(userId);
+      }
+      const updatedSosData = {
+        ...(animal.sos_data || {}),
+        status: 'HELP_REQUESTED',
+      };
+      await supabase
+        .from('animals')
+        .update({
+          followers,
+          sos_data: updatedSosData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sosId);
+    }
   }
 
-  static updateStatus(
+  static async updateStatus(
     sosId: string,
     userId: string,
     newStatus: 'HELP_REQUESTED' | 'RESPONDING' | 'RESOLVED' | 'CLOSED',
     note: string,
     userRole?: string
-  ) {
-    const db = getDb();
-    const sos = db.prepare('SELECT reporter_id FROM sos_cases WHERE id = ?').get(sosId) as { reporter_id: string } | undefined;
-    if (!sos) {
+  ): Promise<void> {
+    const supabase = getSupabaseServerClient();
+    const { data: animal } = await supabase
+      .from('animals')
+      .select('id, created_by, sos_data')
+      .eq('id', sosId)
+      .maybeSingle();
+
+    if (!animal) {
       throw new Error('NOT_FOUND');
     }
 
-    const isReporter = sos.reporter_id === userId;
+    const isReporter = animal.created_by === userId;
     const isStaff = userRole === 'PLATFORM_ADMIN' || userRole === 'PLATFORM_MODERATOR';
-    const isResponder = !!db.prepare('SELECT 1 FROM sos_responders WHERE sos_id = ? AND user_id = ?').get(sosId, userId);
 
-    if (!isReporter && !isStaff && !isResponder) {
+    if (!isReporter && !isStaff) {
       throw new Error('FORBIDDEN');
     }
 
-    const run = db.transaction(() => {
-      db.prepare(`
-        UPDATE sos_cases
-        SET status = ?,
-            resolved_at = CASE WHEN ? IN ('RESOLVED', 'CLOSED') THEN CURRENT_TIMESTAMP ELSE resolved_at END,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(newStatus, newStatus, sosId);
+    const updatedSosData = {
+      ...(animal.sos_data || {}),
+      status: newStatus,
+      resolved_at: newStatus === 'RESOLVED' || newStatus === 'CLOSED' ? new Date().toISOString() : undefined,
+    };
 
-      db.prepare(`
-        INSERT INTO sos_updates (id, sos_id, user_id, update_text, status_change)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(`upd_${Date.now()}`, sosId, userId, note, newStatus);
-    });
-
-    run();
+    await supabase
+      .from('animals')
+      .update({
+        sos_data: updatedSosData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', sosId);
   }
 }

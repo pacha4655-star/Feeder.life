@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
 import { isPlatformAdmin } from '@/lib/security/rbac';
-import { getDb } from '@/lib/db';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import logger from '@/lib/monitoring/logger';
 
@@ -38,52 +37,26 @@ export async function POST(
       );
     }
 
-    // 1. Update in Supabase users table
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase
-        .from('users')
-        .update({
-          is_active: !suspend,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', targetUserId);
+    const supabase = getSupabaseServerClient();
+    await supabase
+      .from('users')
+      .update({
+        is_active: !suspend,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', targetUserId);
 
-      // Audit log in platform_data
-      await supabase.from('platform_data').insert({
-        data_type: 'audit',
-        user_id: user.id,
-        target_user_id: targetUserId,
-        status: suspend ? 'SUSPENDED' : 'ACTIVATED',
-        data: {
-          action: suspend ? 'USER_SUSPEND' : 'USER_UNSUSPEND',
-          reason: reason || '',
-        },
-      });
-    } catch (supaErr) {
-      console.warn('[Admin Suspend] Supabase notice:', supaErr);
-    }
-
-    // 2. Dual-update local DB if present
-    try {
-      const db = getDb();
-      const status = suspend ? 'SUSPENDED' : 'ACTIVE';
-      db.prepare('UPDATE users SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(
-        status,
-        targetUserId
-      );
-
-      db.prepare(`
-        INSERT INTO audit_logs (id, user_id, action, entity_type, entity_id, details_json)
-        VALUES (?, ?, ?, 'USER', ?, ?)
-      `).run(
-        `audit_${Date.now()}`,
-        user.id,
-        suspend ? 'USER_SUSPENDED' : 'USER_REACTIVATED',
-        targetUserId,
-        JSON.stringify({ reason })
-      );
-    } catch {}
+    // Audit log in platform_data
+    await supabase.from('platform_data').insert({
+      data_type: 'audit',
+      user_id: user.id,
+      target_id: targetUserId,
+      status: suspend ? 'SUSPENDED' : 'ACTIVATED',
+      data: {
+        action: suspend ? 'USER_SUSPEND' : 'USER_UNSUSPEND',
+        reason: reason || '',
+      },
+    });
 
     logger.info('User account suspension status updated', {
       adminId: user.id,

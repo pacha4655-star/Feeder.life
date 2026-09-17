@@ -1,4 +1,4 @@
-import { getDb } from '../db';
+import { getSupabaseServerClient } from '../supabase/server';
 
 export interface AskFeederResponse {
   messageId: string;
@@ -17,30 +17,45 @@ export class AskFeederService {
    * Safe, guardrailed Animal Welfare AI knowledge response engine.
    * Enforces veterinary disclaimers, triage detection, and platform routing.
    */
-  static answerQuestion(userId: string, conversationId: string | null, query: string): AskFeederResponse {
-    const db = getDb();
+  static async answerQuestion(userId: string, conversationId: string | null, query: string): Promise<AskFeederResponse> {
+    const supabase = getSupabaseServerClient();
     const cleanQuery = query.toLowerCase().trim();
+    const nowIso = new Date().toISOString();
 
     let convId = conversationId;
     if (!convId) {
       convId = `conv_${Date.now()}`;
-      db.prepare(`
-        INSERT INTO ai_conversations (id, user_id, title)
-        VALUES (?, ?, ?)
-      `).run(convId, userId, query.slice(0, 40) + '...');
+      await supabase.from('platform_data').insert({
+        id: convId,
+        data_type: 'ai_conversation',
+        user_id: userId,
+        status: 'active',
+        data: {
+          title: query.slice(0, 40) + '...',
+          created_at: nowIso,
+        },
+      });
     }
 
     // Save user message
-    db.prepare(`
-      INSERT INTO ai_messages (id, conversation_id, role, content)
-      VALUES (?, ?, 'USER', ?)
-    `).run(`msg_${Date.now()}_u`, convId, query);
+    await supabase.from('platform_data').insert({
+      id: `msg_${Date.now()}_u`,
+      data_type: 'ai_message',
+      user_id: userId,
+      target_id: convId,
+      status: 'active',
+      data: {
+        role: 'user',
+        content: query,
+        created_at: nowIso,
+      },
+    });
 
     let content = '';
     const suggestedActions: Array<{ label: string; action: string; type: 'danger' | 'primary' | 'secondary' }> = [];
     const safetyFlags: string[] = [];
 
-    // Triage detection: Bleeding, injury, accident, hit-and-run
+    // Triage detection
     if (cleanQuery.includes('bleed') || cleanQuery.includes('injur') || cleanQuery.includes('hit') || cleanQuery.includes('accident') || cleanQuery.includes('fractur')) {
       safetyFlags.push('EMERGENCY_TRAUMA');
       content = `### ⚠️ Immediate Emergency Protocol for Injured Animal
@@ -57,9 +72,7 @@ export class AskFeederService {
         { label: '📍 Find Nearby Volunteers', action: 'NAVIGATE_NEARBY', type: 'primary' },
         { label: '🏥 View Emergency Vet Contacts', action: 'VIEW_VET_CONTACTS', type: 'secondary' }
       );
-    }
-    // Toxic foods: chocolate, onion, garlic, grapes, cooked bones
-    else if (cleanQuery.includes('food') || cleanQuery.includes('eat') || cleanQuery.includes('chocolate') || cleanQuery.includes('onion') || cleanQuery.includes('milk') || cleanQuery.includes('bone')) {
+    } else if (cleanQuery.includes('food') || cleanQuery.includes('eat') || cleanQuery.includes('chocolate') || cleanQuery.includes('onion') || cleanQuery.includes('milk') || cleanQuery.includes('bone')) {
       safetyFlags.push('NUTRITION_SAFETY');
       content = `### 🐾 Safe vs. Dangerous Street Animal Feeding Guide
 
@@ -81,9 +94,7 @@ export class AskFeederService {
         { label: '📝 Log a Feeding Round', action: 'OPEN_FEEDING_MODAL', type: 'primary' },
         { label: '👥 Join Bangalore Canine Group', action: 'NAVIGATE_COMMUNITIES', type: 'secondary' }
       );
-    }
-    // Summer heat, water bowls
-    else if (cleanQuery.includes('summer') || cleanQuery.includes('heat') || cleanQuery.includes('water') || cleanQuery.includes('dehydrat')) {
+    } else if (cleanQuery.includes('summer') || cleanQuery.includes('heat') || cleanQuery.includes('water') || cleanQuery.includes('dehydrat')) {
       content = `### ☀️ Summer Care & Stray Hydration Tips
 
 1. **Earthen Clay Bowls**: Use heavy terracotta bowls in shaded corners. Unlike plastic or steel, clay keeps water cool through evaporation and doesn't get blown away by wind.
@@ -95,9 +106,7 @@ export class AskFeederService {
         { label: '📍 View Nearby Water Stations', action: 'NAVIGATE_NEARBY', type: 'primary' },
         { label: '📢 Post a Water Bowl Update', action: 'OPEN_POST_MODAL', type: 'secondary' }
       );
-    }
-    // General query response
-    else {
+    } else {
       content = `### 🐕 Feeder.life Animal Welfare Advisory
 
 Thank you for reaching out on behalf of community animals! 
@@ -118,16 +127,20 @@ How else can I assist you with street canine care, feline colonies, or animal sa
     }
 
     const assistantMsgId = `msg_${Date.now()}_a`;
-    db.prepare(`
-      INSERT INTO ai_messages (id, conversation_id, role, content, suggested_actions_json, safety_flags_json)
-      VALUES (?, ?, 'ASSISTANT', ?, ?, ?)
-    `).run(
-      assistantMsgId,
-      convId,
-      content,
-      JSON.stringify(suggestedActions),
-      JSON.stringify(safetyFlags)
-    );
+    await supabase.from('platform_data').insert({
+      id: assistantMsgId,
+      data_type: 'ai_message',
+      user_id: userId,
+      target_id: convId,
+      status: 'active',
+      data: {
+        role: 'assistant',
+        content,
+        suggested_actions: suggestedActions,
+        safety_flags: safetyFlags,
+        created_at: new Date().toISOString(),
+      },
+    });
 
     return {
       messageId: assistantMsgId,
@@ -138,22 +151,25 @@ How else can I assist you with street canine care, feline colonies, or animal sa
     };
   }
 
-  static getHistory(conversationId: string) {
-    const db = getDb();
-    return db
-      .prepare(`
-        SELECT id, role, content, suggested_actions_json, created_at
-        FROM ai_messages
-        WHERE conversation_id = ?
-        ORDER BY created_at ASC
-      `)
-      .all(conversationId)
-      .map((m: any) => ({
+  static async getHistory(conversationId: string) {
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: rows } = await supabase
+        .from('platform_data')
+        .select('*')
+        .eq('data_type', 'ai_message')
+        .eq('target_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      return (rows || []).map((m: any) => ({
         id: m.id,
-        role: m.role,
-        content: m.content,
-        suggestedActions: JSON.parse(m.suggested_actions_json || '[]'),
+        role: m.data?.role === 'user' ? 'USER' : 'ASSISTANT',
+        content: m.data?.content || '',
+        suggestedActions: m.data?.suggested_actions || [],
         created_at: m.created_at,
       }));
+    } catch {
+      return [];
+    }
   }
 }

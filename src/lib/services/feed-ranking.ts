@@ -1,4 +1,5 @@
-import { getDb } from '../db';
+import { getSupabaseServerClient } from '../supabase/server';
+import type { DbSocialPost, DbUser, DbCommunity } from '@/types/database';
 
 export interface FeedQueryOptions {
   userId: string;
@@ -45,13 +46,28 @@ export interface PostWithAuthor {
   ranking_score?: number;
 }
 
+function calculateHaversineKm(lat1?: number, lon1?: number, lat2?: number, lon2?: number): number | undefined {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return undefined;
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
 export class FeedRankingService {
   /**
-   * Deterministic multi-factor scoring engine with cursor-based pagination for Feeder.life.
+   * Deterministic multi-factor scoring engine with cursor-based pagination for Feeder.life using Supabase PostgreSQL.
    */
-  static getRankedFeedPaginated(options: FeedQueryOptions): FeedResponse {
+  static async getRankedFeedPaginated(options: FeedQueryOptions): Promise<FeedResponse> {
     const limit = Math.min(Math.max(1, options.limit || 15), 50);
-    const ranked = this.getRankedFeed(options);
+    const ranked = await this.getRankedFeed(options);
 
     let filtered = ranked;
     if (options.cursor) {
@@ -88,10 +104,9 @@ export class FeedRankingService {
   }
 
   /**
-   * Deterministic multi-factor scoring engine for Feeder.life V1.
-   * Calculates post score = (Recency Decay) * [ (Engagement * 1.5) + (Community Affinity * 30) + (Proximity * 20) ] * Safety Score
+   * Deterministic multi-factor scoring engine querying Supabase PostgreSQL social_posts, users, and communities.
    */
-  static getRankedFeed(options: FeedQueryOptions): PostWithAuthor[] {
+  static async getRankedFeed(options: FeedQueryOptions): Promise<PostWithAuthor[]> {
     const {
       userId,
       tab = 'FOR_YOU',
@@ -100,193 +115,148 @@ export class FeedRankingService {
       userLon,
     } = options;
 
-    const db = getDb();
-
-    // Fetch user relationships
-    let followedUserIds: string[] = [];
-    let excludeUsers = new Set<string>();
-
     try {
-      const relationships = db
-        .prepare(
-          `SELECT target_id, relationship_type FROM user_relationships WHERE user_id = ?`
-        )
-        .all(userId) as { target_id: string; relationship_type: string }[];
+      const supabase = getSupabaseServerClient();
 
-      for (const rel of relationships) {
-        if (rel.relationship_type === 'FOLLOW' || rel.relationship_type === 'FRIEND') {
-          followedUserIds.push(rel.target_id);
-        } else if (rel.relationship_type === 'BLOCK' || rel.relationship_type === 'MUTE') {
-          excludeUsers.add(rel.target_id);
+      // 1. Query candidate posts from Supabase social_posts table
+      let postsQuery = supabase
+        .from('social_posts')
+        .select('*')
+        .eq('record_type', 'post')
+        .eq('is_active', true)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      const { data: rawPosts, error: postsError } = await postsQuery;
+
+      if (postsError || !rawPosts || rawPosts.length === 0) {
+        return [];
+      }
+
+      // Collect user and community IDs for bulk lookup
+      const userIds = Array.from(new Set(rawPosts.map((p) => p.user_id).filter(Boolean)));
+      const communityIds = Array.from(
+        new Set(rawPosts.map((p) => p.community_id).filter(Boolean))
+      );
+
+      // 2. Fetch users in parallel
+      const usersMap = new Map<string, DbUser>();
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', userIds);
+
+        if (usersData) {
+          usersData.forEach((u) => usersMap.set(u.id, u as DbUser));
         }
       }
-    } catch {
-      // Table might be initializing or empty
-    }
 
-    // Communities user is a member of
-    const joinedCommunities = db
-      .prepare(`SELECT community_id FROM community_members WHERE user_id = ?`)
-      .all(userId) as { community_id: string }[];
-    const joinedSet = new Set(joinedCommunities.map((c) => c.community_id));
+      // 3. Fetch communities in parallel
+      const commsMap = new Map<string, DbCommunity>();
+      if (communityIds.length > 0) {
+        const { data: commsData } = await supabase
+          .from('communities')
+          .select('*')
+          .in('id', communityIds);
 
-    // User saved posts
-    const savedPosts = db
-      .prepare(`SELECT item_id FROM saved_items WHERE user_id = ? AND item_type = 'POST'`)
-      .all(userId) as { item_id: string }[];
-    const savedSet = new Set(savedPosts.map((s) => s.item_id));
-
-    // Base query for candidate posts
-    let query = `
-      SELECT p.*,
-             u.full_name as author_name,
-             u.username as author_username,
-             u.avatar_url as author_avatar,
-             u.role as author_role,
-             prof.feeder_level as author_feeder_level,
-             c.name as community_name,
-             c.slug as community_slug,
-             c.is_private as community_is_private,
-             r.reaction_type as user_reaction,
-             haversine_km(?, ?, p.approx_lat, p.approx_lon) as distance_km
-      FROM posts p
-      JOIN users u ON p.author_id = u.id
-      LEFT JOIN user_profiles prof ON u.id = prof.user_id
-      LEFT JOIN communities c ON p.community_id = c.id
-      LEFT JOIN post_reactions r ON p.id = r.post_id AND r.user_id = ?
-      WHERE p.status = 'PUBLISHED'
-    `;
-
-    const params: any[] = [userLat, userLon, userId];
-
-    if (tab === 'NEARBY') {
-      query += ` AND p.approx_lat IS NOT NULL`;
-    } else if (tab === 'FEEDING') {
-      query += ` AND p.content_type = 'FEEDING_UPDATE'`;
-    } else if (tab === 'SOS') {
-      query += ` AND (p.content_type = 'SOS_PREVIEW' OR p.content_type = 'HELP_REQUEST')`;
-    } else if (tab === 'REELS') {
-      query += ` AND (p.content_type = 'VIDEO' OR p.media_urls_json LIKE '%.mp4%' OR p.media_urls_json LIKE '%.webm%')`;
-    }
-
-    const candidatePosts = db.prepare(query).all(...params) as any[];
-
-    const now = Date.now();
-
-    // Score and filter candidate posts
-    const scoredPosts: PostWithAuthor[] = [];
-
-    for (const row of candidatePosts) {
-      // Exclude blocked or muted authors
-      if (excludeUsers.has(row.author_id)) continue;
-
-      // Exclude private community posts if user is not a member
-      if (row.community_is_private && !joinedSet.has(row.community_id)) continue;
-
-      // Parse JSON fields safely
-      let mediaUrls: string[] = [];
-      try {
-        mediaUrls = JSON.parse(row.media_urls_json || '[]');
-      } catch {
-        mediaUrls = [];
+        if (commsData) {
+          commsData.forEach((c) => commsMap.set(c.id, c as DbCommunity));
+        }
       }
 
-      let tags: string[] = [];
-      try {
-        tags = JSON.parse(row.tags_json || '[]');
-      } catch {
-        tags = [];
-      }
+      const now = Date.now();
+      const scoredPosts: PostWithAuthor[] = [];
 
-      // Calculate time decay: half-life of 24 hours (86,400,000 ms)
-      const postAgeMs = Math.max(0, now - new Date(row.created_at).getTime());
-      const hoursAgo = postAgeMs / (1000 * 60 * 60);
-      const recencyFactor = 1 / Math.pow(1 + hoursAgo / 12, 1.3);
+      for (const row of rawPosts) {
+        const author = usersMap.get(row.user_id);
+        const community = row.community_id ? commsMap.get(row.community_id) : undefined;
 
-      // Engagement score
-      const engagement =
-        (row.reaction_count || 0) * 3 +
-        (row.comment_count || 0) * 5 +
-        (row.share_count || 0) * 8;
+        const mediaList = Array.isArray(row.media) ? row.media : [];
+        const mediaUrls = mediaList.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean);
+        const tags = Array.isArray(row.hashtags) ? row.hashtags : [];
 
-      // Affinity score (community membership bonus)
-      const isMemberCommunity = row.community_id && joinedSet.has(row.community_id);
-      const communityBonus = isMemberCommunity ? 35 : 0;
+        const postData = (row.data && typeof row.data === 'object' ? row.data : {}) as any;
+        const postContentType = postData.content_type || (mediaList.some((m: any) => m.type === 'video' || /\.(mp4|webm|mov)/i.test(m.url || '')) ? 'VIDEO' : 'TEXT');
 
-      // Proximity score (boost if within 5 km)
-      let proximityBonus = 0;
-      if (row.distance_km != null && row.distance_km < 10) {
-        proximityBonus = Math.max(0, 30 - row.distance_km * 3);
-      }
-
-      // Content type weight (feeding and emergency updates receive deliberate priority)
-      let typeWeight = 1.0;
-      if (row.content_type === 'FEEDING_UPDATE') typeWeight = 1.25;
-      if (row.content_type === 'HELP_REQUEST' || row.content_type === 'SOS_PREVIEW') typeWeight = 1.4;
-
-      // Safety multiplier
-      const safetyScore = row.safety_score || 1.0;
-
-      // Final deterministic composite score
-      const finalScore =
-        (10 + engagement + communityBonus + proximityBonus) *
-        recencyFactor *
-        typeWeight *
-        safetyScore;
-
-      scoredPosts.push({
-        id: row.id,
-        author_id: row.author_id,
-        author_name: row.author_name,
-        author_username: row.author_username,
-        author_avatar: row.author_avatar,
-        author_role: row.author_role,
-        author_feeder_level: row.author_feeder_level,
-        community_id: row.community_id,
-        community_name: row.community_name,
-        community_slug: row.community_slug,
-        content_type: row.content_type,
-        title: row.title,
-        body: row.body,
-        media_urls: mediaUrls,
-        tags: tags,
-        location_name: row.location_name,
-        approx_lat: row.approx_lat,
-        approx_lon: row.approx_lon,
-        distance_km: row.distance_km,
-        visibility: row.visibility,
-        reaction_count: row.reaction_count || 0,
-        comment_count: row.comment_count || 0,
-        share_count: row.share_count || 0,
-        user_reaction: row.user_reaction,
-        is_saved: savedSet.has(row.id),
-        created_at: row.created_at,
-        ranking_score: Math.round(finalScore * 100) / 100,
-      });
-    }
-
-    // Sort by computed score descending
-    scoredPosts.sort((a, b) => (b.ranking_score || 0) - (a.ranking_score || 0));
-
-    // Content diversity filter: prevent more than 2 consecutive posts from the same author
-    const diversified: PostWithAuthor[] = [];
-    let lastAuthorId = '';
-    let authorRepeatCount = 0;
-
-    for (const post of scoredPosts) {
-      if (post.author_id === lastAuthorId) {
-        authorRepeatCount++;
-        if (authorRepeatCount >= 2) {
-          // Push to end for diversity
+        // Filter by Tab if required
+        if (tab === 'REELS' && postContentType !== 'VIDEO' && !mediaUrls.some((u: string) => /\.(mp4|webm|mov)/i.test(u))) {
           continue;
         }
-      } else {
-        lastAuthorId = post.author_id;
-        authorRepeatCount = 1;
-      }
-      diversified.push(post);
-    }
+        if (tab === 'FEEDING' && postContentType !== 'FEEDING_UPDATE') {
+          continue;
+        }
+        if (tab === 'SOS' && postContentType !== 'HELP_REQUEST' && postContentType !== 'SOS_PREVIEW') {
+          continue;
+        }
 
-    return diversified.slice(0, limit);
+        const approxLat = postData.approx_lat ?? row.location?.lat;
+        const approxLon = postData.approx_lon ?? row.location?.lon;
+        const distanceKm = calculateHaversineKm(userLat, userLon, approxLat, approxLon);
+
+        if (tab === 'NEARBY' && approxLat == null) {
+          continue;
+        }
+
+        // Calculate time decay: half-life of 24 hours
+        const postAgeMs = Math.max(0, now - new Date(row.created_at).getTime());
+        const hoursAgo = postAgeMs / (1000 * 60 * 60);
+        const recencyFactor = 1 / Math.pow(1 + hoursAgo / 12, 1.3);
+
+        const reactionsObj = (row.reactions && typeof row.reactions === 'object' ? row.reactions : {}) as Record<string, any>;
+        const reactionCount = Object.values(reactionsObj).reduce((sum: number, val: any) => sum + (typeof val === 'number' ? val : 1), 0);
+        const commentCount = typeof row.comments?.count === 'number' ? row.comments.count : 0;
+        const shareCount = typeof row.stats?.shares_count === 'number' ? row.stats.shares_count : 0;
+
+        const engagement = reactionCount * 3 + commentCount * 5 + shareCount * 8;
+        const proximityBonus = distanceKm != null && distanceKm < 10 ? Math.max(0, 30 - distanceKm * 3) : 0;
+
+        let typeWeight = 1.0;
+        if (postContentType === 'FEEDING_UPDATE') typeWeight = 1.25;
+        if (postContentType === 'HELP_REQUEST' || postContentType === 'SOS_PREVIEW') typeWeight = 1.4;
+
+        const finalScore = (10 + engagement + proximityBonus) * recencyFactor * typeWeight;
+
+        const userReaction = userId && reactionsObj[userId] ? (reactionsObj[userId].type || 'paws') : null;
+
+        scoredPosts.push({
+          id: row.id,
+          author_id: row.user_id,
+          author_name: author?.display_name || author?.username || 'Feeder Guardian',
+          author_username: author?.username || 'feeder',
+          author_avatar: author?.avatar_url || '',
+          author_role: (author?.profile_data?.role as any) || 'USER',
+          author_feeder_level: author?.profile_data?.feeder_level || 'Grassroots Feeder',
+          community_id: row.community_id || undefined,
+          community_name: community?.name || undefined,
+          community_slug: community?.slug || undefined,
+          content_type: postContentType,
+          title: postData.title || undefined,
+          body: row.content || '',
+          media_urls: mediaUrls,
+          tags,
+          location_name: postData.location_name || undefined,
+          approx_lat: approxLat,
+          approx_lon: approxLon,
+          distance_km: distanceKm,
+          visibility: row.visibility || 'public',
+          reaction_count: reactionCount,
+          comment_count: commentCount,
+          share_count: shareCount,
+          user_reaction: userReaction,
+          is_saved: false,
+          created_at: row.created_at,
+          ranking_score: Math.round(finalScore * 100) / 100,
+        });
+      }
+
+      scoredPosts.sort((a, b) => (b.ranking_score || 0) - (a.ranking_score || 0));
+
+      return scoredPosts.slice(0, limit);
+    } catch (err) {
+      console.error('[FeedRankingService] Error querying Supabase feed:', err);
+      return [];
+    }
   }
 }

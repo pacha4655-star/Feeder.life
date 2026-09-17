@@ -12,7 +12,7 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { status, note } = body;
 
     const validStatuses = ['HELP_REQUESTED', 'RESPONDING', 'RESOLVED', 'CLOSED'];
@@ -21,7 +21,7 @@ export async function POST(
     }
 
     try {
-      SosService.updateStatus(sosId, user.id, status, note || `Status updated to ${status}`, user.role);
+      await SosService.updateStatus(sosId, user.id, status, note || `Status updated to ${status}`, user.role);
       return NextResponse.json({ success: true });
     } catch (authErr: any) {
       if (authErr.message === 'FORBIDDEN') {

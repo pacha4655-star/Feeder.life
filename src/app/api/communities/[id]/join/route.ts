@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
@@ -12,30 +12,45 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const db = getDb();
 
-    const existing = db
-      .prepare('SELECT id FROM community_members WHERE community_id = ? AND user_id = ?')
-      .get(communityId, user.id) as any;
+    const supabase = getSupabaseServerClient();
+    const { data: comm, error: fetchErr } = await supabase
+      .from('communities')
+      .select('id, members, stats')
+      .eq('id', communityId)
+      .single();
 
-    let isJoined = false;
+    if (fetchErr || !comm) {
+      return NextResponse.json({ success: false, error: 'Community not found' }, { status: 404 });
+    }
 
-    const run = db.transaction(() => {
-      if (existing) {
-        db.prepare('DELETE FROM community_members WHERE id = ?').run(existing.id);
-        db.prepare('UPDATE communities SET member_count = MAX(1, member_count - 1) WHERE id = ?').run(communityId);
-        isJoined = false;
-      } else {
-        db.prepare(`
-          INSERT INTO community_members (id, community_id, user_id, role, status)
-          VALUES (?, ?, ?, 'MEMBER', 'APPROVED')
-        `).run(`mem_${Date.now()}`, communityId, user.id);
-        db.prepare('UPDATE communities SET member_count = member_count + 1 WHERE id = ?').run(communityId);
-        isJoined = true;
-      }
-    });
+    let members: string[] = Array.isArray(comm.members) ? comm.members : [];
+    let isJoined = members.includes(user.id);
 
-    run();
+    if (isJoined) {
+      members = members.filter((m) => m !== user.id);
+      isJoined = false;
+    } else {
+      members.push(user.id);
+      isJoined = true;
+    }
+
+    const newStats = {
+      ...(comm.stats || {}),
+      members_count: Math.max(0, members.length),
+    };
+
+    const { error: updateErr } = await supabase
+      .from('communities')
+      .update({
+        members,
+        stats: newStats,
+      })
+      .eq('id', communityId);
+
+    if (updateErr) {
+      return NextResponse.json({ success: false, error: updateErr.message }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, isJoined });
   } catch (error: any) {

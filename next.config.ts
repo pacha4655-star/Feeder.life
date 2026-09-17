@@ -33,21 +33,20 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.firebaseapp.com https://*.googleapis.com https://apis.google.com https://accounts.google.com https://*.gstatic.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://api.dicebear.com https://images.unsplash.com https://*.googleusercontent.com https://*.gravatar.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://api.dicebear.com https://images.unsplash.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.google.com https://*.gravatar.com",
       "font-src 'self' https://fonts.gstatic.com data:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.dicebear.com",
-      "frame-src 'self' https://*.firebaseapp.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://accounts.google.com https://api.dicebear.com",
+      "frame-src 'self' https://*.firebaseapp.com https://feeder-life.firebaseapp.com https://accounts.google.com https://*.google.com",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com https://*.firebaseapp.com",
     ].join('; '),
   },
 ];
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['better-sqlite3'],
   async headers() {
     return [
       {
@@ -59,3 +58,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

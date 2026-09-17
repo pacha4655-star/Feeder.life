@@ -9,7 +9,7 @@ export default async function ReelsPage() {
   const user = await getCurrentUser();
 
   // Query real reels/videos from database
-  const initialReels = FeedRankingService.getRankedFeed({
+  const initialReels = await FeedRankingService.getRankedFeed({
     userId: user ? user.id : 'guest',
     tab: 'REELS',
     limit: 20,

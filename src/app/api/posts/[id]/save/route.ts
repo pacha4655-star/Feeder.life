@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
@@ -12,25 +12,29 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const db = getDb();
 
-    const existing = db
-      .prepare("SELECT id FROM saved_items WHERE user_id = ? AND item_type = 'POST' AND item_id = ?")
-      .get(user.id, postId);
+    const supabase = getSupabaseServerClient();
+    const { data: existingRows } = await supabase
+      .from('platform_data')
+      .select('id')
+      .eq('data_type', 'saved_post')
+      .eq('user_id', user.id)
+      .eq('target_id', postId);
 
+    const existing = existingRows && existingRows[0];
     let isSaved = false;
 
     if (existing) {
-      db.prepare("DELETE FROM saved_items WHERE user_id = ? AND item_type = 'POST' AND item_id = ?").run(
-        user.id,
-        postId
-      );
+      await supabase.from('platform_data').delete().eq('id', existing.id);
       isSaved = false;
     } else {
-      db.prepare(`
-        INSERT INTO saved_items (id, user_id, item_type, item_id)
-        VALUES (?, ?, 'POST', ?)
-      `).run(`saved_${Date.now()}`, user.id, postId);
+      await supabase.from('platform_data').insert({
+        data_type: 'saved_post',
+        user_id: user.id,
+        target_id: postId,
+        status: 'saved',
+        data: { created_at: new Date().toISOString() },
+      });
       isSaved = true;
     }
 

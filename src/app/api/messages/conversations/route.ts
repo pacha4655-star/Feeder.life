@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const conversations = MessagingService.getConversations(user.id);
+    const conversations = await MessagingService.getConversations(user.id);
     return NextResponse.json({ success: true, conversations });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid recipient' }, { status: 400 });
     }
 
-    const convId = MessagingService.getOrCreateDirectConversation(user.id, recipientId);
+    const convId = await MessagingService.getOrCreateDirectConversation(user.id, recipientId);
     return NextResponse.json({ success: true, conversationId: convId });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

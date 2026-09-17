@@ -23,7 +23,7 @@ export async function GET(
       );
     }
 
-    const messages = AiChatService.getConversationMessages(user.id, conversationId);
+    const messages = await AiChatService.getConversationMessages(user.id, conversationId);
     return NextResponse.json({
       success: true,
       messages,

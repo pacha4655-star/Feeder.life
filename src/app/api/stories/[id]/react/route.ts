@@ -29,7 +29,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Invalid reaction type' }, { status: 400 });
     }
 
-    const result = StoryService.reactToStory({
+    const result = await StoryService.reactToStory({
       storyId,
       userId: user.id,
       reactionType,

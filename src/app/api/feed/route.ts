@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FeedRankingService } from '@/lib/services/feed-ranking';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { validatePostPayload } from '@/lib/validation/schemas';
 import { checkRateLimit, createRateLimitResponse, RATE_LIMIT_CONFIG } from '@/lib/security/rate-limit';
@@ -19,7 +18,7 @@ export async function GET(request: NextRequest) {
     const userLat = latParam ? parseFloat(latParam) : undefined;
     const userLon = lonParam ? parseFloat(lonParam) : undefined;
 
-    const result = FeedRankingService.getRankedFeedPaginated({
+    const result = await FeedRankingService.getRankedFeedPaginated({
       userId: user ? user.id : 'guest',
       tab,
       limit,
@@ -72,13 +71,10 @@ export async function POST(request: NextRequest) {
       visibility,
     } = validation.data;
 
-    const db = getDb();
-    const postId = `post_${Date.now()}`;
-
-    // 1. Dual-sync with Supabase social_posts table
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('social_posts').insert({
+    const supabase = getSupabaseServerClient();
+    const { data: newPost, error: insertError } = await supabase
+      .from('social_posts')
+      .insert({
         record_type: 'post',
         user_id: user.id,
         community_id: communityId || null,
@@ -87,49 +83,33 @@ export async function POST(request: NextRequest) {
           title: title || null,
           content_type: contentType,
           location_name: locationName || null,
+          approx_lat: approxLat || null,
+          approx_lon: approxLon || null,
         },
         media: mediaUrls.map((url) => ({
           url,
           type: /\.(mp4|webm|mov)(\?.*)?$/i.test(url) ? 'video' : 'image',
         })),
         reactions: {},
-        comments: {},
+        comments: { count: 0 },
         hashtags: tags,
         mentions: [],
-        visibility,
+        visibility: (visibility || 'public').toLowerCase(),
         is_active: true,
         is_deleted: false,
         stats: { views_count: 0, likes_count: 0 },
-      });
-    } catch (supaErr) {
-      console.warn('[Feed POST] Supabase social_posts sync notice:', supaErr);
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('[Feed POST] Supabase insert error:', insertError);
+      return NextResponse.json({ success: false, error: insertError.message }, { status: 500 });
     }
 
-    // 2. Insert into local DB for immediate UI responsiveness
-    db.prepare(`
-      INSERT INTO posts (
-        id, author_id, community_id, content_type, title, body,
-        media_urls_json, tags_json, location_name, approx_lat, approx_lon,
-        visibility, reaction_count, comment_count, share_count, safety_score
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, 1.0)
-    `).run(
-      postId,
-      user.id,
-      communityId || null,
-      contentType,
-      title || null,
-      content,
-      JSON.stringify(mediaUrls),
-      JSON.stringify(tags),
-      locationName || null,
-      approxLat || null,
-      approxLon || null,
-      visibility.toUpperCase()
-    );
+    logger.info('Post created', { userId: user.id, postId: newPost.id });
 
-    logger.info('Post created', { userId: user.id, postId });
-
-    return NextResponse.json({ success: true, postId });
+    return NextResponse.json({ success: true, postId: newPost.id });
   } catch (error: any) {
     logger.error('Create Post error', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

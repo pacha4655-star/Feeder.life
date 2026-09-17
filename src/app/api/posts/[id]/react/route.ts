@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function POST(
   request: NextRequest,
@@ -12,65 +12,85 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { reactionType = 'SUPPORT' } = body;
 
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
 
-    // Check existing reaction
-    const existing = db
-      .prepare('SELECT id, reaction_type FROM post_reactions WHERE post_id = ? AND user_id = ?')
-      .get(postId, user.id) as any;
+    // Check existing reaction in platform_data
+    const { data: existingRows } = await supabase
+      .from('platform_data')
+      .select('*')
+      .eq('data_type', 'post_reaction')
+      .eq('user_id', user.id)
+      .eq('target_id', postId);
 
+    const existing = existingRows && existingRows[0];
     let userReaction: string | null = reactionType;
 
-    const run = db.transaction(() => {
-      if (existing) {
-        if (existing.reaction_type === reactionType) {
-          // Toggle off
-          db.prepare('DELETE FROM post_reactions WHERE id = ?').run(existing.id);
-          db.prepare('UPDATE posts SET reaction_count = MAX(0, reaction_count - 1) WHERE id = ?').run(postId);
-          userReaction = null;
-        } else {
-          // Update reaction type
-          db.prepare('UPDATE post_reactions SET reaction_type = ? WHERE id = ?').run(reactionType, existing.id);
-          userReaction = reactionType;
-        }
+    // Fetch post to get author and current count
+    const { data: post } = await supabase
+      .from('social_posts')
+      .select('id, user_id, likes_count')
+      .eq('id', postId)
+      .maybeSingle();
+
+    let newCount = post?.likes_count || 0;
+
+    if (existing) {
+      if (existing.data?.reaction_type === reactionType) {
+        // Toggle off
+        await supabase.from('platform_data').delete().eq('id', existing.id);
+        newCount = Math.max(0, newCount - 1);
+        userReaction = null;
       } else {
-        // Insert new reaction
-        db.prepare('INSERT INTO post_reactions (id, post_id, user_id, reaction_type) VALUES (?, ?, ?, ?)').run(
-          `react_${Date.now()}`,
-          postId,
-          user.id,
-          reactionType
-        );
-        db.prepare('UPDATE posts SET reaction_count = reaction_count + 1 WHERE id = ?').run(postId);
-
-        // Notify post author if not self
-        const postAuthor = db.prepare('SELECT author_id FROM posts WHERE id = ?').get(postId) as { author_id: string };
-        if (postAuthor && postAuthor.author_id !== user.id) {
-          db.prepare(`
-            INSERT INTO notifications (id, recipient_id, sender_id, type, title, body, target_url)
-            VALUES (?, ?, ?, 'REACTION', ?, ?, ?)
-          `).run(
-            `notif_${Date.now()}`,
-            postAuthor.author_id,
-            user.id,
-            'New reaction on your post',
-            `${user.fullName} reacted with ${reactionType} to your post.`,
-            `/#${postId}`
-          );
-        }
+        // Update reaction
+        await supabase
+          .from('platform_data')
+          .update({
+            data: { reaction_type: reactionType, updated_at: new Date().toISOString() },
+          })
+          .eq('id', existing.id);
+        userReaction = reactionType;
       }
-    });
+    } else {
+      // Insert new reaction
+      await supabase.from('platform_data').insert({
+        data_type: 'post_reaction',
+        user_id: user.id,
+        target_id: postId,
+        status: 'active',
+        data: { reaction_type: reactionType, created_at: new Date().toISOString() },
+      });
+      newCount += 1;
 
-    run();
+      // Notify post author if not self
+      if (post && post.user_id !== user.id) {
+        await supabase.from('platform_data').insert({
+          data_type: 'notification',
+          user_id: post.user_id,
+          target_id: user.id,
+          status: 'unread',
+          data: {
+            type: 'REACTION',
+            title: 'New reaction on your post',
+            body: `${user.fullName} reacted with ${reactionType} to your post.`,
+            target_url: `/#${postId}`,
+            sender_name: user.fullName,
+            sender_avatar: user.avatarUrl,
+          },
+        });
+      }
+    }
 
-    const updated = db.prepare('SELECT reaction_count FROM posts WHERE id = ?').get(postId) as any;
+    await supabase
+      .from('social_posts')
+      .update({ likes_count: newCount, updated_at: new Date().toISOString() })
+      .eq('id', postId);
 
     return NextResponse.json({
       success: true,
-      reactionCount: updated ? updated.reaction_count : 0,
+      reactionCount: newCount,
       userReaction,
     });
   } catch (error: any) {

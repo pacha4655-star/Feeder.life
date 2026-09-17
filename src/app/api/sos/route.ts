@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const userLat = latParam ? parseFloat(latParam) : null;
     const userLon = lonParam ? parseFloat(lonParam) : null;
 
-    const cases = SosService.getActiveCases(userLat, userLon, user ? user.id : undefined);
+    const cases = await SosService.getActiveCases(userLat, userLon, user ? user.id : undefined);
     return NextResponse.json({ success: true, cases });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const validated = validation.data;
 
-    const caseId = SosService.createCase({
+    const caseId = await SosService.createCase({
       reporterId: user.id,
       emergencyType: validated.emergencyType as any,
       animalType: validated.animalType,
@@ -60,4 +60,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: error.message }, { status: 400 });
   }
 }
-

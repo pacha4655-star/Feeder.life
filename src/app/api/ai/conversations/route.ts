@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const conversations = AiChatService.getConversations(user.id);
+    const conversations = await AiChatService.getConversations(user.id);
     return NextResponse.json({
       success: true,
       conversations,

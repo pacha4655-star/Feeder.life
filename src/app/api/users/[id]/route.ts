@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { sanitizeText, sanitizeUrl } from '@/lib/security/sanitize';
 import logger from '@/lib/monitoring/logger';
-import type { DbUser } from '@/types/database';
 
 export async function GET(
   request: NextRequest,
@@ -12,38 +10,18 @@ export async function GET(
 ) {
   try {
     const { id: userId } = await context.params;
+    const supabase = getSupabaseServerClient();
+    const { data: supaUser, error } = await supabase
+      .from('users')
+      .select('id, username, display_name, avatar_url, bio, city, country_code, region, interests, created_at, is_active')
+      .eq('id', userId)
+      .maybeSingle();
 
-    // Try Supabase users table
-    try {
-      const supabase = getSupabaseServerClient();
-      const { data: supaUser, error } = await supabase
-        .from('users')
-        .select('id, username, display_name, avatar_url, bio, city, country_code, region, interests, created_at')
-        .eq('id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (!error && supaUser) {
-        return NextResponse.json({ success: true, user: supaUser });
-      }
-    } catch {}
-
-    // Fallback to local DB
-    const db = getDb();
-    const localUser = db
-      .prepare(`
-        SELECT u.id, u.username, u.full_name as display_name, u.avatar_url, p.bio, p.city, p.area_name, u.created_at
-        FROM users u
-        LEFT JOIN user_profiles p ON u.id = p.user_id
-        WHERE u.id = ? AND u.status = 'ACTIVE'
-      `)
-      .get(userId);
-
-    if (!localUser) {
+    if (error || !supaUser || !supaUser.is_active) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, user: localUser });
+    return NextResponse.json({ success: true, user: supaUser });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -89,41 +67,24 @@ export async function PATCH(
     const countryCode = body.countryCode !== undefined ? sanitizeText(body.countryCode).toUpperCase().slice(0, 2) : undefined;
     const avatarUrl = body.avatarUrl !== undefined ? sanitizeUrl(body.avatarUrl) : undefined;
 
-    // Update in Supabase
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase
-        .from('users')
-        .update({
-          display_name: displayName,
-          bio,
-          city,
-          country_code: countryCode,
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-    } catch {}
+    const supabase = getSupabaseServerClient();
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (displayName !== undefined) updatePayload.display_name = displayName;
+    if (bio !== undefined) updatePayload.bio = bio;
+    if (city !== undefined) updatePayload.city = city;
+    if (countryCode !== undefined) updatePayload.country_code = countryCode;
+    if (avatarUrl !== undefined) updatePayload.avatar_url = avatarUrl;
 
-    // Update in local DB
-    try {
-      const db = getDb();
-      db.prepare(`
-        UPDATE users
-        SET full_name = COALESCE(?, full_name),
-            avatar_url = COALESCE(?, avatar_url),
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(displayName || null, avatarUrl || null, user.id);
+    const { error: updateErr } = await supabase
+      .from('users')
+      .update(updatePayload)
+      .eq('id', user.id);
 
-      db.prepare(`
-        UPDATE user_profiles
-        SET bio = COALESCE(?, bio),
-            city = COALESCE(?, city),
-            updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?
-      `).run(bio !== undefined ? bio : null, city !== undefined ? city : null, user.id);
-    } catch {}
+    if (updateErr) {
+      return NextResponse.json({ success: false, error: updateErr.message }, { status: 400 });
+    }
 
     return NextResponse.json({ success: true, message: 'Profile updated successfully' });
   } catch (error: any) {

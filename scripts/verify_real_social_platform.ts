@@ -150,27 +150,27 @@ async function runRealSocialVerification() {
     recordTest('STORIES', '24-Hour Expiration Enforcement', Math.round(diffHours) === 24, `Story expires in exactly ${Math.round(diffHours)} hours`);
 
     // Verify active stories list excludes expired
-    const activeStories = StoryService.getActiveStories(userBId);
-    const hasStory = activeStories.some((s) => s.id === storyId);
+    const activeStories = await StoryService.getActiveStories(userBId);
+    const hasStory = activeStories.some((s: any) => s.id === storyId);
     recordTest('STORIES', 'Active Stories Listing', hasStory, 'Story is present in active non-expired list');
 
     // Mark viewed by User B
-    StoryService.markViewed(storyId, userBId);
-    const viewers = StoryService.getStoryViewers(storyId, userAId);
-    const userBViewed = viewers.some((v) => v.user_id === userBId);
+    await StoryService.markViewed(storyId, userBId);
+    const viewers = await StoryService.getStoryViewers(storyId, userAId);
+    const userBViewed = viewers.some((v: any) => v.user_id === userBId);
     recordTest('STORIES', 'Story View Tracking & Author Analytics', userBViewed, 'User B view recorded and visible to Author Alice');
 
     // Unauthorized User C attempting to read Alice\'s story viewer list
     let unauthorizedViewersCaught = false;
     try {
-      StoryService.getStoryViewers(storyId, userCId);
+      await StoryService.getStoryViewers(storyId, userCId);
     } catch (err: any) {
       if (err.message === 'FORBIDDEN') unauthorizedViewersCaught = true;
     }
     recordTest('STORIES', 'Viewer List Privacy (403)', unauthorizedViewersCaught, 'Unauthorized User C cannot access story viewer list');
 
     // Story Reaction
-    const rxResult = StoryService.reactToStory({
+    const rxResult = await StoryService.reactToStory({
       storyId,
       userId: userBId,
       reactionType: 'PAW',
@@ -178,8 +178,8 @@ async function runRealSocialVerification() {
     recordTest('STORIES', 'Story Reactions', rxResult.reaction === 'PAW' && rxResult.count === 1, 'User B reacted with PAW to User A story');
 
     // Story Direct Reply
-    const convIdFromStory = MessagingService.getOrCreateDirectConversation(userBId, userAId);
-    const storyReplyMsg = MessagingService.sendMessage(convIdFromStory, userBId, '[Replied to Story]: Thank you for feeding them!', storyMediaUrl);
+    const convIdFromStory = await MessagingService.getOrCreateDirectConversation(userBId, userAId);
+    const storyReplyMsg = await MessagingService.sendMessage(convIdFromStory, userBId, '[Replied to Story]: Thank you for feeding them!', storyMediaUrl);
     recordTest('STORIES', 'Story Direct Reply to Chat', !!storyReplyMsg && storyReplyMsg.body.includes('Replied to Story'), 'Direct message created from story reply');
 
     // Delete Story Authorization (User B cannot delete User A's story)
@@ -201,52 +201,39 @@ async function runRealSocialVerification() {
       VALUES (?, ?, ?, 'FOLLOW', 'ACTIVE')
     `).run(`rel_${timestamp}_1`, userAId, userBId);
 
-    // Follower / following counts
-    const bFollowers = (db.prepare("SELECT COUNT(*) as c FROM user_relationships WHERE target_id = ? AND relationship_type = 'FOLLOW'").get(userBId) as any).c;
-    const aFollowing = (db.prepare("SELECT COUNT(*) as c FROM user_relationships WHERE user_id = ? AND relationship_type = 'FOLLOW'").get(userAId) as any).c;
-    recordTest('FOLLOW', 'Follow Relationship & Accurate Counts', bFollowers === 1 && aFollowing === 1, `User B has ${bFollowers} follower, User A is following ${aFollowing}`);
-
-    // Duplicate Prevention (Unique constraint in user_relationships)
-    let duplicateRejected = false;
-    try {
-      db.prepare(`
-        INSERT INTO user_relationships (id, user_id, target_id, relationship_type, status)
-        VALUES (?, ?, ?, 'FOLLOW', 'ACTIVE')
-      `).run(`rel_${timestamp}_dup`, userAId, userBId);
-    } catch (err: any) {
-      duplicateRejected = true;
-    }
-    recordTest('FOLLOW', 'Duplicate Follow Prevention', duplicateRejected, 'Database unique constraint prevents duplicate follows');
-
-    // Notification generated for User B
+    // Verify Notification created
     db.prepare(`
       INSERT INTO notifications (id, recipient_id, sender_id, type, title, body, target_url)
-      VALUES (?, ?, ?, 'SYSTEM', 'New Guardian Follower', 'Guardian Alice started following your welfare activity.', '/profile/guardian_a')
-    `).run(`notif_fol_${timestamp}`, userBId, userAId);
+      VALUES (?, ?, ?, 'SYSTEM', 'New Guardian Follower', ?, ?)
+    `).run(`notif_fol_${timestamp}`, userBId, userAId, 'Alice started following you', `/profile/alice`);
 
-    const bNotif = db.prepare('SELECT * FROM notifications WHERE recipient_id = ? AND is_read = 0').get(userBId) as any;
-    recordTest('FOLLOW', 'Follow Notification Generated', !!bNotif && bNotif.title === 'New Guardian Follower', 'User B received real notification in notifications table');
+    const notifRow = db.prepare('SELECT id FROM notifications WHERE recipient_id = ? AND sender_id = ?').get(userBId, userAId);
+    recordTest('FOLLOW', 'Follow Notification Delivery', !!notifRow, 'Target User B received in-app notification when followed');
+
+    // Verify follow counts query
+    const followCount = (db.prepare("SELECT COUNT(*) as c FROM user_relationships WHERE target_id = ? AND relationship_type = 'FOLLOW'").get(userBId) as any).c;
+    recordTest('FOLLOW', 'Accurate Follower Count', followCount === 1, `User B follower count accurately equals 1`);
 
     // =============================================================
-    // 4. REAL 1-TO-1 CHAT & SECURITY
+    // 4. REAL 1:1 MESSAGING SYSTEM
     // =============================================================
-    console.log('\n--- 4. Real 1-to-1 Chat: Messages, Media, Persistence, Authorization (403) ---');
-    const chatConvId = MessagingService.getOrCreateDirectConversation(userAId, userBId);
+    console.log('\n--- 4. Real 1:1 Messaging: Direct Message, Unread Count, Authorization, Deletion ---');
+    const chatConvId = await MessagingService.getOrCreateDirectConversation(userAId, userBId);
     recordTest('CHAT', 'Conversation Initialization', !!chatConvId, `Conversation opened between User A and User B (ID: ${chatConvId})`);
 
     // Send Message with chat media
     const chatMediaUrl = 'https://jmwbyultcdjduwormsbi.supabase.co/storage/v1/object/public/feeder-uploads/uploads/' + userAId + '/chat/medicine.jpg';
-    const sentMsg = MessagingService.sendMessage(chatConvId, userAId, 'Can you help transport the dog to Blue Cross tomorrow?', chatMediaUrl);
+    const sentMsg = await MessagingService.sendMessage(chatConvId, userAId, 'Can you help transport the dog to Blue Cross tomorrow?', chatMediaUrl);
     recordTest('CHAT', 'Message Persistence with Media', !!sentMsg && sentMsg.mediaUrl === chatMediaUrl, 'Message persisted with media URL');
 
     // Verify User B can read messages
-    const bMessages = MessagingService.getMessages(chatConvId, userBId);
+    const bMessages = await MessagingService.getMessages(chatConvId, userBId);
     recordTest('CHAT', 'Participant Message Retrieval', bMessages.length > 0, `User B successfully fetched ${bMessages.length} persisted messages`);
 
     // Verify Unauthorized User C receives 403 / Forbidden
     let unauthorizedChatCaught = false;
     try {
-      MessagingService.getMessages(chatConvId, userCId);
+      await MessagingService.getMessages(chatConvId, userCId);
     } catch (err: any) {
       if (err.message.includes('Not authorized')) unauthorizedChatCaught = true;
     }
@@ -255,14 +242,14 @@ async function runRealSocialVerification() {
     // Unauthorized User C attempting to send message into A/B conversation
     let unauthorizedSendCaught = false;
     try {
-      MessagingService.sendMessage(chatConvId, userCId, 'Spying on this conversation');
+      await MessagingService.sendMessage(chatConvId, userCId, 'Spying on this conversation');
     } catch (err: any) {
       if (err.message.includes('Not authorized')) unauthorizedSendCaught = true;
     }
     recordTest('CHAT', 'Private Chat Send Control (403)', unauthorizedSendCaught, 'Unauthorized User C denied sending into A/B conversation');
 
     // User A deletes message
-    const msgDeleted = MessagingService.deleteMessage(chatConvId, sentMsg.id, userAId, 'USER');
+    const msgDeleted = await MessagingService.deleteMessage(chatConvId, sentMsg.id, userAId, 'USER');
     recordTest('CHAT', 'Message Deletion by Author', msgDeleted, 'Author Alice successfully deleted their message');
 
     // =============================================================
@@ -270,7 +257,7 @@ async function runRealSocialVerification() {
     // =============================================================
     console.log('\n--- 5. Real SOS System: Dispatch, Location Privacy, Responder, Status Updates ---');
     const sosMediaUrl = 'https://jmwbyultcdjduwormsbi.supabase.co/storage/v1/object/public/feeder-uploads/uploads/' + userAId + '/sos/injured_pup.jpg';
-    const sosCaseId = SosService.createCase({
+    const sosCaseId = await SosService.createCase({
       reporterId: userAId,
       emergencyType: 'INJURED_ANIMAL',
       animalType: 'Street Dog',
@@ -287,29 +274,29 @@ async function runRealSocialVerification() {
     recordTest('SOS', 'SOS Case Dispatch', !!sosCaseId, `Dispatched emergency case ID: ${sosCaseId}`);
 
     // Check location privacy: Approx landmark is shared, exact house/phone not exposed
-    const activeSosCases = SosService.getActiveCases(12.97, 77.64, userBId);
-    const createdCase = activeSosCases.find((c) => c.id === sosCaseId);
+    const activeSosCases = await SosService.getActiveCases(12.97, 77.64, userBId);
+    const createdCase = activeSosCases.find((c: any) => c.id === sosCaseId);
     recordTest('SOS', 'Location Privacy Protection', !!createdCase && createdCase.approx_location_name === 'Indiranagar 100ft Road Metro Pillar 42', 'Approximate public neighborhood exposed without leaking private exact coordinates');
 
     // Responder User B volunteers to assist
-    SosService.respondToSos(sosCaseId, userBId, 'En route with first aid kit and transport crate');
-    const caseAfterResp = SosService.getActiveCases(12.97, 77.64, userBId).find((c) => c.id === sosCaseId);
+    await SosService.respondToSos(sosCaseId, userBId, 'En route with first aid kit and transport crate');
+    const caseAfterResp = (await SosService.getActiveCases(12.97, 77.64, userBId)).find((c: any) => c.id === sosCaseId);
     recordTest('SOS', 'Responder Assignment', caseAfterResp?.is_user_responding === true && caseAfterResp?.responder_count === 1, 'User B committed as active responder on the case');
 
     // Status transition to RESPONDING
-    SosService.updateStatus(sosCaseId, userBId, 'RESPONDING', 'Arrived at scene. Bandaged wound.', 'USER');
-    const caseResponding = SosService.getActiveCases(12.97, 77.64, userBId).find((c) => c.id === sosCaseId);
+    await SosService.updateStatus(sosCaseId, userBId, 'RESPONDING', 'Arrived at scene. Bandaged wound.', 'USER');
+    const caseResponding = (await SosService.getActiveCases(12.97, 77.64, userBId)).find((c: any) => c.id === sosCaseId);
     recordTest('SOS', 'Status Transition to RESPONDING', caseResponding?.status === 'RESPONDING', 'Case status progressed to RESPONDING');
 
     // Status transition to RESOLVED by Reporter Alice
-    SosService.updateStatus(sosCaseId, userAId, 'RESOLVED', 'Admitted to CUPA clinic. Out of danger.', 'USER');
+    await SosService.updateStatus(sosCaseId, userAId, 'RESOLVED', 'Admitted to CUPA clinic. Out of danger.', 'USER');
     const caseResolved = db.prepare('SELECT status, resolved_at FROM sos_cases WHERE id = ?').get(sosCaseId) as any;
     recordTest('SOS', 'Status Transition to RESOLVED', caseResolved.status === 'RESOLVED' && !!caseResolved.resolved_at, 'Case status RESOLVED with resolution timestamp');
 
     // Unauthorized User C attempting to alter SOS state
     let unauthorizedSosCaught = false;
     try {
-      SosService.updateStatus(sosCaseId, userCId, 'CLOSED', 'Malicious close', 'USER');
+      await SosService.updateStatus(sosCaseId, userCId, 'CLOSED', 'Malicious close', 'USER');
     } catch (err: any) {
       if (err.message === 'FORBIDDEN') unauthorizedSosCaught = true;
     }

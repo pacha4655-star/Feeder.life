@@ -238,8 +238,8 @@ async function runUploadVerification() {
   assert(!!activeStoryId, 'Story created in database with record_type = story');
 
   // Verify active stories list returns it
-  const activeStories = StoryService.getActiveStories(userB.id);
-  const foundActive = activeStories.find((s) => s.id === activeStoryId);
+  const activeStories = await StoryService.getActiveStories(userB.id);
+  const foundActive = activeStories.find((s: any) => s.id === activeStoryId);
   assert(!!foundActive, 'Active story returned in story tray');
   assert(foundActive?.media_type === 'VIDEO', 'Story media type preserved as VIDEO');
 
@@ -251,16 +251,12 @@ async function runUploadVerification() {
     VALUES (?, ?, ?, 'IMAGE', 'Expired story', ?, ?)
   `).run(expiredStoryId, userA.id, postImageUrl, pastIso, pastIso);
 
-  const storiesAfterExpired = StoryService.getActiveStories(userB.id);
-  const foundExpired = storiesAfterExpired.find((s) => s.id === expiredStoryId);
+  const storiesAfterExpired = await StoryService.getActiveStories(userB.id);
+  const foundExpired = storiesAfterExpired.find((s: any) => s.id === expiredStoryId);
   assert(!foundExpired, 'Expired story (expires_at < now) is excluded from active stories');
 
   console.log('\n7. TEST STORY VIEW TRACKING IN PLATFORM_DATA');
   await StoryService.markViewed(activeStoryId, userB.id);
-
-  // Check view in local DB
-  const viewRow = db.prepare('SELECT * FROM story_views WHERE story_id = ? AND viewer_id = ?').get(activeStoryId, userB.id);
-  assert(!!viewRow, 'Story view recorded for User B viewing User A');
 
   // Check view in Supabase platform_data
   const { data: supaView } = await supabase
@@ -271,18 +267,20 @@ async function runUploadVerification() {
     .eq('target_id', activeStoryId)
     .maybeSingle();
 
+  assert(!!supaView, 'Story view recorded in Supabase platform_data');
+
   assert(!!supaView, 'Story view dual-tracked into platform_data table without new tables');
 
   // Check User A can see User B in viewer list
-  const viewers = StoryService.getStoryViewers(activeStoryId, userA.id);
-  const userBInViewers = viewers.find((v) => v.user_id === userB.id);
+  const viewers = await StoryService.getStoryViewers(activeStoryId, userA.id);
+  const userBInViewers = viewers.find((v: any) => v.user_id === userB.id);
   assert(!!userBInViewers, 'User A can view User B in the story viewers list');
 
   console.log('\n8. TEST AUTHORIZATION / RBAC (USER C UNPRIVILEGED ACCESS)');
   // 1. User C tries to view User A's viewers list -> Must fail with FORBIDDEN
   let userCFailedViewers = false;
   try {
-    StoryService.getStoryViewers(activeStoryId, userC.id);
+    await StoryService.getStoryViewers(activeStoryId, userC.id);
   } catch (err: any) {
     if (err.message === 'FORBIDDEN') userCFailedViewers = true;
   }

@@ -5,9 +5,9 @@ import { getCurrentUser } from '@/lib/auth/session';
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const logs = FeedingService.getRecentLogs(30, user ? user.id : undefined);
+    const logs = await FeedingService.getRecentLogs(30, user ? user.id : undefined);
     const stats = user
-      ? FeedingService.getUserStats(user.id)
+      ? await FeedingService.getUserStats(user.id)
       : { totalAnimalsFed: 0, totalFeedingRounds: 0, weeklyStreakDays: 0 };
 
     return NextResponse.json({ success: true, logs, stats });
@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
 
-    const logId = FeedingService.createLog({
+    const logId = await FeedingService.createLog({
       userId: user.id,
       animalType: body.animalType || 'Street Dogs',
       animalCount: parseInt(body.animalCount || '1', 10),

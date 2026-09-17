@@ -2,7 +2,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 import AppShell from '@/components/layout/AppShell';
 import MessagesClient from '@/components/messages/MessagesClient';
 import { MessagingService, ConversationSummary } from '@/lib/services/messaging';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,6 @@ export default async function MessagesPage({
   searchParams: Promise<{ user?: string }>;
 }) {
   const user = await getCurrentUser();
-  const db = getDb();
   const { user: targetUserId } = await searchParams;
 
   let initialConversations: ConversationSummary[] = [];
@@ -22,34 +21,33 @@ export default async function MessagesPage({
   if (user) {
     if (targetUserId && targetUserId !== user.id) {
       try {
-        initialSelectedConvId = MessagingService.getOrCreateDirectConversation(user.id, targetUserId);
+        initialSelectedConvId = await MessagingService.getOrCreateDirectConversation(user.id, targetUserId);
       } catch {}
     }
 
     try {
-      initialConversations = MessagingService.getConversations(user.id);
+      initialConversations = await MessagingService.getConversations(user.id);
       if (!initialSelectedConvId && initialConversations.length > 0) {
         initialSelectedConvId = initialConversations[0].id;
       }
     } catch {}
 
     try {
-      const rows = db
-        .prepare(`
-          SELECT id, full_name, username, avatar_url, role
-          FROM users
-          WHERE id != ?
-          ORDER BY created_at DESC
-          LIMIT 40
-        `)
-        .all(user.id) as any[];
+      const supabase = getSupabaseServerClient();
+      const { data: rows } = await supabase
+        .from('users')
+        .select('id, display_name, username, avatar_url, role')
+        .neq('id', user.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(40);
 
-      availableGuardians = rows.map((r) => ({
+      availableGuardians = (rows || []).map((r: any) => ({
         id: r.id,
-        fullName: r.full_name,
+        fullName: r.display_name || r.username,
         username: r.username,
-        avatarUrl: r.avatar_url,
-        role: r.role,
+        avatarUrl: r.avatar_url || '',
+        role: r.role || 'USER',
       }));
     } catch {}
   }

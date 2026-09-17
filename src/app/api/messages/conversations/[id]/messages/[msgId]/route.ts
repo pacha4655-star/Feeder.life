@@ -15,7 +15,7 @@ export async function DELETE(
     const { id: conversationId, msgId } = await context.params;
 
     try {
-      MessagingService.deleteMessage(conversationId, msgId, user.id, user.role);
+      await MessagingService.deleteMessage(conversationId, msgId, user.id, user.role);
       return NextResponse.json({ success: true, deletedMessageId: msgId });
     } catch (err: any) {
       if (err.message?.includes('Not authorized')) {

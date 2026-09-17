@@ -1,4 +1,3 @@
-import { getDb } from '../db';
 import { getSupabaseServerClient } from '../supabase/server';
 import crypto from 'crypto';
 
@@ -60,44 +59,34 @@ export class AiChatService {
     role: string;
     createdAt: string;
   }> {
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
     const nowIso = new Date().toISOString();
 
-    // 1. Resolve or create conversation
+    // 1. Resolve or create conversation in Supabase platform_data
     let convId = params.conversationId;
     if (!convId) {
       convId = crypto.randomUUID();
       const title = params.messageText.slice(0, 45).trim() + (params.messageText.length > 45 ? '...' : '');
 
-      // Local SQLite
-      db.prepare(`
-        INSERT INTO ai_conversations (id, user_id, title, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(convId, params.userId, title, nowIso, nowIso);
-
-      // Supabase platform_data
-      try {
-        const supabase = getSupabaseServerClient();
-        await supabase.from('platform_data').insert({
-          id: convId,
-          data_type: 'ai_conversation',
-          user_id: params.userId,
-          data: {
-            title,
-            model: process.env.AI_MODEL || 'gemini-1.5-flash',
-            created_at: nowIso,
-            updated_at: nowIso,
-          },
-          status: 'active',
-        });
-      } catch (err) {
-        console.warn('[AiChatService] Supabase conversation sync notice:', err);
-      }
+      await supabase.from('platform_data').insert({
+        id: convId,
+        data_type: 'ai_conversation',
+        user_id: params.userId,
+        data: {
+          title,
+          model: process.env.AI_MODEL || 'gemini-1.5-flash',
+          created_at: nowIso,
+          updated_at: nowIso,
+        },
+        status: 'active',
+      });
     } else {
-      // Enforce conversation ownership
-      const conv = db
-        .prepare('SELECT id, user_id FROM ai_conversations WHERE id = ?')
-        .get(convId) as { id: string; user_id: string } | undefined;
+      const { data: conv } = await supabase
+        .from('platform_data')
+        .select('user_id')
+        .eq('id', convId)
+        .eq('data_type', 'ai_conversation')
+        .maybeSingle();
 
       if (conv && conv.user_id !== params.userId) {
         throw new Error('FORBIDDEN');
@@ -106,42 +95,32 @@ export class AiChatService {
 
     // 2. Persist User Message
     const userMsgId = crypto.randomUUID();
-    db.prepare(`
-      INSERT INTO ai_messages (id, conversation_id, role, content, created_at)
-      VALUES (?, ?, 'USER', ?, ?)
-    `).run(userMsgId, convId, params.messageText, nowIso);
-
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('platform_data').insert({
-        id: userMsgId,
-        data_type: 'ai_message',
-        user_id: params.userId,
-        target_id: convId,
-        data: {
-          role: 'user',
-          content: params.messageText,
-          conversation_id: convId,
-          created_at: nowIso,
-        },
-        status: 'active',
-      });
-    } catch {}
+    await supabase.from('platform_data').insert({
+      id: userMsgId,
+      data_type: 'ai_message',
+      user_id: params.userId,
+      target_id: convId,
+      data: {
+        role: 'user',
+        content: params.messageText,
+        conversation_id: convId,
+        created_at: nowIso,
+      },
+      status: 'active',
+    });
 
     // 3. Load conversation context for multi-turn coherence
-    const historyRows = db
-      .prepare(`
-        SELECT role, content
-        FROM ai_messages
-        WHERE conversation_id = ?
-        ORDER BY created_at ASC
-        LIMIT 12
-      `)
-      .all(convId) as { role: string; content: string }[];
+    const { data: historyRows } = await supabase
+      .from('platform_data')
+      .select('data')
+      .eq('data_type', 'ai_message')
+      .eq('target_id', convId)
+      .order('created_at', { ascending: true })
+      .limit(12);
 
-    const formattedHistory = historyRows.map((r) => ({
-      role: r.role.toLowerCase() === 'user' ? 'user' : 'assistant',
-      content: r.content,
+    const formattedHistory = (historyRows || []).map((r: any) => ({
+      role: r.data?.role === 'user' ? 'user' : 'assistant',
+      content: r.data?.content || '',
     }));
 
     // 4. Generate AI response using server-side provider
@@ -151,37 +130,26 @@ export class AiChatService {
     const assistantMsgId = crypto.randomUUID();
     const assistantNowIso = new Date().toISOString();
 
-    db.prepare(`
-      INSERT INTO ai_messages (id, conversation_id, role, content, created_at)
-      VALUES (?, ?, 'ASSISTANT', ?, ?)
-    `).run(assistantMsgId, convId, aiResponseText, assistantNowIso);
+    await supabase.from('platform_data').insert({
+      id: assistantMsgId,
+      data_type: 'ai_message',
+      user_id: params.userId,
+      target_id: convId,
+      data: {
+        role: 'assistant',
+        content: aiResponseText,
+        conversation_id: convId,
+        created_at: assistantNowIso,
+      },
+      status: 'active',
+    });
 
-    // Update conversation timestamp
-    db.prepare('UPDATE ai_conversations SET updated_at = ? WHERE id = ?').run(assistantNowIso, convId);
-
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('platform_data').insert({
-        id: assistantMsgId,
-        data_type: 'ai_message',
-        user_id: params.userId,
-        target_id: convId,
-        data: {
-          role: 'assistant',
-          content: aiResponseText,
-          conversation_id: convId,
-          created_at: assistantNowIso,
-        },
-        status: 'active',
-      });
-
-      await supabase
-        .from('platform_data')
-        .update({
-          updated_at: assistantNowIso,
-        })
-        .eq('id', convId);
-    } catch {}
+    await supabase
+      .from('platform_data')
+      .update({
+        updated_at: assistantNowIso,
+      })
+      .eq('id', convId);
 
     return {
       conversationId: convId,
@@ -219,29 +187,36 @@ export class AiChatService {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents }),
+          body: JSON.stringify({
+            contents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
+          }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) return text.trim();
+          const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (candidate && typeof candidate === 'string') {
+            return candidate.trim();
+          }
         }
       } catch (geminiErr) {
-        console.warn('[AiChatService] Gemini provider network notice:', geminiErr);
+        console.warn('[AiChatService] Gemini live call fallback:', geminiErr);
       }
     }
 
-    // 2. OpenAI / Compatible Provider
-    if (apiKey && (provider === 'openai' || provider === 'custom')) {
+    // 2. OpenAI Provider
+    if (apiKey && provider === 'openai') {
       try {
-        const baseUrl = process.env.AI_BASE_URL || 'https://api.openai.com/v1';
         const messages = [
           { role: 'system', content: SYSTEM_INSTRUCTION },
           ...history.map((h) => ({ role: h.role, content: h.content })),
         ];
 
-        const res = await fetch(`${baseUrl}/chat/completions`, {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -251,102 +226,36 @@ export class AiChatService {
             model,
             messages,
             temperature: 0.7,
+            max_tokens: 800,
           }),
         });
 
         if (res.ok) {
           const data = await res.json();
-          const text = data.choices?.[0]?.message?.content;
-          if (text) return text.trim();
+          const candidate = data.choices?.[0]?.message?.content;
+          if (candidate && typeof candidate === 'string') {
+            return candidate.trim();
+          }
         }
       } catch (openAiErr) {
-        console.warn('[AiChatService] OpenAI provider notice:', openAiErr);
+        console.warn('[AiChatService] OpenAI live call fallback:', openAiErr);
       }
     }
 
-    // 3. Fallback: Intelligent Context-Aware Engine
-    // If no external key is configured, dynamically evaluate the query and multi-turn context
-    return this.generateContextualResponse(latestMessage, history);
+    // 3. Built-in Contextual Animal Welfare Knowledge Engine
+    return this.generateKnowledgeEngineResponse(latestMessage, history);
   }
 
-  /**
-   * Context-aware welfare synthesis engine that answers queries, understands Feeder features,
-   * incorporates prior turns, and maintains animal safety standards.
-   */
-  private static generateContextualResponse(
-    query: string,
+  private static generateKnowledgeEngineResponse(
+    message: string,
     history: Array<{ role: string; content: string }>
   ): string {
-    const q = query.toLowerCase();
+    const q = message.toLowerCase().trim();
     const fullThread = history.map((h) => h.content.toLowerCase()).join(' ') + ' ' + q;
 
-    // A. Feeder.life UI / Platform feature questions
-    if (q.includes('post') && (q.includes('create') || q.includes('how') || q.includes('upload'))) {
-      return `### How to Create a Post on Feeder.life
+    if (q.includes('cruelty') || q.includes('abuse') || q.includes('poison') || q.includes('illegal')) {
+      return `### ⚖️ Legal & Reporting Protocol for Animal Cruelty
 
-1. Click the **"Create Post"** button or top composer bar on the Home feed.
-2. Share details of your animal welfare observation or feeding update in the caption.
-3. Attach photos or videos using **"Add Photo"**, **"Add Video"**, or **"Upload from device"** (Images up to 10MB, Videos up to 50MB).
-4. Review the instant local preview, tag an approximate location if applicable, and select audience visibility (*Public*, *Community*, or *Followers*).
-5. Click **"Publish Post"** to share it with your local community.`;
-    }
-
-    if (q.includes('story') && (q.includes('upload') || q.includes('create') || q.includes('how') || q.includes('phone'))) {
-      return `### How to Upload a 24-Hour Story on Feeder.life
-
-1. On the Home feed, locate the **Stories Rail** at the top.
-2. Click the **"Create story"** card or **"Add Story"** button.
-3. Select an image or video from your device or use your device camera.
-4. Preview the media locally, remove or replace if desired, and add an optional caption (up to 140 characters).
-5. Click **"Publish Story"**. Your story will remain active for **24 hours** and automatically expire afterwards.`;
-    }
-
-    if ((q.includes('profile') || q.includes('picture') || q.includes('avatar')) && (q.includes('change') || q.includes('update') || q.includes('how'))) {
-      return `### How to Change Your Profile Picture on Feeder.life
-
-1. Navigate to your **Profile** page by clicking your avatar in the navigation bar.
-2. Hover over your profile photo and click **"Change Photo"**.
-3. Select a JPEG, PNG, or WebP image from your computer or phone (up to 10MB).
-4. Preview the new picture and confirm upload.
-5. Your updated profile picture will instantly reflect across your posts, comments, stories, and messages.`;
-    }
-
-    if (q.includes('username') && (q.includes('change') || q.includes('edit') || q.includes('how') || q.includes('update'))) {
-      return `### How to Change Your Username on Feeder.life
-
-1. Open your **Profile** page.
-2. Click the **"Edit Username"** button next to your current \`@handle\`.
-3. Enter your desired new username (3 to 30 characters, letters, numbers, and underscores only).
-4. Click **"Save"**. Feeder.life will verify that the handle is unique and immediately update your profile across the platform.`;
-    }
-
-    if (q.includes('community') || q.includes('communities')) {
-      return `### Communities on Feeder.life
-
-Communities connect local rescuers and feeders:
-- **Explore Groups**: Head over to the **Communities** tab in the sidebar to discover city chapters, neighborhood volunteer circles, and breed welfare groups.
-- **Join & Coordinate**: Join open communities or request membership to participate in coordinated feeding rounds and rescue drives.
-- **Create Your Own**: Animal welfare organizations and grassroots groups can launch dedicated community hubs with customizable member rules.`;
-    }
-
-    if (q.includes('adopt') || q.includes('adoption')) {
-      return `### 🐾 Essential Considerations Before Adopting a Dog
-
-Adopting a dog is a rewarding, life-long companionship commitment:
-
-1. **Long-Term Commitment**: Dogs live 10 to 15+ years. Ensure your family is ready for daily companionship, training, and ongoing attention.
-2. **Daily Exercise & Routine**: Dogs need regular daily exercise, outdoor walks, mental stimulation, and consistent feeding schedules.
-3. **Veterinary & Healthcare Budget**: Account for initial vaccinations (DHPP, Anti-Rabies), routine deworming, tick prevention, annual vet health examinations, and emergency funds.
-4. **Living Space & Environment**: Ensure your living space accommodates a dog's size and energy level, with secure fencing and landlord approval if renting.
-5. **Patience & The 3-3-3 Rule**: Rescue dogs need 3 days to decompress, 3 weeks to learn the household routine, and 3 months to feel fully settled and secure.
-
-You can also browse animal profiles and coordinate with local rescuers on Feeder.life!`;
-    }
-
-    if (q.includes('abuse') || q.includes('cruelty') || q.includes('mistreat')) {
-      return `### 🛡️ Reporting Animal Cruelty & Abuse
-
-If you observe animal abuse, cruelty, or abandonment:
 1. **Document Evidence Safely**: Record clear photo and video evidence noting the exact date, time, and location. Never confront aggressive perpetrators alone.
 2. **Contact Local Animal Welfare NGOs**: Alert registered animal welfare organizations and the SPCA in your area with the documented evidence.
 3. **File a Formal Police Report**: Animal cruelty is a cognizable legal offense under animal protection laws. File an FIR with local authorities citing the evidence.
@@ -384,7 +293,63 @@ A comprehensive Animal Profile helps community feeders and veterinarians coordin
 *Disclaimer: Feeder AI is an educational welfare assistant, not a licensed veterinary clinic. For life-threatening emergencies, consult a qualified veterinarian immediately.*`;
     }
 
-    // B. Follow-up handling (incorporating previous context)
+    if (q.includes('community') || q.includes('create a community') || q.includes('group')) {
+      return `### 👥 Creating and Managing Communities on Feeder.life
+
+You can create a local neighborhood pack or interest group:
+1. Navigate to the **"Communities"** tab in the main navigation.
+2. Click **"+ Create Community"** to open the setup modal.
+3. Set your community name, neighborhood/city area, topic (e.g. Stray Feeders, Rescue Volunteers), and upload a cover photo.
+4. Invite fellow animal guardians to coordinate feeding rounds, sterilization drives, and emergency rescues!`;
+    }
+
+    if (q.includes('story') || q.includes('stories') || q.includes('upload a story')) {
+      return `### 📸 Sharing 24-Hour Stories on Feeder.life
+
+1. Look for the **Stories tray** at the top of the Home Feed.
+2. Tap the **"+" (Your Story)** icon from your phone or desktop.
+3. Select an image (JPG, PNG, WebP up to 10MB) or video (MP4 up to 50MB) to upload.
+4. Add an optional caption and post!
+5. Your story will be visible to guardians for **24 hours** before automatically expiring.`;
+    }
+
+    if (q.includes('profile picture') || q.includes('profile photo') || q.includes('avatar') || (q.includes('profile') && q.includes('picture'))) {
+      return `### 🖼️ Updating Your Profile Photo & Details
+
+1. Go to your **Profile** page by clicking your avatar in the navigation bar.
+2. Tap the camera icon on your profile photo to upload a new avatar image.
+3. You can also edit your display name, unique username, and bio.
+4. Click **Save Changes** to immediately update your verified profile across Feeder.life.`;
+    }
+
+    if (q.includes('adopt') || q.includes('adopting') || q.includes('adoption')) {
+      return `### 🏡 Key Considerations Before Adopting an Animal
+
+1. **Long-Term Commitment**: Dogs and cats live 12–18+ years. Ensure your family and lifestyle are ready for this lifelong commitment.
+2. **Space & Daily Exercise**: Active dogs need dedicated walking, mental enrichment, and secure living space.
+3. **Veterinary Healthcare**: Budget for routine vaccinations, annual checkups, tick/flea prevention, and emergency vet visits.
+4. **Patience & Decompression**: Follow the 3-3-3 rule (3 days to decompress, 3 weeks to learn routines, 3 months to feel fully at home).`;
+    }
+
+    if (q.includes('not eating') || q.includes('loss of appetite') || (q.includes('dog') && q.includes('eating') && q.includes('yesterday'))) {
+      return `### 🐾 Canine Loss of Appetite & Lethargy Assessment
+
+If a dog stops eating:
+1. **Assess Hydration & Lethargy**: Check if the gums are moist and pink. Pinch the skin at the scruff to check elasticity (slow return indicates dehydration).
+2. **Check for Fever or Pain**: Feel the ears and paw pads. Note if there is any swelling, bloating, or reluctance to move.
+3. **Offer Bland Diet**: Try boiled shredded chicken with white rice and pumpkin (no spices or bones).
+4. **Consult a Vet**: A sudden loss of appetite lasting over 24 hours warrants consultation with a qualified veterinarian to rule out infections, obstructions, or tick fever.`;
+    }
+
+    if (q.includes('vomit') || q.includes('vomiting') || q.includes('weak')) {
+      return `### ⚠️ Clinical Alert: Vomiting & Weakness (Urgent Pediatric Care)
+
+- **Urgent Risk of Dehydration**: Rapid fluid loss in puppies and dogs can quickly cause electrolyte collapse or indicate life-threatening conditions such as **Parvo** (Canine Parvovirus), toxic ingestion, or intestinal blockage.
+- **Withhold Heavy Food**: Offer only small sips of water or electrolyte solution.
+- **Never Give Human Medicines**: Paracetamol and Ibuprofen are fatal to pets.
+- **Immediate Veterinary Action**: Take the animal to an emergency vet clinic immediately for intravenous fluids and medication.`;
+    }
+
     if (
       (q.includes('vomit') || q.includes('vomiting') || q.includes('diarrhea') || q.includes('lethargic') || q.includes('weak') || q.includes('blood')) &&
       (fullThread.includes('dog') || fullThread.includes('puppy') || fullThread.includes('cat') || fullThread.includes('eat') || fullThread.includes('eating'))
@@ -399,7 +364,6 @@ Given that the animal was already showing symptoms and is now **vomiting**:
 - **Veterinary Action Required**: Since vomiting is accompanied by lethargy or loss of appetite, this is potentially time-sensitive. Please consult a qualified veterinarian for an in-person physical exam, hydration therapy, and stool analysis.`;
     }
 
-    // C. Diet, Feeding & Nutrition
     if (q.includes('feed') || q.includes('food') || q.includes('eat') || q.includes('diet') || q.includes('puppy')) {
       return `### 🐾 Wholesome & Safe Feeding Recommendations
 
@@ -418,7 +382,6 @@ Given that the animal was already showing symptoms and is now **vomiting**:
 - **Cow Milk for Weaned Pups**: High lactose triggers severe osmotic diarrhea and dehydration.`;
     }
 
-    // D. General Welfare & Care Advice
     return `### 🐾 Feeder.life Animal Welfare Guidance
 
 Thank you for looking out for community animals!
@@ -434,35 +397,41 @@ Feel free to ask follow-up questions about first aid, diet, local animal laws, o
   /**
    * Retrieve list of conversations for a user.
    */
-  static getConversations(userId: string): ConversationSummary[] {
-    const db = getDb();
-    const rows = db
-      .prepare(`
-        SELECT id, title, created_at, updated_at
-        FROM ai_conversations
-        WHERE user_id = ?
-        ORDER BY updated_at DESC
-      `)
-      .all(userId) as any[];
+  static async getConversations(userId: string): Promise<ConversationSummary[]> {
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: rows, error } = await supabase
+        .from('platform_data')
+        .select('*')
+        .eq('data_type', 'ai_conversation')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
 
-    return rows.map((r) => ({
-      id: r.id,
-      title: r.title,
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    }));
+      if (error || !rows) return [];
+
+      return rows.map((r: any) => ({
+        id: r.id,
+        title: r.data?.title || 'AI Chat',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at || r.created_at,
+      }));
+    } catch {
+      return [];
+    }
   }
 
   /**
    * Retrieve full message history of a conversation with strict ownership check.
    */
-  static getConversationMessages(userId: string, conversationId: string): ChatMessage[] {
-    const db = getDb();
+  static async getConversationMessages(userId: string, conversationId: string): Promise<ChatMessage[]> {
+    const supabase = getSupabaseServerClient();
 
-    // Verify conversation ownership
-    const conv = db
-      .prepare('SELECT id, user_id FROM ai_conversations WHERE id = ?')
-      .get(conversationId) as { id: string; user_id: string } | undefined;
+    const { data: conv } = await supabase
+      .from('platform_data')
+      .select('*')
+      .eq('id', conversationId)
+      .eq('data_type', 'ai_conversation')
+      .maybeSingle();
 
     if (!conv) {
       throw new Error('NOT_FOUND');
@@ -472,19 +441,19 @@ Feel free to ask follow-up questions about first aid, diet, local animal laws, o
       throw new Error('FORBIDDEN');
     }
 
-    const messages = db
-      .prepare(`
-        SELECT id, role, content, created_at
-        FROM ai_messages
-        WHERE conversation_id = ?
-        ORDER BY created_at ASC
-      `)
-      .all(conversationId) as any[];
+    const { data: messages, error } = await supabase
+      .from('platform_data')
+      .select('*')
+      .eq('data_type', 'ai_message')
+      .eq('target_id', conversationId)
+      .order('created_at', { ascending: true });
 
-    return messages.map((m) => ({
+    if (error || !messages) return [];
+
+    return messages.map((m: any) => ({
       id: m.id,
-      role: m.role.toLowerCase() as 'user' | 'assistant',
-      content: m.content,
+      role: (m.data?.role || 'user') as 'user' | 'assistant',
+      content: m.data?.content || '',
       createdAt: m.created_at,
     }));
   }
@@ -493,11 +462,14 @@ Feel free to ask follow-up questions about first aid, diet, local animal laws, o
    * Delete conversation with strict ownership check.
    */
   static async deleteConversation(userId: string, conversationId: string): Promise<boolean> {
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
 
-    const conv = db
-      .prepare('SELECT id, user_id FROM ai_conversations WHERE id = ?')
-      .get(conversationId) as { id: string; user_id: string } | undefined;
+    const { data: conv } = await supabase
+      .from('platform_data')
+      .select('id, user_id')
+      .eq('id', conversationId)
+      .eq('data_type', 'ai_conversation')
+      .maybeSingle();
 
     if (!conv) {
       throw new Error('NOT_FOUND');
@@ -507,16 +479,8 @@ Feel free to ask follow-up questions about first aid, diet, local animal laws, o
       throw new Error('FORBIDDEN');
     }
 
-    // Delete in local SQLite
-    db.prepare('DELETE FROM ai_messages WHERE conversation_id = ?').run(conversationId);
-    db.prepare('DELETE FROM ai_conversations WHERE id = ?').run(conversationId);
-
-    // Delete in Supabase platform_data
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('platform_data').delete().eq('target_id', conversationId);
-      await supabase.from('platform_data').delete().eq('id', conversationId);
-    } catch {}
+    await supabase.from('platform_data').delete().eq('target_id', conversationId);
+    await supabase.from('platform_data').delete().eq('id', conversationId);
 
     return true;
   }

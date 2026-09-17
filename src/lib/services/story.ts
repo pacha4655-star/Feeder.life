@@ -1,5 +1,5 @@
-import { getDb } from '../db';
 import { getSupabaseServerClient } from '../supabase/server';
+import type { DbSocialPost, DbUser } from '@/types/database';
 import crypto from 'crypto';
 
 export interface StoryView {
@@ -29,85 +29,101 @@ export interface StoryViewer {
 
 export class StoryService {
   /**
-   * Ensure schema supports story reactions
+   * Fetch active, non-expired stories from Supabase within the 24-hour window.
    */
-  private static ensureReactionsSchema() {
-    const db = getDb();
+  static async getActiveStories(viewerId?: string): Promise<StoryView[]> {
     try {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS story_reactions (
-          id TEXT PRIMARY KEY,
-          story_id TEXT NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
-          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          reaction_type TEXT NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(story_id, user_id)
-        );
-        CREATE INDEX IF NOT EXISTS idx_story_reactions_story ON story_reactions(story_id);
-      `);
-    } catch {}
-  }
+      const supabase = getSupabaseServerClient();
+      const nowIso = new Date().toISOString();
 
-  /**
-   * Fetch active, non-expired stories from the database within the 24-hour window.
-   */
-  static getActiveStories(viewerId?: string): StoryView[] {
-    this.ensureReactionsSchema();
-    const db = getDb();
-    const rows = db
-      .prepare(`
-        SELECT s.*,
-               u.full_name as author_name,
-               u.username as author_username,
-               u.avatar_url as author_avatar,
-               EXISTS(SELECT 1 FROM story_views sv WHERE sv.story_id = s.id AND sv.viewer_id = ?) as has_viewed,
-               (SELECT reaction_type FROM story_reactions sr WHERE sr.story_id = s.id AND sr.user_id = ?) as user_reaction,
-               (SELECT COUNT(*) FROM story_views sv WHERE sv.story_id = s.id) as viewer_count
-        FROM stories s
-        JOIN users u ON s.author_id = u.id
-        WHERE datetime(s.expires_at) > datetime('now')
-        ORDER BY s.created_at DESC
-        LIMIT 30
-      `)
-      .all(viewerId || '', viewerId || '') as any[];
+      const { data: rawStories, error } = await supabase
+        .from('social_posts')
+        .select('*')
+        .eq('record_type', 'story')
+        .eq('is_active', true)
+        .eq('is_deleted', false)
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false })
+        .limit(30);
 
-    return rows.map((r) => {
-      // Aggregate reactions for this story
-      const reactionRows = db
-        .prepare(`
-          SELECT reaction_type, COUNT(*) as count
-          FROM story_reactions
-          WHERE story_id = ?
-          GROUP BY reaction_type
-        `)
-        .all(r.id) as { reaction_type: string; count: number }[];
-
-      const reactions: Record<string, number> = {};
-      for (const rx of reactionRows) {
-        reactions[rx.reaction_type] = rx.count;
+      if (error || !rawStories || rawStories.length === 0) {
+        return [];
       }
 
-      return {
-        id: r.id,
-        author_id: r.author_id,
-        author_name: r.author_name,
-        author_username: r.author_username,
-        author_avatar: r.author_avatar,
-        media_url: r.media_url,
-        media_type: r.media_type,
-        caption: r.caption || undefined,
-        created_at: r.created_at,
-        expires_at: r.expires_at,
-        has_viewed: !!r.has_viewed,
-        user_reaction: r.user_reaction || null,
-        viewer_count: r.viewer_count || 0,
-        reactions,
-      };
-    });
+      const userIds = Array.from(new Set(rawStories.map((s) => s.user_id).filter(Boolean)));
+      const usersMap = new Map<string, DbUser>();
+
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', userIds);
+
+        if (usersData) {
+          usersData.forEach((u) => usersMap.set(u.id, u as DbUser));
+        }
+      }
+
+      // Fetch views for this viewer
+      const storyIds = rawStories.map((s) => s.id);
+      const viewedSet = new Set<string>();
+
+      if (viewerId && storyIds.length > 0) {
+        const { data: viewsData } = await supabase
+          .from('platform_data')
+          .select('target_id')
+          .eq('data_type', 'audit')
+          .eq('user_id', viewerId)
+          .in('target_id', storyIds);
+
+        if (viewsData) {
+          viewsData.forEach((v) => {
+            if (v.target_id) viewedSet.add(v.target_id);
+          });
+        }
+      }
+
+      return rawStories.map((s) => {
+        const author = usersMap.get(s.user_id);
+        const mediaList = Array.isArray(s.media) ? s.media : [];
+        const mediaItem = mediaList[0] || {};
+        const mediaUrl = typeof mediaItem === 'string' ? mediaItem : (mediaItem.url || '');
+        const mediaType = (mediaItem.type === 'video' || /\.(mp4|webm|mov)/i.test(mediaUrl) ? 'VIDEO' : 'IMAGE') as 'IMAGE' | 'VIDEO';
+
+        const reactionsObj = (s.reactions && typeof s.reactions === 'object' ? s.reactions : {}) as Record<string, any>;
+        const reactionsCount: Record<string, number> = {};
+        for (const [uid, rType] of Object.entries(reactionsObj)) {
+          const typeStr = typeof rType === 'string' ? rType : rType?.type || 'paws';
+          reactionsCount[typeStr] = (reactionsCount[typeStr] || 0) + 1;
+        }
+
+        const userReaction = viewerId && reactionsObj[viewerId] ? (typeof reactionsObj[viewerId] === 'string' ? reactionsObj[viewerId] : reactionsObj[viewerId].type) : null;
+
+        return {
+          id: s.id,
+          author_id: s.user_id,
+          author_name: author?.display_name || author?.username || 'Feeder Guardian',
+          author_username: author?.username || 'feeder',
+          author_avatar: author?.avatar_url || '',
+          media_url: mediaUrl,
+          media_type: mediaType,
+          caption: s.content || undefined,
+          created_at: s.created_at,
+          expires_at: s.expires_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          has_viewed: viewedSet.has(s.id),
+          reactions: reactionsCount,
+          user_reaction: userReaction,
+          viewer_count: typeof s.stats?.views_count === 'number' ? s.stats.views_count : 0,
+        };
+      });
+    } catch (err) {
+      console.error('[StoryService] Error fetching stories from Supabase:', err);
+      return [];
+    }
   }
 
   /**
-   * Create a 24-hour temporary story with dual-persistence in Supabase social_posts
+   * Create a 24-hour temporary story in Supabase social_posts
    */
   static async createStory(params: {
     authorId: string;
@@ -115,31 +131,15 @@ export class StoryService {
     mediaType?: 'IMAGE' | 'VIDEO';
     caption?: string;
   }): Promise<string> {
-    this.ensureReactionsSchema();
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
     const storyId = crypto.randomUUID();
     const now = new Date();
     const createdAt = now.toISOString();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
-    // 1. Write to local database
-    db.prepare(`
-      INSERT INTO stories (id, author_id, media_url, media_type, caption, created_at, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      storyId,
-      params.authorId,
-      params.mediaUrl,
-      params.mediaType || 'IMAGE',
-      params.caption || null,
-      createdAt,
-      expiresAt
-    );
-
-    // 2. Dual-write to Supabase social_posts table
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase.from('social_posts').insert({
+    const { data: newStory, error } = await supabase
+      .from('social_posts')
+      .insert({
         id: storyId,
         record_type: 'story',
         user_id: params.authorId,
@@ -156,36 +156,35 @@ export class StoryService {
           },
         ],
         reactions: {},
-        comments: {},
+        comments: { count: 0 },
         hashtags: [],
         mentions: [],
         visibility: 'public',
         is_active: true,
         is_deleted: false,
         stats: { views_count: 0 },
-      });
-    } catch (supaErr) {
-      console.warn('[StoryService] Supabase social_posts story sync notice:', supaErr);
+        created_at: createdAt,
+        updated_at: createdAt,
+        expires_at: expiresAt,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[StoryService] Supabase insert story error:', error);
+      throw new Error(error.message);
     }
 
     return storyId;
   }
 
   /**
-   * Record a view on a story, tracking in both local DB and Supabase platform_data
+   * Record a view on a story in Supabase platform_data
    */
   static async markViewed(storyId: string, viewerId: string) {
-    const db = getDb();
-    try {
-      db.prepare(`
-        INSERT OR IGNORE INTO story_views (id, story_id, viewer_id)
-        VALUES (?, ?, ?)
-      `).run(`view_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, storyId, viewerId);
-    } catch {}
-
-    // Record in Supabase platform_data without creating extra tables
     try {
       const supabase = getSupabaseServerClient();
+
       const { data: existing } = await supabase
         .from('platform_data')
         .select('id')
@@ -202,135 +201,144 @@ export class StoryService {
           data: { action: 'story_view', viewed_at: new Date().toISOString() },
           status: 'active',
         });
+
+        // Increment views count on story
+        const { data: story } = await supabase
+          .from('social_posts')
+          .select('stats')
+          .eq('id', storyId)
+          .maybeSingle();
+
+        if (story) {
+          const currentStats = (story.stats && typeof story.stats === 'object' ? story.stats : {}) as any;
+          const updatedViews = (currentStats.views_count || 0) + 1;
+          await supabase
+            .from('social_posts')
+            .update({ stats: { ...currentStats, views_count: updatedViews } })
+            .eq('id', storyId);
+        }
       }
     } catch (supaErr) {
-      console.warn('[StoryService] Supabase platform_data view tracking notice:', supaErr);
+      console.warn('[StoryService] Supabase view tracking notice:', supaErr);
     }
   }
 
   /**
    * Get list of users who viewed this story (for story author)
    */
-  static getStoryViewers(storyId: string, requestingUserId: string): StoryViewer[] {
-    const db = getDb();
-    // Author check
-    const story = db.prepare('SELECT author_id FROM stories WHERE id = ?').get(storyId) as { author_id: string } | undefined;
-    if (!story) return [];
-    if (story.author_id !== requestingUserId) {
+  static async getStoryViewers(storyId: string, requestingUserId: string): Promise<StoryViewer[]> {
+    const supabase = getSupabaseServerClient();
+
+    const { data: story, error: storyErr } = await supabase
+      .from('social_posts')
+      .select('user_id')
+      .eq('id', storyId)
+      .maybeSingle();
+
+    if (!story || storyErr) return [];
+    if (story.user_id !== requestingUserId) {
       throw new Error('FORBIDDEN');
     }
 
-    const viewers = db
-      .prepare(`
-        SELECT sv.viewer_id as user_id, sv.viewed_at,
-               u.full_name, u.username, u.avatar_url
-        FROM story_views sv
-        JOIN users u ON sv.viewer_id = u.id
-        WHERE sv.story_id = ?
-        ORDER BY sv.viewed_at DESC
-      `)
-      .all(storyId) as any[];
+    const { data: viewsData } = await supabase
+      .from('platform_data')
+      .select('*')
+      .eq('data_type', 'audit')
+      .eq('target_id', storyId)
+      .order('created_at', { ascending: false });
 
-    return viewers.map((v) => ({
-      user_id: v.user_id,
-      full_name: v.full_name,
-      username: v.username,
-      avatar_url: v.avatar_url,
-      viewed_at: v.viewed_at,
-    }));
+    if (!viewsData || viewsData.length === 0) return [];
+
+    const viewerIds = Array.from(new Set(viewsData.map((v) => v.user_id).filter(Boolean)));
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', viewerIds);
+
+    const usersMap = new Map<string, DbUser>();
+    if (usersData) {
+      usersData.forEach((u) => usersMap.set(u.id, u as DbUser));
+    }
+
+    return viewsData.map((v) => {
+      const u = usersMap.get(v.user_id);
+      return {
+        user_id: v.user_id,
+        full_name: u?.display_name || u?.username || 'Feeder User',
+        username: u?.username || 'feeder',
+        avatar_url: u?.avatar_url || '',
+        viewed_at: v.data?.viewed_at || v.created_at,
+      };
+    });
   }
 
   /**
    * Add or toggle reaction on a story
    */
-  static reactToStory(params: {
+  static async reactToStory(params: {
     storyId: string;
     userId: string;
     reactionType: string;
-  }): { reaction: string | null; count: number } {
-    this.ensureReactionsSchema();
-    const db = getDb();
+  }): Promise<{ reaction: string | null; count: number }> {
+    const supabase = getSupabaseServerClient();
 
-    // Check existing
-    const existing = db
-      .prepare('SELECT id, reaction_type FROM story_reactions WHERE story_id = ? AND user_id = ?')
-      .get(params.storyId, params.userId) as { id: string; reaction_type: string } | undefined;
+    const { data: story, error } = await supabase
+      .from('social_posts')
+      .select('reactions')
+      .eq('id', params.storyId)
+      .maybeSingle();
 
-    let newReaction: string | null = params.reactionType;
-
-    if (existing) {
-      if (existing.reaction_type === params.reactionType) {
-        // Untoggle
-        db.prepare('DELETE FROM story_reactions WHERE id = ?').run(existing.id);
-        newReaction = null;
-      } else {
-        // Change reaction
-        db.prepare('UPDATE story_reactions SET reaction_type = ? WHERE id = ?').run(params.reactionType, existing.id);
-      }
-    } else {
-      // Insert reaction
-      const rxId = `srx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      db.prepare(`
-        INSERT INTO story_reactions (id, story_id, user_id, reaction_type)
-        VALUES (?, ?, ?, ?)
-      `).run(rxId, params.storyId, params.userId, params.reactionType);
-
-      // Notify author if reactor is not the author
-      try {
-        const story = db.prepare('SELECT author_id FROM stories WHERE id = ?').get(params.storyId) as { author_id: string } | undefined;
-        const sender = db.prepare('SELECT full_name FROM users WHERE id = ?').get(params.userId) as { full_name: string } | undefined;
-        if (story && story.author_id !== params.userId && sender) {
-          db.prepare(`
-            INSERT INTO notifications (id, recipient_id, sender_id, type, title, body, target_url)
-            VALUES (?, ?, ?, 'REACTION', 'Story Reaction', ?, ?)
-          `).run(
-            `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            story.author_id,
-            params.userId,
-            `${sender.full_name} reacted ${params.reactionType} to your welfare story.`,
-            '/'
-          );
-        }
-      } catch {}
+    if (error || !story) {
+      return { reaction: null, count: 0 };
     }
 
-    const count = (
-      db.prepare('SELECT COUNT(*) as c FROM story_reactions WHERE story_id = ? AND reaction_type = ?').get(params.storyId, params.reactionType) as { c: number }
-    )?.c || 0;
+    const reactions = (story.reactions && typeof story.reactions === 'object' ? story.reactions : {}) as Record<string, any>;
+    let newReaction: string | null = params.reactionType;
 
+    if (reactions[params.userId] === params.reactionType) {
+      delete reactions[params.userId];
+      newReaction = null;
+    } else {
+      reactions[params.userId] = params.reactionType;
+    }
+
+    await supabase
+      .from('social_posts')
+      .update({ reactions, updated_at: new Date().toISOString() })
+      .eq('id', params.storyId);
+
+    const count = Object.keys(reactions).length;
     return { reaction: newReaction, count };
   }
 
   /**
    * Delete a story (author or staff)
    */
-  static async deleteStory(storyId: string, userId: string, userRole: string): Promise<boolean> {
-    const db = getDb();
-    const story = db.prepare('SELECT author_id FROM stories WHERE id = ?').get(storyId) as { author_id: string } | undefined;
-    if (!story) {
+  static async deleteStory(storyId: string, userId: string, userRole: string = 'USER'): Promise<boolean> {
+    const supabase = getSupabaseServerClient();
+
+    const { data: story, error } = await supabase
+      .from('social_posts')
+      .select('user_id')
+      .eq('id', storyId)
+      .maybeSingle();
+
+    if (error || !story) {
       throw new Error('NOT_FOUND');
     }
 
-    const isAuthor = story.author_id === userId;
+    const isAuthor = story.user_id === userId;
     const isStaff = ['PLATFORM_ADMIN', 'PLATFORM_MODERATOR', 'MODERATOR'].includes(userRole);
 
     if (!isAuthor && !isStaff) {
       throw new Error('FORBIDDEN');
     }
 
-    // Delete in local DB
-    db.prepare('DELETE FROM stories WHERE id = ?').run(storyId);
+    const { error: delError } = await supabase
+      .from('social_posts')
+      .delete()
+      .eq('id', storyId);
 
-    // Delete in Supabase social_posts
-    try {
-      const supabase = getSupabaseServerClient();
-      await supabase
-        .from('social_posts')
-        .delete()
-        .eq('record_type', 'story')
-        .filter('data->>story_id', 'eq', storyId);
-    } catch {}
-
-    return true;
+    return !delError;
   }
 }

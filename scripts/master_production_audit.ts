@@ -66,11 +66,11 @@ async function runMasterAudit() {
   try {
     const db = getDb();
     // Verify stories in DB are non-fake / real user generated
-    const activeStories = StoryService.getActiveStories();
+    const activeStories = await StoryService.getActiveStories();
     record('DATA_PURITY', 'Stories returned from real DB only', true, `${activeStories.length} active real stories retrieved`);
     
     // Verify feed returns real database rows
-    const feed = FeedRankingService.getRankedFeedPaginated({ userId: 'usr_audit_viewer', tab: 'FOR_YOU', limit: 10 });
+    const feed = await FeedRankingService.getRankedFeedPaginated({ userId: 'usr_audit_viewer', tab: 'FOR_YOU', limit: 10 });
     record('DATA_PURITY', 'Feed returned from real DB only', true, `${feed.items.length} real posts retrieved, pagination active`);
 
     // Verify empty states exist when no records

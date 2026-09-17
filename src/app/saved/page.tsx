@@ -1,85 +1,60 @@
 import { getCurrentUser } from '@/lib/auth/session';
 import AppShell from '@/components/layout/AppShell';
 import SavedPostsClient from '@/components/saved/SavedPostsClient';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { PostWithAuthor } from '@/lib/services/feed-ranking';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SavedPage() {
   const user = await getCurrentUser();
-  const db = getDb();
-
   let initialPosts: PostWithAuthor[] = [];
 
   if (user) {
     try {
-      const rows = db
-        .prepare(`
-          SELECT p.*,
-                 u.full_name as author_name,
-                 u.username as author_username,
-                 u.avatar_url as author_avatar,
-                 u.role as author_role,
-                 prof.feeder_level as author_feeder_level,
-                 c.name as community_name,
-                 c.slug as community_slug,
-                 c.is_private as community_is_private,
-                 r.reaction_type as user_reaction
-          FROM saved_items s
-          JOIN posts p ON s.item_id = p.id
-          JOIN users u ON p.author_id = u.id
-          LEFT JOIN user_profiles prof ON u.id = prof.user_id
-          LEFT JOIN communities c ON p.community_id = c.id
-          LEFT JOIN post_reactions r ON p.id = r.post_id AND r.user_id = ?
-          WHERE s.user_id = ? AND s.item_type = 'POST' AND p.status = 'PUBLISHED'
-          ORDER BY s.created_at DESC
-        `)
-        .all(user.id, user.id) as any[];
+      const supabase = getSupabaseServerClient();
+      const { data: savedRows } = await supabase
+        .from('platform_data')
+        .select('target_id, created_at')
+        .eq('data_type', 'saved_post')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-      initialPosts = rows.map((row) => {
-        let mediaUrls: string[] = [];
-        try {
-          mediaUrls = JSON.parse(row.media_urls_json || '[]');
-        } catch {
-          mediaUrls = [];
-        }
+      const postIds = (savedRows || []).map((r: any) => r.target_id).filter(Boolean);
 
-        let tags: string[] = [];
-        try {
-          tags = JSON.parse(row.tags_json || '[]');
-        } catch {
-          tags = [];
-        }
+      if (postIds.length > 0) {
+        const { data: postRows } = await supabase
+          .from('social_posts')
+          .select('*, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role), communities!social_posts_community_id_fkey(id, name, slug)')
+          .in('id', postIds)
+          .eq('is_deleted', false);
 
-        return {
+        initialPosts = (postRows || []).map((row: any) => ({
           id: row.id,
-          author_id: row.author_id,
-          author_name: row.author_name,
-          author_username: row.author_username,
-          author_avatar: row.author_avatar,
-          author_role: row.author_role,
-          author_feeder_level: row.author_feeder_level,
+          author_id: row.user_id,
+          author_name: row.users?.display_name || 'Community Member',
+          author_username: row.users?.username || 'member',
+          author_avatar: row.users?.avatar_url || '',
+          author_role: row.users?.role || 'COMMUNITY_MEMBER',
+          author_feeder_level: 'Feeder',
           community_id: row.community_id,
-          community_name: row.community_name,
-          community_slug: row.community_slug,
-          content_type: row.content_type,
-          title: row.title,
-          body: row.body,
-          media_urls: mediaUrls,
-          tags: tags,
-          location_name: row.location_name,
-          approx_lat: row.approx_lat,
-          approx_lon: row.approx_lon,
-          visibility: row.visibility,
-          reaction_count: row.reaction_count || 0,
-          comment_count: row.comment_count || 0,
-          share_count: row.share_count || 0,
-          user_reaction: row.user_reaction,
+          community_name: row.communities?.name,
+          community_slug: row.communities?.slug,
+          content_type: row.post_type || 'GENERAL',
+          title: row.title || '',
+          body: row.content || '',
+          media_urls: Array.isArray(row.media) ? row.media.map((m: any) => (typeof m === 'string' ? m : m.url)) : [],
+          tags: Array.isArray(row.tags) ? row.tags : [],
+          location_name: row.location_name || '',
+          visibility: row.visibility || 'PUBLIC',
+          reaction_count: row.likes_count || 0,
+          comment_count: row.comments_count || 0,
+          share_count: 0,
+          user_reaction: null,
           is_saved: true,
           created_at: row.created_at,
-        };
-      });
+        }));
+      }
     } catch {}
   }
 

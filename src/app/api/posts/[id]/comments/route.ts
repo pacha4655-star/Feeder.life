@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
@@ -8,21 +8,32 @@ export async function GET(
 ) {
   try {
     const { id: postId } = await context.params;
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
 
-    const comments = db
-      .prepare(`
-        SELECT c.*,
-               u.full_name as author_name,
-               u.username as author_username,
-               u.avatar_url as author_avatar,
-               u.role as author_role
-        FROM post_comments c
-        JOIN users u ON c.author_id = u.id
-        WHERE c.post_id = ? AND c.status = 'PUBLISHED'
-        ORDER BY c.created_at ASC
-      `)
-      .all(postId);
+    const { data: rows, error } = await supabase
+      .from('social_posts')
+      .select('*, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role)')
+      .eq('record_type', 'comment')
+      .eq('parent_id', postId)
+      .eq('is_deleted', false)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ success: true, comments: [] });
+    }
+
+    const comments = (rows || []).map((c: any) => ({
+      id: c.id,
+      post_id: c.parent_id,
+      author_id: c.user_id,
+      parent_id: null,
+      body: c.content,
+      created_at: c.created_at,
+      author_name: c.users?.display_name || 'Member',
+      author_username: c.users?.username || 'member',
+      author_avatar: c.users?.avatar_url || '',
+      author_role: c.users?.role || 'COMMUNITY_MEMBER',
+    }));
 
     return NextResponse.json({ success: true, comments });
   } catch (error: any) {
@@ -41,57 +52,55 @@ export async function POST(
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }
-    const body = await request.json();
-    const { body: commentText, parentId = null } = body;
+    const body = await request.json().catch(() => ({}));
+    const { body: commentText } = body;
 
     if (!commentText || !commentText.trim()) {
       return NextResponse.json({ success: false, error: 'Comment cannot be empty' }, { status: 400 });
     }
 
-    const db = getDb();
-    const commentId = `cmt_${Date.now()}`;
+    const supabase = getSupabaseServerClient();
 
-    const run = db.transaction(() => {
-      db.prepare(`
-        INSERT INTO post_comments (id, post_id, author_id, parent_id, body)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(commentId, postId, user.id, parentId, commentText.trim());
+    // Insert comment as a record in social_posts
+    const { data: comment, error: insertErr } = await supabase
+      .from('social_posts')
+      .insert({
+        user_id: user.id,
+        parent_id: postId,
+        record_type: 'comment',
+        content: commentText.trim(),
+        data: {},
+        media: [],
+        reactions: {},
+        comments: {},
+        hashtags: [],
+        mentions: [],
+        visibility: 'public',
+        is_active: true,
+        is_deleted: false,
+        stats: {},
+      })
+      .select()
+      .single();
 
-      db.prepare('UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?').run(postId);
+    if (insertErr || !comment) {
+      console.error('Comment insert error:', insertErr);
+      return NextResponse.json({ success: false, error: insertErr?.message || 'Failed to post comment' }, { status: 400 });
+    }
 
-      // Notify post author if not self
-      const post = db.prepare('SELECT author_id, title FROM posts WHERE id = ?').get(postId) as any;
-      if (post && post.author_id !== user.id) {
-        db.prepare(`
-          INSERT INTO notifications (id, recipient_id, sender_id, type, title, body, target_url)
-          VALUES (?, ?, ?, 'COMMENT', ?, ?, ?)
-        `).run(
-          `notif_${Date.now()}`,
-          post.author_id,
-          user.id,
-          'New comment on your post',
-          `${user.fullName} commented: "${commentText.slice(0, 60)}..."`,
-          `/#${postId}`
-        );
-      }
-    });
+    const formattedComment = {
+      id: comment.id,
+      post_id: postId,
+      author_id: user.id,
+      body: comment.content,
+      created_at: comment.created_at,
+      author_name: user.fullName,
+      author_username: user.username,
+      author_avatar: user.avatarUrl,
+      author_role: user.role,
+    };
 
-    run();
-
-    const newComment = db
-      .prepare(`
-        SELECT c.*,
-               u.full_name as author_name,
-               u.username as author_username,
-               u.avatar_url as author_avatar,
-               u.role as author_role
-        FROM post_comments c
-        JOIN users u ON c.author_id = u.id
-        WHERE c.id = ?
-      `)
-      .get(commentId);
-
-    return NextResponse.json({ success: true, comment: newComment });
+    return NextResponse.json({ success: true, comment: formattedComment });
   } catch (error: any) {
     console.error('Create comment error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

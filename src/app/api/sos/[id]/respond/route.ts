@@ -14,7 +14,7 @@ export async function POST(
     }
     const body = await request.json().catch(() => ({}));
 
-    SosService.respondToSos(sosId, user.id, body.notes);
+    await SosService.respondToSos(sosId, user.id, body.notes);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

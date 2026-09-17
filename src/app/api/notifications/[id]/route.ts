@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/session';
-import { getDb } from '@/lib/db';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function PATCH(
   request: NextRequest,
@@ -13,12 +13,13 @@ export async function PATCH(
     }
 
     const { id: notificationId } = await context.params;
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
 
-    db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ? AND recipient_id = ?').run(
-      notificationId,
-      user.id
-    );
+    await supabase
+      .from('platform_data')
+      .update({ status: 'read' })
+      .eq('id', notificationId)
+      .eq('user_id', user.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -37,12 +38,13 @@ export async function DELETE(
     }
 
     const { id: notificationId } = await context.params;
-    const db = getDb();
+    const supabase = getSupabaseServerClient();
 
-    db.prepare('DELETE FROM notifications WHERE id = ? AND recipient_id = ?').run(
-      notificationId,
-      user.id
-    );
+    await supabase
+      .from('platform_data')
+      .delete()
+      .eq('id', notificationId)
+      .eq('user_id', user.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
