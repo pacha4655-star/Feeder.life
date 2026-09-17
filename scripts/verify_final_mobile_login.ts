@@ -80,7 +80,7 @@ async function run() {
         return {
           langBtn: checkInDoc('.feeder-language-btn'),
           brandHeader: checkInDoc('.feeder-mobile-brand-header'),
-          heroImage: checkInDoc('.feeder-mobile-hero-image'),
+          heroImage: checkInDoc('.feeder-mobile-bg-image') || checkInDoc('.feeder-mobile-hero-image'),
           authPanel: checkInDoc('.feeder-mobile-auth-panel'),
           featureGrid: checkInDoc('.feeder-mobile-features-grid'),
           btnEmail: checkInDoc('.feeder-mobile-btn-email'),

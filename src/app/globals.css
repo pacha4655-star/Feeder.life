@@ -3763,7 +3763,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #edf7f0 0%, #f6fbf8 30%, #eaf4ed 70%, #dbeedc 100%);
+  background: linear-gradient(180deg, #d8ecd9 0%, #edf7ee 25%, #e3f1e5 50%, #d8ecd9 100%);
   padding: 0 0 env(safe-area-inset-bottom, 0px) 0;
   box-sizing: border-box;
   position: relative;
@@ -3779,9 +3779,10 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   align-items: center;
   text-align: center;
   width: 100%;
-  padding: clamp(8px, 1.8vh, 14px) 16px 2px 16px;
+  padding: clamp(10px, 2vh, 16px) 16px 4px 16px;
   box-sizing: border-box;
   z-index: 10;
+  position: relative;
 }
 
 .feeder-mobile-logo-wrap {
@@ -3792,16 +3793,16 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 .feeder-mobile-logo-svg {
-  height: clamp(26px, 3.4vh, 32px);
+  height: clamp(28px, 3.6vh, 34px);
   width: auto;
-  max-width: 140px;
+  max-width: 145px;
   object-fit: contain;
   display: block;
 }
 
 .feeder-mobile-main-tagline {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: clamp(12px, 3.3vw, 13.5px);
+  font-size: clamp(12.5px, 3.4vw, 14px);
   font-weight: 700;
   color: #1B5E20;
   margin: 3px 0 1px 0;
@@ -3809,14 +3810,14 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 .feeder-mobile-sub-tagline {
-  font-size: clamp(9.5px, 2.5vw, 10.5px);
+  font-size: clamp(9.5px, 2.6vw, 11px);
   font-weight: 500;
   color: #4A7C59;
   margin: 0;
   letter-spacing: 0.25px;
 }
 
-/* Hero Wildlife Artwork */
+/* Hero Wildlife Artwork spanning full width */
 .feeder-mobile-hero-wrapper {
   width: 100%;
   display: flex;
@@ -3824,14 +3825,14 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   justify-content: center;
   overflow: hidden;
   margin-top: auto;
-  margin-bottom: -16px;
+  margin-bottom: -22px;
   z-index: 5;
 }
 
 .feeder-mobile-hero-image {
   width: 100%;
   height: auto;
-  max-height: clamp(120px, 24vh, 195px);
+  max-height: clamp(140px, 28vh, 220px);
   object-fit: cover;
   object-position: center bottom;
   display: block;
