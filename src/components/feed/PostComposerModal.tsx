@@ -58,8 +58,6 @@ export default function PostComposerModal({
   const [body, setBody] = useState('');
   const [visibility, setVisibility] = useState(communityId ? 'COMMUNITY' : 'PUBLIC');
   const [locationName, setLocationName] = useState('');
-  const [mediaUrlInput, setMediaUrlInput] = useState('');
-  const [remoteMediaUrls, setRemoteMediaUrls] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<LocalMediaItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
@@ -203,17 +201,6 @@ export default function PostComposerModal({
     setSelectedFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
-  const handleAddRemoteMedia = () => {
-    if (mediaUrlInput.trim()) {
-      setRemoteMediaUrls([...remoteMediaUrls, mediaUrlInput.trim()]);
-      setMediaUrlInput('');
-    }
-  };
-
-  const handleRemoveRemoteMedia = (index: number) => {
-    setRemoteMediaUrls(remoteMediaUrls.filter((_, i) => i !== index));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -254,10 +241,7 @@ export default function PostComposerModal({
         uploadedUrls.push(uploadData.url);
       }
 
-      // Step 2: Combine uploaded URLs with any manually entered remote URLs
-      const allMediaUrls = [...uploadedUrls, ...remoteMediaUrls];
-
-      // Step 3: Create database post
+      // Step 2: Create database post
       setUploadStatus('Publishing post to feed...');
       const feedRes = await fetch('/api/feed', {
         method: 'POST',
@@ -269,7 +253,7 @@ export default function PostComposerModal({
           visibility,
           communityId: communityId || undefined,
           locationName: locationName.trim() || undefined,
-          mediaUrls: allMediaUrls,
+          mediaUrls: uploadedUrls,
         }),
       });
 
@@ -284,10 +268,12 @@ export default function PostComposerModal({
       setSelectedFiles([]);
       setTitle('');
       setBody('');
-      setRemoteMediaUrls([]);
       setUploadStatus('');
 
       onPostCreated();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('feeder:feed-refresh'));
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred while publishing.');
@@ -516,37 +502,27 @@ export default function PostComposerModal({
               </div>
             )}
 
-            {/* Remote URLs list (if any) */}
-            {remoteMediaUrls.length > 0 && (
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                {remoteMediaUrls.map((url, i) => (
-                  <div key={i} style={{ position: 'relative', width: '80px', height: '80px' }}>
-                    <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
-                    {!isSubmitting && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRemoteMedia(i)}
-                        style={{
-                          position: 'absolute',
-                          top: '-6px',
-                          right: '-6px',
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '20px',
-                          height: '20px',
-                          cursor: 'pointer',
-                          fontSize: '11px',
-                        }}
-                      >
-                        &times;
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* Real Media Authenticity Warning / Instruction */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                padding: '10px 12px',
+                background: 'rgba(5, 150, 105, 0.08)',
+                borderRadius: '8px',
+                border: '1px solid rgba(5, 150, 105, 0.2)',
+                marginBottom: '14px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.45,
+              }}
+            >
+              <AlertCircle size={15} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                Please upload real photos or videos captured by you or from a trusted source. Do not upload AI-generated or AI-created images as real-world animal welfare evidence.
+              </span>
+            </div>
 
             {/* Real File Pickers (Hidden Inputs) */}
             <input
@@ -633,27 +609,6 @@ export default function PostComposerModal({
                   <span>Camera</span>
                 </button>
               </div>
-            </div>
-
-            {/* Optional URL attach */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
-              <input
-                type="url"
-                className="form-input"
-                placeholder="Or attach media URL (https://...)"
-                value={mediaUrlInput}
-                onChange={(e) => setMediaUrlInput(e.target.value)}
-                disabled={isSubmitting}
-              />
-              <button
-                type="button"
-                onClick={handleAddRemoteMedia}
-                className="btn-secondary"
-                disabled={isSubmitting || !mediaUrlInput.trim()}
-                style={{ whiteSpace: 'nowrap' }}
-              >
-                Add URL
-              </button>
             </div>
 
             {/* Tagged Location */}

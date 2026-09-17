@@ -28,6 +28,13 @@ export default function StoriesRail({ user, onOpenCreateStory }: StoriesRailProp
 
   useEffect(() => {
     fetchStories();
+
+    const handleRefresh = () => {
+      fetchStories();
+    };
+
+    window.addEventListener('feeder:stories-refresh', handleRefresh);
+    return () => window.removeEventListener('feeder:stories-refresh', handleRefresh);
   }, []);
 
   const handleScrollRight = () => {

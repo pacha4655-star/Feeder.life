@@ -236,6 +236,10 @@ export default function StoryModal({
       setUploadStatus('');
 
       onStoryCreated();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('feeder:stories-refresh'));
+        window.dispatchEvent(new CustomEvent('feeder:feed-refresh'));
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred while publishing story.');
@@ -312,12 +316,34 @@ export default function StoryModal({
                 padding: '10px',
                 background: 'rgba(5, 150, 105, 0.08)',
                 borderRadius: '8px',
-                marginBottom: '16px',
+                marginBottom: '12px',
               }}
             >
               <Clock size={16} color="var(--brand-primary)" />
               <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
                 Stories automatically expire after <strong>24 hours</strong> and appear to your followers and local community.
+              </span>
+            </div>
+
+            {/* Real Media Authenticity Warning */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '8px',
+                padding: '10px 12px',
+                background: 'rgba(5, 150, 105, 0.08)',
+                borderRadius: '8px',
+                border: '1px solid rgba(5, 150, 105, 0.2)',
+                marginBottom: '16px',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.45,
+              }}
+            >
+              <AlertCircle size={15} color="var(--brand-primary)" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <span>
+                Please upload real photos or videos captured by you or from a trusted source. Do not upload AI-generated or AI-created images as real-world animal welfare evidence.
               </span>
             </div>
 

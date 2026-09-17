@@ -57,6 +57,13 @@ export default function FeedList({ user, onOpenComposer, onOpenStory }: FeedList
 
   useEffect(() => {
     fetchFeed(activeTab, true);
+
+    const handleRefresh = () => {
+      fetchFeed(activeTab, true);
+    };
+
+    window.addEventListener('feeder:feed-refresh', handleRefresh);
+    return () => window.removeEventListener('feeder:feed-refresh', handleRefresh);
   }, [activeTab]);
 
   return (
