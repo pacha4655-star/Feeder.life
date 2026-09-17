@@ -44,22 +44,33 @@ export default function RightSidebar({}: RightSidebarProps) {
       .catch(() => {})
       .finally(() => setIsLoadingComm(false));
 
-    fetch('/api/nearby')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.items)) {
-          const items: any[] = data.items;
-          const feedingCount = items.filter((i) => i.type === 'FEEDER').length;
-          const sosCount = items.filter((i) => i.type === 'SOS').length;
-          setNearbyStats({
-            feedingCount,
-            sosCount,
-            volunteerCount: items.length,
-          });
-        }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingNearby(false));
+    try {
+      const cachedLat = typeof window !== 'undefined' ? sessionStorage.getItem('feeder_last_lat') : null;
+      const cachedLon = typeof window !== 'undefined' ? sessionStorage.getItem('feeder_last_lon') : null;
+
+      if (cachedLat && cachedLon) {
+        fetch(`/api/nearby?lat=${cachedLat}&lon=${cachedLon}&radius=15`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.items)) {
+              const items: any[] = data.items;
+              const feedingCount = items.filter((i) => i.type === 'FEEDER').length;
+              const sosCount = items.filter((i) => i.type === 'SOS').length;
+              setNearbyStats({
+                feedingCount,
+                sosCount,
+                volunteerCount: items.length,
+              });
+            }
+          })
+          .catch(() => {})
+          .finally(() => setIsLoadingNearby(false));
+      } else {
+        setIsLoadingNearby(false);
+      }
+    } catch {
+      setIsLoadingNearby(false);
+    }
   }, []);
 
   const handleToggleJoin = async (communityId: string) => {

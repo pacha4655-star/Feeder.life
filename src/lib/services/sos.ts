@@ -74,10 +74,10 @@ export class SosService {
         .filter((r: any) => r.sos_data && Object.keys(r.sos_data).length > 0)
         .map((r: any) => {
           const sos = r.sos_data || {};
-          const approxLat = sos.approx_lat || 12.9784;
-          const approxLon = sos.approx_lon || 77.6408;
+          const approxLat = typeof sos.approx_lat === 'number' ? sos.approx_lat : null;
+          const approxLon = typeof sos.approx_lon === 'number' ? sos.approx_lon : null;
           let dist: number | undefined = undefined;
-          if (userLat != null && userLon != null) {
+          if (userLat != null && userLon != null && approxLat != null && approxLon != null) {
             dist = haversineDistanceKm(userLat, userLon, approxLat, approxLon);
           }
 

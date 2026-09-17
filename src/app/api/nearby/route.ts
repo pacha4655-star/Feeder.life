@@ -1,87 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-
-function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c * 10) / 10;
-}
+import { getCurrentUser } from '@/lib/auth/session';
+import { NearbyWelfareService } from '@/lib/services/nearby';
+import { checkRateLimit, createRateLimitResponse } from '@/lib/security/rate-limit';
+import logger from '@/lib/monitoring/logger';
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0] || 'anonymous';
+    const rateLimitKey = user ? user.id : clientIp;
+
+    // Rate limiting: 120 queries per minute
+    const rateLimit = checkRateLimit('nearby_query', rateLimitKey, { limit: 120, windowMs: 60 * 1000 });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit);
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const userLat = parseFloat(searchParams.get('lat') || '12.9784');
-    const userLon = parseFloat(searchParams.get('lon') || '77.6408');
-    const radius = parseFloat(searchParams.get('radius') || '10');
+    const rawLat = searchParams.get('lat');
+    const rawLon = searchParams.get('lon') || searchParams.get('lng');
+    const rawRadius = searchParams.get('radius') || '10';
+    const rawType = (searchParams.get('type') || 'ALL').toUpperCase();
 
-    const supabase = getSupabaseServerClient();
+    // Strict validation: Coordinates are required. No hardcoded city or country fallback.
+    if (!rawLat || !rawLon) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Latitude and longitude parameters are required for nearby discovery.',
+          items: [],
+        },
+        { status: 400 }
+      );
+    }
 
-    // 1. Fetch real emergency SOS / animal cases
-    const { data: animalRows } = await supabase
-      .from('animals')
-      .select('*, users!animals_created_by_fkey(id, username, display_name)')
-      .in('status', ['emergency', 'active'])
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const lat = parseFloat(rawLat);
+    const lon = parseFloat(rawLon);
+    const radiusKm = Math.min(Math.max(parseFloat(rawRadius) || 10, 0.5), 200);
 
-    const sosItems = (animalRows || [])
-      .filter((a: any) => a.sos_data && Object.keys(a.sos_data).length > 0)
-      .map((a: any) => {
-        const lat = a.sos_data?.approx_lat || a.feeding_data?.approx_lat || 12.9784;
-        const lon = a.sos_data?.approx_lon || a.feeding_data?.approx_lon || 77.6408;
-        const dist = haversineDistanceKm(userLat, userLon, lat, lon);
-        return {
-          id: a.id,
-          type: 'SOS',
-          title: a.name || a.sos_data?.title || 'Animal Emergency',
-          subtitle: `Target: ${a.species} - ${(a.sos_data?.urgency || 'HIGH').toUpperCase()} URGENCY`,
-          approxLocation: a.city || a.sos_data?.approx_location_name || 'Nearby Area',
-          distanceKm: dist,
-          badge: (a.sos_data?.urgency || 'HIGH').toUpperCase(),
-          icon: '🚨',
-          color: '#ef4444',
-        };
-      });
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid coordinates provided. Latitude must be between -90 and 90, longitude between -180 and 180.',
+          items: [],
+        },
+        { status: 400 }
+      );
+    }
 
-    // 2. Fetch real feeding updates / posts
-    const { data: postRows } = await supabase
-      .from('social_posts')
-      .select('*, users!social_posts_user_id_fkey(id, username, display_name)')
-      .eq('is_deleted', false)
-      .eq('post_type', 'feeding')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const validTypes = ['ALL', 'FEEDERS', 'SOS', 'COMMUNITIES'] as const;
+    const filterType = validTypes.includes(rawType as any) ? (rawType as any) : 'ALL';
 
-    const feedItems = (postRows || []).map((p: any) => {
-      const lat = p.location?.lat || 12.9784;
-      const lon = p.location?.lng || 77.6408;
-      const dist = haversineDistanceKm(userLat, userLon, lat, lon);
-      return {
-        id: p.id,
-        type: 'FEEDER',
-        title: p.users?.display_name || 'Community Feeder',
-        subtitle: p.title || 'Feeding round logged',
-        approxLocation: p.location_name || 'Local Area',
-        distanceKm: dist,
-        badge: 'Active Feed',
-        icon: '🐾',
-        color: '#10b981',
-      };
+    const items = await NearbyWelfareService.getNearbyActivity({
+      lat,
+      lon,
+      radiusKm,
+      type: filterType,
+      userId: user ? user.id : undefined,
     });
 
-    const items = [...sosItems, ...feedItems].filter((item) => item.distanceKm <= radius);
-
-    return NextResponse.json({ success: true, items });
+    return NextResponse.json({
+      success: true,
+      userCoordinates: {
+        approxLat: Math.round(lat * 100) / 100, // Privacy-safe approximate coordinate
+        approxLon: Math.round(lon * 100) / 100,
+      },
+      radiusKm,
+      filterType,
+      count: items.length,
+      items,
+    });
   } catch (error: any) {
-    console.error('Nearby error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    logger.error('Nearby API server error', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || 'Nearby activity is temporarily unavailable.',
+        items: [],
+      },
+      { status: 500 }
+    );
   }
 }
