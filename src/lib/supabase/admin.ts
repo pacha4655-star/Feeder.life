@@ -7,6 +7,7 @@ export interface SupabaseSyncInput {
   display_name?: string | null;
   avatar_url?: string | null;
   username?: string | null;
+  profile_data?: Record<string, any> | null;
 }
 
 export interface SupabaseSyncResult {
@@ -101,7 +102,7 @@ export async function syncUserWithSupabase(input: SupabaseSyncInput): Promise<Su
         username: baseUsername,
         display_name: input.display_name || baseUsername,
         avatar_url: input.avatar_url || null,
-        profile_data: {},
+        profile_data: input.profile_data || {},
         settings: { notifications_enabled: true },
         interests: [],
         onboarding_completed: false,
@@ -126,7 +127,7 @@ export async function syncUserWithSupabase(input: SupabaseSyncInput): Promise<Su
             username: uniqueUsername,
             display_name: input.display_name || baseUsername,
             avatar_url: input.avatar_url || null,
-            profile_data: {},
+            profile_data: input.profile_data || {},
             settings: { notifications_enabled: true },
             interests: [],
             onboarding_completed: false,

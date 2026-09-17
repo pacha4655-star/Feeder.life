@@ -10,7 +10,13 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { idToken, username: customUsername, fullName: customFullName } = body;
+    const {
+      idToken,
+      username: customUsername,
+      fullName: customFullName,
+      avatarUrl: customAvatarUrl,
+      profileData: customProfileData,
+    } = body;
 
     if (!idToken || typeof idToken !== 'string') {
       return NextResponse.json(
@@ -33,6 +39,7 @@ export async function POST(request: NextRequest) {
     const email = (verification.email || '').trim().toLowerCase();
     const displayName = (customFullName || verification.name || (email ? email.split('@')[0] : 'Feeder Guardian')).trim();
     const avatarUrl =
+      customAvatarUrl ||
       verification.picture ||
       `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`;
 
@@ -44,6 +51,7 @@ export async function POST(request: NextRequest) {
       display_name: displayName,
       avatar_url: avatarUrl,
       username: customUsername,
+      profile_data: customProfileData || {},
     });
 
     const supaUser = supaResult.user;

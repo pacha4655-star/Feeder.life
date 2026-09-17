@@ -14,7 +14,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Username is required' }, { status: 400 });
     }
 
+    const isCheckOnly = searchParams.get('check') === 'available' || searchParams.get('check') === '1';
     const supabase = getSupabaseServerClient();
+
+    if (isCheckOnly) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .ilike('username', username)
+        .maybeSingle();
+
+      if (existingUser) {
+        return NextResponse.json({ success: true, available: false, error: 'Username is already taken' });
+      }
+      return NextResponse.json({ success: true, available: true });
+    }
+
     const { data: user, error } = await supabase
       .from('users')
       .select('email, is_active')
