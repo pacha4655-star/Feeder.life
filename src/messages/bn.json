@@ -15,6 +15,8 @@
   },
   "login": {
     "title": "Feeder-এ সাইন ইন করুন",
+    "welcomeTitle": "Feeder-এ স্বাগতম",
+    "welcomeSubtitle": "যুক্ত হন। যত্ন নিন। উদ্ধার করুন। পুনরাবৃত্তি করুন।",
     "welcomeBack": "স্বাগতম",
     "continue": "চালিয়ে যান",
     "useAnotherProfile": "অন্য প্রোফাইল ব্যবহার করুন",

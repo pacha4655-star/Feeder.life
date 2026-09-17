@@ -15,6 +15,8 @@
   },
   "login": {
     "title": "Feeder-ലേക്ക് സൈൻ ഇൻ ചെയ്യുക",
+    "welcomeTitle": "Feeder-ലേക്ക് സ്വാഗതം",
+    "welcomeSubtitle": "ബന്ധപ്പെടുക. പരിചരിക്കുക. രക്ഷിക്കുക. തുടരുക.",
     "welcomeBack": "സ്വാഗതം",
     "continue": "തുടരുക",
     "useAnotherProfile": "മറ്റൊരു പ്രൊഫൈൽ ഉപയോഗിക്കുക",

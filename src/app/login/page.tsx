@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
@@ -31,14 +31,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // View mode: 'profile' (Reference style quick account card) or 'credentials' (Direct email/password form)
-  const [viewMode, setViewMode] = useState<'profile' | 'credentials'>('profile');
-  const [rememberedUser, setRememberedUser] = useState<{
-    name: string;
-    email: string;
-    avatarUrl: string;
-  } | null>(null);
 
   // Language selector state
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -50,32 +42,10 @@ export default function LoginPage() {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  // Load last active user or default profile from storage if available
-  useEffect(() => {
-    try {
-      const savedUserStr = localStorage.getItem('feeder_last_user');
-      if (savedUserStr) {
-        const parsed = JSON.parse(savedUserStr);
-        if (parsed && parsed.name) {
-          setRememberedUser(parsed);
-          setIdentifier(parsed.email || parsed.username || '');
-          return;
-        }
-      }
-    } catch {}
-
-    // Default reference profile representation
-    setRememberedUser({
-      name: 'Pachamuthu S',
-      email: '',
-      avatarUrl: '/images/feeder-default-avatar.jpg',
-    });
-  }, []);
-
-  const handleLogin = async (targetId: string, targetPass: string) => {
-    if (!targetId.trim() || !targetPass) {
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!identifier.trim() || !password) {
       setError(t('errors.missingCredentials'));
-      setViewMode('credentials');
       return;
     }
 
@@ -83,7 +53,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      let targetEmail = targetId.trim();
+      let targetEmail = identifier.trim();
 
       // If user provided a username instead of an email, resolve safely to their associated email
       if (!targetEmail.includes('@')) {
@@ -96,7 +66,7 @@ export default function LoginPage() {
       }
 
       // 1. Authenticate with real Firebase Authentication
-      const userCredential = await signInWithEmailAndPassword(auth, targetEmail, targetPass);
+      const userCredential = await signInWithEmailAndPassword(auth, targetEmail, password);
 
       // 2. Obtain cryptographically verified Firebase ID token
       const idToken = await userCredential.user.getIdToken(true);
@@ -115,20 +85,6 @@ export default function LoginPage() {
             "Your account was authenticated, but we couldn't finish signing you in. Please try again."
         );
       }
-
-      // Save for quick profile continuation next time
-      try {
-        if (data.user) {
-          localStorage.setItem(
-            'feeder_last_user',
-            JSON.stringify({
-              name: data.user.displayName || data.user.username || 'Feeder Guardian',
-              email: data.user.email,
-              avatarUrl: data.user.avatarUrl || '/images/feeder-default-avatar.jpg',
-            })
-          );
-        }
-      } catch {}
 
       // 4. Redirect to authenticated application
       router.push(data.redirectTo || (data.isNewUser ? '/onboarding' : '/'));
@@ -154,18 +110,8 @@ export default function LoginPage() {
       } else {
         setError(t('errors.invalidCredentials'));
       }
-      setViewMode('credentials');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleContinueClick = () => {
-    if (rememberedUser?.email && password) {
-      handleLogin(rememberedUser.email, password);
-    } else {
-      // Prompt for password / credentials smoothly
-      setViewMode('credentials');
     }
   };
 
@@ -223,7 +169,7 @@ export default function LoginPage() {
         <div className="feeder-exact-vertical-divider" aria-hidden="true" />
 
         {/* ============================================================
-            RIGHT SECTION (≈ 40%): Login / Profile Authentication Panel
+            RIGHT SECTION (≈ 40%): Generic Feeder Authentication Panel
             ============================================================ */}
         <section className="feeder-exact-right-panel" aria-label="Account login">
           
@@ -262,9 +208,26 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Centered Login Content */}
+          {/* Centered Generic Login Content */}
           <div className="feeder-exact-auth-container">
             
+            {/* Feeder Paw + Heart Icon & Welcome Header */}
+            <div className="feeder-auth-welcome-header">
+              <div className="feeder-login-brand-icon-wrap">
+                <img
+                  src="/images/feeder-icon.svg"
+                  alt="Feeder Logo"
+                  className="feeder-login-paw-icon"
+                />
+              </div>
+              <h2 className="feeder-auth-welcome-title">
+                {t('login.welcomeTitle')}
+              </h2>
+              <p className="feeder-auth-welcome-subtitle">
+                {t('login.welcomeSubtitle')}
+              </p>
+            </div>
+
             {/* Error Message */}
             {error && (
               <div className="feeder-exact-alert-error" role="alert">
@@ -273,151 +236,12 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Profile Avatar Mode (Exact Reference Match) */}
-            {viewMode === 'profile' ? (
-              <div className="feeder-exact-profile-card">
-                <div className="feeder-avatar-circle-wrap">
-                  <img
-                    src={rememberedUser?.avatarUrl || '/images/feeder-default-avatar.jpg'}
-                    alt={rememberedUser?.name || t('login.userAvatar')}
-                    className="feeder-exact-user-avatar"
-                  />
-                </div>
-
-                <h2 className="feeder-exact-user-name">
-                  {rememberedUser?.name || 'Feeder Guardian'}
-                </h2>
-
-                {/* Primary Button: Continue */}
-                <button
-                  type="button"
-                  onClick={handleContinueClick}
-                  className="feeder-exact-btn-continue"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>{t('login.signingIn')}</span>
-                    </>
-                  ) : (
-                    <span>{t('login.continue')}</span>
-                  )}
-                </button>
-
-                {/* Secondary Button: Use another profile */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError('');
-                    setViewMode('credentials');
-                  }}
-                  className="feeder-exact-btn-secondary"
-                >
-                  {t('login.useAnotherProfile')}
-                </button>
-              </div>
-            ) : (
-              /* Direct Credentials Form Mode */
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleLogin(identifier, password);
-                }}
-                className="feeder-exact-credentials-form"
-                noValidate
-              >
-                <div className="feeder-credentials-header">
-                  <h2 className="feeder-credentials-title">{t('login.title')}</h2>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError('');
-                      setViewMode('profile');
-                    }}
-                    className="feeder-back-profile-btn"
-                  >
-                    {t('login.switchToSaved')}
-                  </button>
-                </div>
-
-                <div className="feeder-exact-form-group">
-                  <label className="feeder-exact-label" htmlFor="feeder-login-identifier">
-                    {t('login.emailOrUsername')}
-                  </label>
-                  <div className="feeder-exact-input-wrap">
-                    <Mail size={16} className="feeder-exact-input-icon" />
-                    <input
-                      id="feeder-login-identifier"
-                      type="text"
-                      className="feeder-exact-input"
-                      placeholder={t('login.emailPlaceholder')}
-                      value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
-                      autoComplete="username"
-                      required
-                      autoFocus
-                    />
-                  </div>
-                </div>
-
-                <div className="feeder-exact-form-group">
-                  <div className="feeder-exact-label-row">
-                    <label className="feeder-exact-label" htmlFor="feeder-login-password">
-                      {t('login.password')}
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setResetEmail(identifier.includes('@') ? identifier : '');
-                        setResetError('');
-                        setResetSuccess(false);
-                        setShowForgotModal(true);
-                      }}
-                      className="feeder-exact-forgot-btn"
-                    >
-                      {t('login.forgotPassword')}
-                    </button>
-                  </div>
-                  <div className="feeder-exact-input-wrap">
-                    <Lock size={16} className="feeder-exact-input-icon" />
-                    <input
-                      id="feeder-login-password"
-                      type={showPassword ? 'text' : 'password'}
-                      className="feeder-exact-input feeder-exact-password-input"
-                      placeholder={t('login.passwordPlaceholder')}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      autoComplete="current-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="feeder-exact-eye-btn"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="feeder-exact-btn-continue"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      <span>{t('login.loggingIn')}</span>
-                    </>
-                  ) : (
-                    <span>{t('login.logIn')}</span>
-                  )}
-                </button>
-              </form>
-            )}
+            {/* Google Login: Continue with Google */}
+            <GoogleSignInButton
+              onError={(msg) => setError(msg)}
+              className="feeder-exact-google-btn"
+              buttonText={t('login.continueWithGoogle')}
+            />
 
             {/* Divider: ────── or ────── */}
             <div className="feeder-exact-divider">
@@ -426,12 +250,83 @@ export default function LoginPage() {
               <div className="feeder-exact-divider-line" />
             </div>
 
-            {/* Google Login: Continue with Google */}
-            <GoogleSignInButton
-              onError={(msg) => setError(msg)}
-              className="feeder-exact-google-btn"
-              buttonText={t('login.continueWithGoogle')}
-            />
+            {/* Direct Email & Password Credentials Form */}
+            <form onSubmit={handleLogin} className="feeder-exact-credentials-form" noValidate>
+              <div className="feeder-exact-form-group">
+                <label className="feeder-exact-label" htmlFor="feeder-login-identifier">
+                  {t('login.emailOrUsername')}
+                </label>
+                <div className="feeder-exact-input-wrap">
+                  <Mail size={16} className="feeder-exact-input-icon" />
+                  <input
+                    id="feeder-login-identifier"
+                    type="text"
+                    className="feeder-exact-input"
+                    placeholder={t('login.emailPlaceholder')}
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    autoComplete="username"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="feeder-exact-form-group">
+                <div className="feeder-exact-label-row">
+                  <label className="feeder-exact-label" htmlFor="feeder-login-password">
+                    {t('login.password')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResetEmail(identifier.includes('@') ? identifier : '');
+                      setResetError('');
+                      setResetSuccess(false);
+                      setShowForgotModal(true);
+                    }}
+                    className="feeder-exact-forgot-btn"
+                  >
+                    {t('login.forgotPassword')}
+                  </button>
+                </div>
+                <div className="feeder-exact-input-wrap">
+                  <Lock size={16} className="feeder-exact-input-icon" />
+                  <input
+                    id="feeder-login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    className="feeder-exact-input feeder-exact-password-input"
+                    placeholder={t('login.passwordPlaceholder')}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="feeder-exact-eye-btn"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="feeder-exact-btn-continue"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>{t('login.loggingIn')}</span>
+                  </>
+                ) : (
+                  <span>{t('login.logIn')}</span>
+                )}
+              </button>
+            </form>
 
             {/* Create new account CTA: Outline Button */}
             <div className="feeder-exact-signup-wrap">
@@ -439,6 +334,23 @@ export default function LoginPage() {
                 {t('login.createNewAccount')}
               </Link>
             </div>
+
+            {/* Subtle Forgot Password link at bottom */}
+            <div className="feeder-exact-forgot-bottom-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(identifier.includes('@') ? identifier : '');
+                  setResetError('');
+                  setResetSuccess(false);
+                  setShowForgotModal(true);
+                }}
+                className="feeder-exact-forgot-bottom-link"
+              >
+                {t('login.forgotPassword')}
+              </button>
+            </div>
+
           </div>
         </section>
 

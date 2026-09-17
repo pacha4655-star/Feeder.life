@@ -15,6 +15,8 @@
   },
   "login": {
     "title": "Sign in to Feeder",
+    "welcomeTitle": "Welcome to Feeder",
+    "welcomeSubtitle": "Connect. Care. Rescue. Repeat.",
     "welcomeBack": "Welcome Back",
     "continue": "Continue",
     "useAnotherProfile": "Use another profile",

@@ -15,6 +15,8 @@
   },
   "login": {
     "title": "Feeder లోకి సైన్ ఇన్ చేయండి",
+    "welcomeTitle": "Feeder కు స్వాగతం",
+    "welcomeSubtitle": "కనెక్ట్ అవ్వండి. సంరక్షించండి. రక్షించండి. పునరావృతం చేయండి.",
     "welcomeBack": "స్వాగతం",
     "continue": "కొనసాగించండి",
     "useAnotherProfile": "మరొక ప్రొఫైల్ ఉపయోగించండి",
