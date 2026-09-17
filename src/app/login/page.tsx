@@ -20,6 +20,14 @@ import {
   ChevronDown,
   Loader2,
   X,
+  PawPrint,
+  Heart,
+  Utensils,
+  Scale,
+  Leaf,
+  Users,
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -31,6 +39,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Mobile state: toggle between direct options and email/password form
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // Language selector state
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -147,7 +158,10 @@ export default function LoginPage() {
 
   return (
     <div className="feeder-exact-login-page" dir={dir}>
-      {/* Top Right Language Selector (Fixed/Pinned top-right on Desktop & Mobile) */}
+      
+      {/* ============================================================
+          TOP RIGHT LANGUAGE SELECTOR (GLOBAL)
+          ============================================================ */}
       <header className="feeder-exact-top-bar" aria-label="Language selection">
         <div className="feeder-language-selector-wrap">
           <button
@@ -157,9 +171,9 @@ export default function LoginPage() {
             aria-expanded={showLangMenu}
             aria-label={t('login.selectLanguage')}
           >
-            <Globe size={15} className="feeder-globe-icon" />
-            <span>{language.nativeName}</span>
-            <ChevronDown size={14} className="feeder-chevron-icon" />
+            <Globe size={14} className="feeder-globe-icon" />
+            <span>{language.nativeName || 'English'}</span>
+            <ChevronDown size={13} className="feeder-chevron-icon" />
           </button>
 
           {showLangMenu && (
@@ -182,11 +196,272 @@ export default function LoginPage() {
         </div>
       </header>
 
+      {/* ============================================================
+          1. MOBILE LOGIN EXPERIENCE (< 769px) - NATURE REFERENCE UI
+          ============================================================ */}
+      <div className="feeder-mobile-nature-container">
+        
+        {/* Top Branding Section */}
+        <div className="feeder-mobile-brand-header">
+          <div className="feeder-mobile-logo-wrap">
+            <img
+              src="/images/feeder-logo.svg"
+              alt="Feeder"
+              className="feeder-mobile-logo-svg"
+            />
+          </div>
+          <h1 className="feeder-mobile-main-tagline">
+            {t('login.taglineMain') || 'A kinder world for every animal.'}
+          </h1>
+          <p className="feeder-mobile-sub-tagline">
+            {t('login.taglineSub') || 'Connect • Care • Protect • Empower'}
+          </p>
+        </div>
+
+        {/* Hero Wildlife Art Composition */}
+        <div className="feeder-mobile-hero-wrapper">
+          <img
+            src="/images/feeder-wildlife-hero.jpg"
+            alt="Feeder. A kinder world for every animal."
+            className="feeder-mobile-hero-image"
+            loading="eager"
+          />
+        </div>
+
+        {/* Rounded Authentication Panel */}
+        <div className="feeder-mobile-auth-panel">
+          
+          {/* Feature Action Circles */}
+          <div className="feeder-mobile-features-grid">
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <PawPrint size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.findHelp') || 'Find Help'}</span>
+            </div>
+
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <Heart size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.adopt') || 'Adopt'}</span>
+            </div>
+
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <Utensils size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.supportFeeding') || 'Support Feeding'}</span>
+            </div>
+
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <Scale size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.knowYourRights') || 'Know Your Rights'}</span>
+            </div>
+
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <Leaf size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.learnAndExplore') || 'Learn & Explore'}</span>
+            </div>
+
+            <div className="feeder-mobile-feature-item">
+              <div className="feeder-mobile-feature-icon-box">
+                <Users size={18} className="text-[#1B5E20]" />
+              </div>
+              <span className="feeder-mobile-feature-label">{t('login.joinCommunity') || 'Join a Community'}</span>
+            </div>
+          </div>
+
+          {/* Authentication Actions Area */}
+          <div className="feeder-mobile-auth-actions-wrap">
+            
+            {/* Error Message */}
+            {error && (
+              <div className="feeder-exact-alert-error" role="alert">
+                <AlertCircle size={15} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {!showEmailForm ? (
+              /* Default Quick Auth Mode */
+              <div className="feeder-mobile-quick-actions">
+                {/* Continue with Email Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowEmailForm(true)}
+                  className="feeder-mobile-btn-email"
+                >
+                  <Mail size={17} className="shrink-0" />
+                  <span>{t('login.continueWithEmail') || 'Continue with Email'}</span>
+                  <ArrowRight size={16} className="shrink-0" />
+                </button>
+
+                {/* Continue with Google */}
+                <GoogleSignInButton
+                  onError={(msg) => setError(msg)}
+                  className="feeder-mobile-btn-google"
+                  buttonText={t('login.continueWithGoogle')}
+                />
+
+                {/* Divider: ──── OR ──── */}
+                <div className="feeder-exact-divider">
+                  <div className="feeder-exact-divider-line" />
+                  <span className="feeder-exact-divider-text">{t('login.or') || 'OR'}</span>
+                  <div className="feeder-exact-divider-line" />
+                </div>
+
+                {/* Create an Account */}
+                <Link href="/signup" className="feeder-mobile-btn-create">
+                  {t('login.createNewAccount') || 'Create an Account'}
+                </Link>
+
+                {/* Already have an account? Log In */}
+                <div className="feeder-mobile-login-toggle-wrap">
+                  <span className="text-[#64748b] text-[12.5px]">
+                    {t('login.alreadyHaveAccount') || 'Already have an account?'}
+                  </span>{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailForm(true)}
+                    className="feeder-mobile-login-link"
+                  >
+                    {t('login.logIn') || 'Log In'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Direct Email / Password Credentials Form */
+              <form onSubmit={handleLogin} className="feeder-exact-credentials-form" noValidate>
+                <div className="feeder-exact-form-group">
+                  <label className="feeder-exact-label" htmlFor="feeder-login-identifier">
+                    {t('login.emailOrUsername')}
+                  </label>
+                  <div className="feeder-exact-input-wrap">
+                    <Mail size={16} className="feeder-exact-input-icon" />
+                    <input
+                      id="feeder-login-identifier"
+                      type="text"
+                      className="feeder-exact-input"
+                      placeholder={t('login.emailPlaceholder')}
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      autoComplete="username"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="feeder-exact-form-group">
+                  <div className="feeder-exact-label-row">
+                    <label className="feeder-exact-label" htmlFor="feeder-login-password">
+                      {t('login.password')}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetEmail(identifier.includes('@') ? identifier : '');
+                        setResetError('');
+                        setResetSuccess(false);
+                        setShowForgotModal(true);
+                      }}
+                      className="feeder-exact-forgot-btn"
+                    >
+                      {t('login.forgotPassword')}
+                    </button>
+                  </div>
+                  <div className="feeder-exact-input-wrap">
+                    <Lock size={16} className="feeder-exact-input-icon" />
+                    <input
+                      id="feeder-login-password"
+                      type={showPassword ? 'text' : 'password'}
+                      className="feeder-exact-input feeder-exact-password-input"
+                      placeholder={t('login.passwordPlaceholder')}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="feeder-exact-eye-btn"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="feeder-exact-btn-continue"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>{t('login.loggingIn')}</span>
+                    </>
+                  ) : (
+                    <span>{t('login.logIn')}</span>
+                  )}
+                </button>
+
+                {/* Quick Google Option */}
+                <div className="mt-2.5">
+                  <GoogleSignInButton
+                    onError={(msg) => setError(msg)}
+                    className="feeder-mobile-btn-google"
+                    buttonText={t('login.continueWithGoogle')}
+                  />
+                </div>
+
+                {/* Back to Quick Options */}
+                <button
+                  type="button"
+                  onClick={() => setShowEmailForm(false)}
+                  className="feeder-mobile-back-btn"
+                >
+                  <ArrowLeft size={14} />
+                  <span>{t('login.backToOptions') || 'Back to all options'}</span>
+                </button>
+              </form>
+            )}
+
+            {/* Pagination Dots: • • • */}
+            <div className="feeder-mobile-pagination-dots" aria-hidden="true">
+              <span className="feeder-mobile-dot active" />
+              <span className="feeder-mobile-dot" />
+              <span className="feeder-mobile-dot" />
+            </div>
+
+            {/* Brand Footer */}
+            <div className="feeder-mobile-footer-brand">
+              <div className="feeder-mobile-footer-logo-row">
+                <Leaf size={13} className="text-[#2e7d32]" />
+                <span className="feeder-mobile-footer-text">feeder.life</span>
+              </div>
+              <p className="feeder-mobile-footer-tagline">
+                {t('login.footerTagline') || 'For animals. For people. For a better tomorrow.'}
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      {/* ============================================================
+          2. DESKTOP LOGIN EXPERIENCE (>= 769px) - FULL SPLIT LAYOUT
+          ============================================================ */}
       <div className="feeder-exact-split-layout">
         
-        {/* ============================================================
-            LEFT SECTION (≈ 60%): Exact Visual Composition
-            ============================================================ */}
+        {/* LEFT SECTION (≈ 58%): Visual Composition */}
         <section className="feeder-exact-left-panel" aria-label="Feeder platform overview">
           <div className="feeder-exact-composition-wrapper">
             <img
@@ -198,16 +473,11 @@ export default function LoginPage() {
           </div>
         </section>
 
-        {/* ============================================================
-            VERTICAL DIVIDER
-            ============================================================ */}
+        {/* VERTICAL DIVIDER */}
         <div className="feeder-exact-vertical-divider" aria-hidden="true" />
 
-        {/* ============================================================
-            RIGHT SECTION (≈ 40%): Generic Feeder Authentication Panel
-            ============================================================ */}
+        {/* RIGHT SECTION (≈ 42%): Generic Feeder Authentication Panel */}
         <section className="feeder-exact-right-panel" aria-label="Account login">
-          {/* Centered Generic Login Content */}
           <div className="feeder-exact-auth-container">
             
             {/* Feeder Paw + Heart Icon & Welcome Header */}
@@ -252,13 +522,13 @@ export default function LoginPage() {
             {/* Direct Email & Password Credentials Form */}
             <form onSubmit={handleLogin} className="feeder-exact-credentials-form" noValidate>
               <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="feeder-login-identifier">
+                <label className="feeder-exact-label" htmlFor="feeder-desktop-login-identifier">
                   {t('login.emailOrUsername')}
                 </label>
                 <div className="feeder-exact-input-wrap">
                   <Mail size={16} className="feeder-exact-input-icon" />
                   <input
-                    id="feeder-login-identifier"
+                    id="feeder-desktop-login-identifier"
                     type="text"
                     className="feeder-exact-input"
                     placeholder={t('login.emailPlaceholder')}
@@ -272,7 +542,7 @@ export default function LoginPage() {
 
               <div className="feeder-exact-form-group">
                 <div className="feeder-exact-label-row">
-                  <label className="feeder-exact-label" htmlFor="feeder-login-password">
+                  <label className="feeder-exact-label" htmlFor="feeder-desktop-login-password">
                     {t('login.password')}
                   </label>
                   <button
@@ -291,7 +561,7 @@ export default function LoginPage() {
                 <div className="feeder-exact-input-wrap">
                   <Lock size={16} className="feeder-exact-input-icon" />
                   <input
-                    id="feeder-login-password"
+                    id="feeder-desktop-login-password"
                     type={showPassword ? 'text' : 'password'}
                     className="feeder-exact-input feeder-exact-password-input"
                     placeholder={t('login.passwordPlaceholder')}
@@ -327,7 +597,7 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Create new account CTA: Outline Button */}
+            {/* Create new account CTA */}
             <div className="feeder-exact-signup-wrap">
               <Link href="/signup" className="feeder-exact-btn-create-account">
                 {t('login.createNewAccount')}
@@ -355,9 +625,7 @@ export default function LoginPage() {
 
       </div>
 
-      {/* ============================================================
-          GLOBAL MULTILINGUAL FOOTER
-          ============================================================ */}
+      {/* Global Multilingual Footer (Desktop) */}
       <LanguageFooter />
 
       {/* ============================================================
