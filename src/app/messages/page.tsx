@@ -6,14 +6,22 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MessagesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ user?: string; with?: string }>;
+export default async function MessagesPage(props: {
+  searchParams?: Promise<{ user?: string; with?: string }>;
 }) {
-  const user = await getCurrentUser();
-  const params = await searchParams;
-  const targetUserParam = params.user || params.with;
+  let user = null;
+  let targetUserParam: string | undefined = undefined;
+
+  try {
+    user = await getCurrentUser();
+  } catch {}
+
+  try {
+    if (props && props.searchParams) {
+      const resolved: any = await props.searchParams;
+      targetUserParam = resolved?.user || resolved?.with;
+    }
+  } catch {}
 
   let initialConversations: ConversationSummary[] = [];
   let availableGuardians: any[] = [];
