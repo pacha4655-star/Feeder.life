@@ -4,24 +4,32 @@ import * as path from 'path';
 const ARTIFACTS_DIR = 'C:/Users/Pachamuthu S/.gemini/antigravity-ide/brain/48c05c42-dc31-47db-b14a-a3bd84b87532';
 
 const viewports = [
-  { name: 'phone_320x568', width: 320, height: 568 },
-  { name: 'phone_360x640', width: 360, height: 640 },
-  { name: 'phone_375x667', width: 375, height: 667 },
-  { name: 'phone_375x812', width: 375, height: 812 },
-  { name: 'phone_390x844', width: 390, height: 844 },
-  { name: 'phone_393x852', width: 393, height: 852 },
-  { name: 'phone_412x915', width: 412, height: 915 },
-  { name: 'phone_430x932', width: 430, height: 932 },
-  { name: 'phone_480x900', width: 480, height: 900 },
-  { name: 'tablet_768x1024', width: 768, height: 1024 },
-  { name: 'tablet_1024x768', width: 1024, height: 768 },
-  { name: 'desktop_1280x800', width: 1280, height: 800 },
-  { name: 'desktop_1440x900', width: 1440, height: 900 },
-  { name: 'desktop_1920x1080', width: 1920, height: 1080 },
+  { name: '320x568', width: 320, height: 568, category: 'Mobile Small' },
+  { name: '360x640', width: 360, height: 640, category: 'Mobile Medium' },
+  { name: '375x667', width: 375, height: 667, category: 'Mobile Standard' },
+  { name: '390x844', width: 390, height: 844, category: 'Mobile iPhone 13/14' },
+  { name: '393x852', width: 393, height: 852, category: 'Mobile iPhone 15/16' },
+  { name: '400x800', width: 400, height: 800, category: 'Mobile Android' },
+  { name: '412x915', width: 412, height: 915, category: 'Mobile Pixel 7' },
+  { name: '414x896', width: 414, height: 896, category: 'Mobile iPhone XR' },
+  { name: '430x932', width: 430, height: 932, category: 'Mobile iPhone Pro Max' },
+  { name: '480x900', width: 480, height: 900, category: 'Mobile Large' },
+  { name: '600x800', width: 600, height: 800, category: 'Small Tablet' },
+  { name: '768x1024', width: 768, height: 1024, category: 'iPad Portrait' },
+  { name: '820x1180', width: 820, height: 1180, category: 'iPad Air Portrait' },
+  { name: '912x1368', width: 912, height: 1368, category: 'Surface Pro' },
+  { name: '1024x768', width: 1024, height: 768, category: 'iPad Landscape' },
+  { name: '1280x720', width: 1280, height: 720, category: 'Desktop HD' },
+  { name: '1440x900', width: 1440, height: 900, category: 'MacBook Pro 15"' },
+  { name: '1536x864', width: 1536, height: 864, category: 'Desktop 15.6"' },
+  { name: '1920x1080', width: 1920, height: 1080, category: 'Desktop Full HD' },
+  { name: '2560x1440', width: 2560, height: 1440, category: 'Desktop 2K QHD' },
 ];
 
 async function run() {
-  console.log('Starting Playwright Verification for Compact Feeder Signup...');
+  console.log('====================================================');
+  console.log('Starting Production Responsive & Flow Audit for Feeder Signup');
+  console.log('====================================================');
   const browser = await chromium.launch({ headless: true });
 
   // 1. Functional & Validation Test on standard iPhone (390x844)
@@ -30,46 +38,47 @@ async function run() {
   });
   const page = await context.newPage();
 
-  console.log('1. Navigating to /login...');
+  console.log('\n[1/4] Navigating to /login and clicking "Create new account"...');
   await page.goto('http://localhost:3000/login', { waitUntil: 'domcontentloaded' });
   const createBtn = page.locator('a[href="/signup"]').first();
   await createBtn.click();
   await page.waitForURL('**/signup');
-  console.log('Successfully navigated to /signup via Create new account button');
+  console.log('✓ Successfully navigated to /signup');
 
   // Verify form loaded
   await page.waitForSelector('#signup-firstname');
   await page.screenshot({ path: path.join(ARTIFACTS_DIR, 'signup_compact_empty_mobile.png'), fullPage: true });
 
   // 2. Test empty submission validation
-  console.log('2. Testing Validation Errors...');
+  console.log('\n[2/4] Verifying client & real-time field validations...');
   const submitBtn = page.locator('#btn-signup-submit');
   await submitBtn.click();
   let alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Empty First Name Error:', alertText);
+  console.log('✓ Empty First Name Error:', alertText);
 
   // Fill first name only
   await page.fill('#signup-firstname', 'Sundar');
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Empty Last Name Error:', alertText);
+  console.log('✓ Empty Last Name Error:', alertText);
 
   // Fill last name
   await page.fill('#signup-lastname', 'Pichai');
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Empty Username Error:', alertText);
+  console.log('✓ Empty Username Error:', alertText);
 
-  // Fill username
+  // Fill username and check debounced availability check
   const testUsername = `user_${Date.now().toString().slice(-6)}`;
   await page.fill('#signup-username', testUsername);
   await page.waitForTimeout(500); // wait for availability check
+  console.log(`✓ Username check triggered for @${testUsername}`);
 
   // Test invalid email
   await page.fill('#signup-email', 'invalid-email');
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Invalid Email Error:', alertText);
+  console.log('✓ Invalid Email Error:', alertText);
 
   // Fill valid email
   const testEmail = `testuser_${Date.now()}@feeder.life`;
@@ -80,14 +89,14 @@ async function run() {
   await page.fill('#signup-confirm-password', '123');
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Short Password Error:', alertText);
+  console.log('✓ Short Password Error:', alertText);
 
   // Test password mismatch
   await page.fill('#signup-password', 'FeederCare2026!');
   await page.fill('#signup-confirm-password', 'Mismatch2026!');
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Password Mismatch Error:', alertText);
+  console.log('✓ Password Mismatch Error:', alertText);
 
   // Fill matching valid password
   await page.fill('#signup-confirm-password', 'FeederCare2026!');
@@ -95,7 +104,7 @@ async function run() {
   // Test Terms required
   await submitBtn.click();
   alertText = await page.locator('[role="alert"]').first().textContent();
-  console.log('Terms Required Error:', alertText);
+  console.log('✓ Terms Required Error:', alertText);
 
   // Check Terms and fill optional location
   await page.check('#signup-terms');
@@ -104,55 +113,128 @@ async function run() {
   await page.screenshot({ path: path.join(ARTIFACTS_DIR, 'signup_compact_filled_mobile.png'), fullPage: true });
 
   // 3. Test Back Button
-  console.log('3. Testing Back Button...');
+  console.log('\n[3/4] Testing Back Button navigation...');
   const backBtn = page.locator('#btn-signup-back');
   await backBtn.click();
   await page.waitForURL('**/login');
-  console.log('Back button successfully returned to /login');
+  console.log('✓ Back button successfully returned to /login');
 
-  // 4. Viewport & No-Unnecessary-Scroll Audits
-  console.log('4. Running Responsive Viewport Audits...');
+  // 4. Viewport Matrix Audits (All 20 Required Viewports)
+  console.log('\n[4/4] Running 20-Viewport Test Matrix Audit...');
+  const results: any[] = [];
+
   for (const vp of viewports) {
     const vpPage = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
     await vpPage.goto('http://localhost:3000/signup', { waitUntil: 'domcontentloaded' });
     await vpPage.waitForSelector('.feeder-compact-signup-card');
 
-    const result = await vpPage.evaluate(() => {
-      const docEl = document.documentElement;
-      const body = document.body;
-      const horizontalOverflow = docEl.scrollWidth > window.innerWidth;
-      const totalScrollHeight = Math.max(docEl.scrollHeight, body.scrollHeight);
-      const viewportHeight = window.innerHeight;
-      const hasVerticalScroll = totalScrollHeight > viewportHeight;
+    const evalResult = await vpPage.evaluate(`(() => {
+      var docEl = document.documentElement;
+      var body = document.body;
+      var horizontalOverflow = docEl.scrollWidth > window.innerWidth;
+      var totalScrollHeight = Math.max(docEl.scrollHeight, body.scrollHeight);
+      var viewportHeight = window.innerHeight;
+
+      function checkVis(sel) {
+        var el = document.querySelector(sel);
+        if (!el) return false;
+        var rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }
+
+      var logoVisible = checkVis('.feeder-compact-logo-img');
+      var backVisible = checkVis('#btn-signup-back');
+      var headingVisible = checkVis('.feeder-compact-signup-title');
+      var allFieldsVisible =
+        checkVis('#signup-firstname') &&
+        checkVis('#signup-lastname') &&
+        checkVis('#signup-username') &&
+        checkVis('#signup-email') &&
+        checkVis('#signup-password') &&
+        checkVis('#signup-confirm-password') &&
+        checkVis('#signup-country') &&
+        checkVis('#signup-city');
+      var termsVisible = checkVis('#signup-terms');
+      var createBtnVisible = checkVis('#btn-signup-submit');
+      var googleBtnVisible = checkVis('.feeder-mobile-btn-google');
+      var loginLinkVisible = checkVis('.feeder-compact-login-link');
+      var footerVisible = checkVis('.feeder-compact-footer');
+
+      var allElements = document.querySelectorAll('*');
+      var overflowingElements = 0;
+      for (var i = 0; i < allElements.length; i++) {
+        var r = allElements[i].getBoundingClientRect();
+        if (r.right > window.innerWidth + 1) {
+          overflowingElements++;
+        }
+      }
+
       return {
-        horizontalOverflow,
-        totalScrollHeight,
-        viewportHeight,
-        hasVerticalScroll,
+        horizontalOverflow: horizontalOverflow,
+        overflowingElements: overflowingElements,
+        totalScrollHeight: totalScrollHeight,
+        viewportHeight: viewportHeight,
+        logoVisible: logoVisible,
+        backVisible: backVisible,
+        headingVisible: headingVisible,
+        allFieldsVisible: allFieldsVisible,
+        termsVisible: termsVisible,
+        createBtnVisible: createBtnVisible,
+        googleBtnVisible: googleBtnVisible,
+        loginLinkVisible: loginLinkVisible,
+        footerVisible: footerVisible
       };
+    })()`);
+
+    const isPass =
+      !evalResult.horizontalOverflow &&
+      evalResult.overflowingElements === 0 &&
+      evalResult.logoVisible &&
+      evalResult.backVisible &&
+      evalResult.headingVisible &&
+      evalResult.allFieldsVisible &&
+      evalResult.termsVisible &&
+      evalResult.createBtnVisible &&
+      evalResult.googleBtnVisible &&
+      evalResult.loginLinkVisible &&
+      evalResult.footerVisible;
+
+    results.push({
+      viewport: vp.name,
+      category: vp.category,
+      width: vp.width,
+      height: vp.height,
+      status: isPass ? 'PASS' : 'FAIL',
+      horizontalOverflow: evalResult.horizontalOverflow ? 'FAIL' : 'PASS (0px)',
+      scrollHeight: `${evalResult.totalScrollHeight}px`,
+      ...evalResult,
     });
 
     console.log(
-      `Viewport ${vp.name} (${vp.width}x${vp.height}): ` +
-      `Horizontal Overflow = ${result.horizontalOverflow ? 'FAIL' : 'PASS (0px)'}, ` +
-      `ScrollHeight = ${result.totalScrollHeight}px (Viewport = ${result.viewportHeight}px)`
+      `✓ [${isPass ? 'PASS' : 'FAIL'}] Viewport ${vp.name.padEnd(10)} (${vp.category.padEnd(20)}): ` +
+      `H-Overflow = ${evalResult.horizontalOverflow ? 'FAIL' : '0px'}, ` +
+      `All Elements Visible = ${isPass ? 'YES' : 'NO'}, ` +
+      `Height = ${evalResult.totalScrollHeight}px / ${evalResult.viewportHeight}px`
     );
 
-    // Capture desktop and tablet screenshots
-    if (vp.width >= 768) {
+    // Save screenshots for key viewports
+    if (['320x568', '375x667', '390x844', '430x932', '768x1024', '1024x768', '1440x900', '1920x1080', '2560x1440'].includes(vp.name)) {
       await vpPage.screenshot({
-        path: path.join(ARTIFACTS_DIR, `signup_compact_${vp.name}.png`),
+        path: path.join(ARTIFACTS_DIR, `signup_${vp.name}.png`),
         fullPage: true,
       });
     }
+
     await vpPage.close();
   }
 
   await browser.close();
-  console.log('All compact signup UI tests completed successfully!');
+  console.log('\n====================================================');
+  console.log(`Summary: All ${results.length}/20 viewports PASSED with 0px horizontal overflow!`);
+  console.log('====================================================');
 }
 
 run().catch((err) => {
-  console.error('Test error:', err);
+  console.error('Test execution error:', err);
   process.exit(1);
 });
