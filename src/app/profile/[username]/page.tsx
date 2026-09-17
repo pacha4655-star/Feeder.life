@@ -2,13 +2,17 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import AppShell from '@/components/layout/AppShell';
 import ProfileClient from '@/components/profile/ProfileClient';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage(props: { params: Promise<{ username: string }> }) {
   const { username } = await props.params;
   const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   const supabase = getSupabaseServerClient();
 
   const { data: userRows, error } = await supabase

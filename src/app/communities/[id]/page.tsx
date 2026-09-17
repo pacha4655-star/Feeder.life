@@ -2,13 +2,17 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import AppShell from '@/components/layout/AppShell';
 import CommunityDetailClient from '@/components/community/CommunityDetailClient';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CommunityPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
   const supabase = getSupabaseServerClient();
 
   // Try finding by id or slug

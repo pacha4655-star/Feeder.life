@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
+import { redirect } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import MessagesClient from '@/components/messages/MessagesClient';
 import { MessagingService, ConversationSummary } from '@/lib/services/messaging';
@@ -9,12 +10,11 @@ export const dynamic = 'force-dynamic';
 export default async function MessagesPage(props: {
   searchParams?: Promise<{ user?: string; with?: string }>;
 }) {
-  let user = null;
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
   let targetUserParam: string | undefined = undefined;
-
-  try {
-    user = await getCurrentUser();
-  } catch {}
 
   try {
     if (props && props.searchParams) {
@@ -22,6 +22,7 @@ export default async function MessagesPage(props: {
       targetUserParam = resolved?.user || resolved?.with;
     }
   } catch {}
+
 
   let initialConversations: ConversationSummary[] = [];
   let availableGuardians: any[] = [];

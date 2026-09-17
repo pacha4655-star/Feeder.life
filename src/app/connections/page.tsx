@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
+import { redirect } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import ConnectionsClient, { GuardianItem } from '@/components/connections/ConnectionsClient';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -7,8 +8,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function ConnectionsPage() {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
   const supabase = getSupabaseServerClient();
-  const currentUserId = user?.id || 'guest';
+  const currentUserId = user.id;
+
 
   // Get set of followed users by current user
   let followedSet = new Set<string>();

@@ -2,12 +2,17 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import AppShell from '@/components/layout/AppShell';
 import NotificationsClient, { NotificationItem } from '@/components/notifications/NotificationsClient';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
 export default async function NotificationsPage() {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
   let initialNotifications: NotificationItem[] = [];
+
 
   if (user) {
     try {

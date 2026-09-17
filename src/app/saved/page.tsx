@@ -1,4 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
+import { redirect } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import SavedPostsClient from '@/components/saved/SavedPostsClient';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -8,7 +9,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function SavedPage() {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
   let initialPosts: PostWithAuthor[] = [];
+
 
   if (user) {
     try {
