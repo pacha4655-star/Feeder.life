@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Users2, Plus, Search, ShieldCheck, MapPin, Check } from 'lucide-react';
+import { Users2, Plus, Search, ShieldCheck, MapPin, Check, Lock, Clock } from 'lucide-react';
+import FeederAvatar from '@/components/common/FeederAvatar';
 import type { UserSession } from '@/lib/auth/session';
 
 interface CommunitiesClientProps {
@@ -17,8 +18,9 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCommName, setNewCommName] = useState('');
   const [newCommDesc, setNewCommDesc] = useState('');
-  const [newCommCategory, setNewCommCategory] = useState('DOGS');
+  const [newCommCategory, setNewCommCategory] = useState('general');
   const [newCommArea, setNewCommArea] = useState(user?.areaName || '');
+  const [newCommIsPrivate, setNewCommIsPrivate] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCommunities = async (cat = category) => {
@@ -53,9 +55,13 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
               ? {
                   ...c,
                   is_joined: data.isJoined,
-                  actual_member_count: data.isJoined
-                    ? c.actual_member_count + 1
-                    : Math.max(0, c.actual_member_count - 1),
+                  is_pending: data.isPending,
+                  actual_member_count:
+                    data.memberCount !== undefined
+                      ? data.memberCount
+                      : data.isJoined
+                      ? (c.actual_member_count || c.member_count) + 1
+                      : Math.max(0, (c.actual_member_count || c.member_count) - 1),
                 }
               : c
           )
@@ -80,8 +86,9 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
         body: JSON.stringify({
           name: newCommName.trim(),
           description: newCommDesc.trim(),
-          category: newCommCategory,
-          locationArea: newCommArea,
+          communityType: newCommCategory,
+          locationArea: newCommArea.trim(),
+          isPrivate: newCommIsPrivate ? 1 : 0,
           coverImage: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800&auto=format&fit=crop&q=80',
           avatarImage: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=150&auto=format&fit=crop&q=80',
         }),
@@ -91,6 +98,7 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
         setIsCreateModalOpen(false);
         setNewCommName('');
         setNewCommDesc('');
+        setNewCommIsPrivate(false);
         fetchCommunities();
       }
     } finally {
@@ -101,7 +109,8 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
   const filteredCommunities = communities.filter(
     (c) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      (c.description && c.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (c.location_area && c.location_area.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -114,6 +123,7 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
           marginBottom: '16px',
           background: 'linear-gradient(135deg, rgba(5, 150, 105, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)',
           border: '1px solid var(--border-subtle)',
+          borderRadius: '16px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
@@ -134,13 +144,14 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
         </div>
 
         {/* Category Filters */}
-        <div className="feed-tabs-bar" style={{ marginTop: '16px', marginBottom: 0 }}>
+        <div className="feed-tabs-bar" style={{ marginTop: '16px', marginBottom: 0, overflowX: 'auto' }}>
           {[
             { id: 'ALL', label: 'All Communities' },
-            { id: 'DOGS', label: '🐕 Canine Welfare' },
-            { id: 'CATS', label: '🐈 Feline Care & TNR' },
-            { id: 'RESCUE', label: '🚨 Emergency Rescues' },
-            { id: 'BIRDS', label: '🕊️ Avian Care' },
+            { id: 'city', label: '🏙️ City & Area' },
+            { id: 'species', label: '🐾 Species' },
+            { id: 'topic', label: '🚨 Rescue' },
+            { id: 'organization', label: '🛡️ NGO' },
+            { id: 'general', label: '🌐 General' },
           ].map((cat) => (
             <button
               key={cat.id}
@@ -158,7 +169,7 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
         <input
           type="text"
           className="form-input"
-          placeholder="Filter communities by name or region..."
+          placeholder="Filter communities by name or location..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -170,7 +181,7 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
           Loading welfare communities...
         </div>
       ) : filteredCommunities.length === 0 ? (
-        <div className="card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '48px 24px', textAlign: 'center', borderRadius: '14px' }}>
           <Users2 size={44} color="var(--brand-primary)" style={{ margin: '0 auto 12px auto' }} />
           <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '6px' }}>
             No communities yet.
@@ -193,7 +204,7 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
           {filteredCommunities.map((comm) => (
-            <div key={comm.id} className="card" style={{ overflow: 'hidden' }}>
+            <div key={comm.id} className="card" style={{ overflow: 'hidden', borderRadius: '14px' }}>
               <div
                 style={{
                   height: '110px',
@@ -221,26 +232,34 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
                   <button
                     onClick={() => handleToggleJoin(comm.id)}
-                    className={comm.is_joined ? 'btn-secondary' : 'btn-primary'}
+                    className={comm.is_joined ? 'btn-secondary' : comm.is_pending ? 'btn-secondary' : 'btn-primary'}
                     style={{ padding: '6px 16px', fontSize: '13px' }}
                   >
-                    {comm.is_joined ? '✓ Joined' : '+ Join Community'}
+                    {comm.is_joined ? '✓ Joined' : comm.is_pending ? '⌛ Request Sent' : comm.is_private ? '+ Request to Join' : '+ Join Community'}
                   </button>
                 </div>
 
                 <div style={{ marginTop: '12px' }}>
                   <Link
                     href={`/communities/${comm.id}`}
-                    style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-main)' }}
+                    style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-main)', textDecoration: 'none' }}
                   >
                     {comm.name}
                   </Link>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}>
-                    <span>👥 {comm.actual_member_count || comm.member_count} members</span>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0', flexWrap: 'wrap' }}>
+                    <span>👥 {comm.actual_member_count || comm.member_count} {comm.actual_member_count === 1 ? 'member' : 'members'}</span>
                     {comm.location_area && (
                       <>
                         <span>&bull;</span>
                         <span>📍 {comm.location_area}</span>
+                      </>
+                    )}
+                    {comm.is_private === 1 && (
+                      <>
+                        <span>&bull;</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#b91c1c' }}>
+                          <Lock size={12} /> Private
+                        </span>
                       </>
                     )}
                   </div>
@@ -285,19 +304,20 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
                     value={newCommCategory}
                     onChange={(e) => setNewCommCategory(e.target.value)}
                   >
-                    <option value="DOGS">🐕 Street Dogs (Indies)</option>
-                    <option value="CATS">🐈 Community Cats & TNR</option>
-                    <option value="RESCUE">🚨 Emergency Rescue & Transport</option>
-                    <option value="BIRDS">🕊️ Avian & Bird Relief</option>
-                    <option value="COMMUNITY">🏙️ Neighborhood Welfare</option>
+                    <option value="city">🏙️ Neighborhood / City Pack</option>
+                    <option value="species">🐾 Species Specific (Dogs, Cats, Birds, Indies)</option>
+                    <option value="topic">🚨 Emergency Rescue & Treatment Triage</option>
+                    <option value="organization">🛡️ Registered Shelter / Animal Welfare NGO</option>
+                    <option value="general">🌐 General Animal Welfare Community</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Geographic Area / Region</label>
+                  <label className="form-label">Geographic Area / City</label>
                   <input
                     type="text"
                     className="form-input"
+                    placeholder="e.g. Chennai, Bangalore, Mumbai..."
                     value={newCommArea}
                     onChange={(e) => setNewCommArea(e.target.value)}
                     required
@@ -314,6 +334,17 @@ export default function CommunitiesClient({ user }: CommunitiesClientProps) {
                     onChange={(e) => setNewCommDesc(e.target.value)}
                     required
                   />
+                </div>
+
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13.5px' }}>
+                    <input
+                      type="checkbox"
+                      checked={newCommIsPrivate}
+                      onChange={(e) => setNewCommIsPrivate(e.target.checked)}
+                    />
+                    <span>Private Community (Requires admin approval for new members)</span>
+                  </label>
                 </div>
               </div>
 

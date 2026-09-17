@@ -95,8 +95,9 @@ export default function TopNavigation({
     else if (pathname.startsWith('/messages')) currentActiveTab = 'messages';
   }
 
-  // Fetch notifications
-  useEffect(() => {
+  // Fetch notifications with live polling
+  const loadNotifications = () => {
+    if (!user) return;
     fetch('/api/notifications')
       .then((res) => res.json())
       .then((data) => {
@@ -106,7 +107,13 @@ export default function TopNavigation({
         }
       })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000); // 30s polling
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Handle Search Input with debounce
   useEffect(() => {
@@ -751,7 +758,7 @@ export default function TopNavigation({
                 }}
               >
                 <Bell size={20} />
-                <span className="action-badge-green">{unreadCount > 0 ? unreadCount : 4}</span>
+                {unreadCount > 0 && <span className="action-badge-green">{unreadCount}</span>}
               </button>
 
               {showNotifMenu && (
@@ -768,6 +775,7 @@ export default function TopNavigation({
                     zIndex: 200,
                     boxShadow: 'var(--shadow-xl)',
                     padding: '12px',
+                    borderRadius: '14px',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', padding: '0 4px' }}>
@@ -794,14 +802,25 @@ export default function TopNavigation({
 
                   {notifications.length === 0 ? (
                     <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
-                      No new notifications
+                      No notifications yet.
                     </div>
                   ) : (
                     notifications.map((n) => (
                       <Link
                         key={n.id}
-                        href={n.target_url}
-                        onClick={() => setShowNotifMenu(false)}
+                        href={n.target_url || '/notifications'}
+                        onClick={async () => {
+                          setShowNotifMenu(false);
+                          if (!n.is_read) {
+                            try {
+                              await fetch(`/api/notifications/${n.id}`, { method: 'PATCH' });
+                              setNotifications((prev) =>
+                                prev.map((item) => (item.id === n.id ? { ...item, is_read: 1 } : item))
+                              );
+                              setUnreadCount((prev) => Math.max(0, prev - 1));
+                            } catch {}
+                          }
+                        }}
                         style={{
                           display: 'flex',
                           gap: '12px',
@@ -810,6 +829,7 @@ export default function TopNavigation({
                           background: n.is_read ? 'transparent' : 'var(--brand-primary-light)',
                           marginBottom: '4px',
                           transition: 'background 0.15s ease',
+                          textDecoration: 'none',
                         }}
                       >
                         <FeederAvatar

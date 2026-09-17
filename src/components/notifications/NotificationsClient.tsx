@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { formatShortDate } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
+import FeederAvatar from '@/components/common/FeederAvatar';
 
 export interface NotificationItem {
   id: string;
@@ -188,24 +189,34 @@ export default function NotificationsClient({
             return (
               <Link
                 key={item.id}
-                href={item.target_url || '/'}
+                href={item.target_url || '/notifications'}
+                onClick={async () => {
+                  if (item.is_read === 0) {
+                    try {
+                      await fetch(`/api/notifications/${item.id}`, { method: 'PATCH' });
+                      setNotifications((prev) =>
+                        prev.map((n) => (n.id === item.id ? { ...n, is_read: 1 } : n))
+                      );
+                    } catch {}
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '14px',
                   padding: '16px 20px',
-                  borderBottom: isLast ? 'none' : '1px solid var(--border)',
-                  background: item.is_read === 0 ? 'rgba(5, 150, 105, 0.04)' : 'transparent',
+                  borderBottom: isLast ? 'none' : '1px solid var(--border-subtle)',
+                  background: item.is_read === 0 ? 'rgba(5, 150, 105, 0.05)' : 'transparent',
                   textDecoration: 'none',
                   color: 'inherit',
                   transition: 'background 0.15s ease',
                 }}
               >
                 <div style={{ position: 'relative' }}>
-                  <img
-                    src={item.sender_avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${item.sender_id || 'system'}`}
-                    alt=""
-                    style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover' }}
+                  <FeederAvatar
+                    src={item.sender_avatar}
+                    alt={item.sender_name || item.title}
+                    size={42}
                   />
                   <div
                     style={{
@@ -246,8 +257,9 @@ export default function NotificationsClient({
                       width: '8px',
                       height: '8px',
                       borderRadius: '50%',
-                      background: 'var(--primary)',
+                      background: 'var(--brand-primary)',
                       alignSelf: 'center',
+                      flexShrink: 0,
                     }}
                   />
                 )}

@@ -20,6 +20,7 @@ interface PostComposerModalProps {
   onClose: () => void;
   onPostCreated: () => void;
   initialType?: string;
+  communityId?: string;
 }
 
 interface LocalMediaItem {
@@ -48,13 +49,14 @@ export default function PostComposerModal({
   onClose,
   onPostCreated,
   initialType = 'NORMAL',
+  communityId,
 }: PostComposerModalProps) {
   useBodyScrollLock(isOpen);
 
   const [contentType, setContentType] = useState(initialType);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [visibility, setVisibility] = useState('PUBLIC');
+  const [visibility, setVisibility] = useState(communityId ? 'COMMUNITY' : 'PUBLIC');
   const [locationName, setLocationName] = useState('');
   const [mediaUrlInput, setMediaUrlInput] = useState('');
   const [remoteMediaUrls, setRemoteMediaUrls] = useState<string[]>([]);
@@ -265,6 +267,7 @@ export default function PostComposerModal({
           body: body.trim(),
           contentType,
           visibility,
+          communityId: communityId || undefined,
           locationName: locationName.trim() || undefined,
           mediaUrls: allMediaUrls,
         }),

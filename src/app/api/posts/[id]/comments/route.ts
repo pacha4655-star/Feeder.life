@@ -88,6 +88,32 @@ export async function POST(
       return NextResponse.json({ success: false, error: insertErr?.message || 'Failed to post comment' }, { status: 400 });
     }
 
+    // Notify post author if not self
+    const { data: post } = await supabase
+      .from('social_posts')
+      .select('id, user_id, content, community_id')
+      .eq('id', postId)
+      .maybeSingle();
+
+    if (post && post.user_id && post.user_id !== user.id) {
+      await supabase.from('platform_data').insert({
+        data_type: 'notification',
+        user_id: post.user_id,
+        target_id: user.id,
+        target_user_id: user.id,
+        status: 'unread',
+        data: {
+          type: 'COMMENT',
+          title: 'New comment on your post',
+          body: `${user.fullName} commented: "${commentText.trim().slice(0, 60)}${commentText.length > 60 ? '...' : ''}"`,
+          target_url: `/#${postId}`,
+          sender_name: user.fullName,
+          sender_avatar: user.avatarUrl,
+          post_id: postId,
+        },
+      });
+    }
+
     const formattedComment = {
       id: comment.id,
       post_id: postId,
