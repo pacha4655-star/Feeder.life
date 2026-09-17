@@ -144,6 +144,8 @@ export async function GET(request: NextRequest) {
     let people: any[] = [];
     let communities: any[] = [];
     let posts: any[] = [];
+    let photos: any[] = [];
+    let videos: any[] = [];
     let news: any[] = [];
     let images: any[] = [];
 
@@ -151,11 +153,13 @@ export async function GET(request: NextRequest) {
     const fetchPeople = fetchAll || type === 'people';
     const fetchCommunities = fetchAll || type === 'communities';
     const fetchPosts = fetchAll || type === 'posts';
+    const fetchPhotos = fetchAll || type === 'photos';
+    const fetchVideos = fetchAll || type === 'videos';
     const fetchNews = fetchAll || type === 'news';
     const fetchImages = fetchAll || type === 'images';
 
-    const dbLimit = fetchAll ? 6 : 16;
-    const extLimit = fetchAll ? 6 : 16;
+    const dbLimit = fetchAll ? 6 : 20;
+    const extLimit = fetchAll ? 6 : 20;
 
     // 1. Search Real Users (public profile fields only)
     if (fetchPeople) {
@@ -200,17 +204,17 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // 3. Search Real Posts
-    if (fetchPosts) {
+    // 3. Search Real Posts, Photos, and Videos from social_posts
+    if (fetchPosts || fetchPhotos || fetchVideos) {
       const { data: postRows } = await supabase
         .from('social_posts')
-        .select('id, user_id, content, data, stats, created_at')
+        .select('id, user_id, content, media, data, stats, created_at')
         .eq('record_type', 'post')
         .eq('is_active', true)
         .eq('is_deleted', false)
         .ilike('content', `%${sanitized}%`)
         .order('created_at', { ascending: false })
-        .limit(dbLimit);
+        .limit(dbLimit * 2);
 
       if (postRows && postRows.length > 0) {
         const userIds = Array.from(new Set(postRows.map((p) => p.user_id).filter(Boolean)));
@@ -221,23 +225,73 @@ export async function GET(request: NextRequest) {
 
         const authorMap = new Map((authors || []).map((a: any) => [a.id, a]));
 
-        posts = postRows.map((p: any) => {
+        for (const p of postRows) {
           const author = authorMap.get(p.user_id);
-          return {
-            id: p.id,
-            title: p.data?.title || '',
-            body: p.content || '',
-            content_type: p.data?.content_type || 'GENERAL',
-            media_url: p.data?.media_url || p.data?.images?.[0] || null,
-            location_name: p.data?.location_name || '',
-            reaction_count: p.stats?.likes_count || 0,
-            comment_count: p.stats?.comments_count || 0,
-            author_name: author?.display_name || author?.username || 'Animal Guardian',
-            author_username: author?.username || '',
-            author_avatar: author?.avatar_url || '',
-            created_at: p.created_at,
-          };
-        });
+          const mediaList = Array.isArray(p.media)
+            ? p.media
+            : p.data?.images
+            ? p.data.images
+            : p.data?.media_url
+            ? [p.data.media_url]
+            : [];
+          const mediaUrls = mediaList.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean);
+          const photoUrls = mediaUrls.filter((u: string) => !/\.(mp4|webm|mov|m4v)/i.test(u));
+          const videoUrls = mediaUrls.filter((u: string) => /\.(mp4|webm|mov|m4v)/i.test(u));
+
+          if (fetchPosts && posts.length < dbLimit) {
+            posts.push({
+              id: p.id,
+              title: p.data?.title || '',
+              body: p.content || '',
+              content_type: p.data?.content_type || (videoUrls.length > 0 ? 'VIDEO' : photoUrls.length > 0 ? 'PHOTO' : 'GENERAL'),
+              media_url: photoUrls[0] || videoUrls[0] || null,
+              media_urls: mediaUrls,
+              location_name: p.data?.location_name || '',
+              reaction_count: p.stats?.likes_count || 0,
+              comment_count: p.stats?.comments_count || 0,
+              author_name: author?.display_name || author?.username || 'Animal Guardian',
+              author_username: author?.username || '',
+              author_avatar: author?.avatar_url || '',
+              created_at: p.created_at,
+            });
+          }
+
+          if (fetchPhotos && photoUrls.length > 0 && photos.length < dbLimit) {
+            for (const imgUrl of photoUrls) {
+              if (photos.length < dbLimit) {
+                photos.push({
+                  id: `${p.id}-${photos.length}`,
+                  post_id: p.id,
+                  url: imgUrl,
+                  thumbnail_url: imgUrl,
+                  title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Photo Post'),
+                  author_name: author?.display_name || author?.username || 'Animal Guardian',
+                  author_username: author?.username || '',
+                  author_avatar: author?.avatar_url || '',
+                  created_at: p.created_at,
+                });
+              }
+            }
+          }
+
+          if (fetchVideos && videoUrls.length > 0 && videos.length < dbLimit) {
+            for (const vidUrl of videoUrls) {
+              if (videos.length < dbLimit) {
+                videos.push({
+                  id: `${p.id}-${videos.length}`,
+                  post_id: p.id,
+                  url: vidUrl,
+                  thumbnail_url: photoUrls[0] || null,
+                  title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Video Post'),
+                  author_name: author?.display_name || author?.username || 'Animal Guardian',
+                  author_username: author?.username || '',
+                  author_avatar: author?.avatar_url || '',
+                  created_at: p.created_at,
+                });
+              }
+            }
+          }
+        }
       }
     }
 
@@ -255,7 +309,7 @@ export async function GET(request: NextRequest) {
       success: true,
       query: rawQuery,
       type,
-      results: { people, communities, posts, news, images },
+      results: { people, communities, posts, photos, videos, news, images },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
