@@ -64,8 +64,6 @@ export default function GoogleSignInButton({
         name: err.name,
       });
 
-      const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'the current domain';
-
       if (
         err.code === 'auth/popup-closed-by-user' ||
         err.code === 'auth/cancelled-popup-request' ||
@@ -73,9 +71,9 @@ export default function GoogleSignInButton({
       ) {
         onError?.('Sign-in cancelled. Please select your Google account to proceed.');
       } else if (err.code === 'auth/popup-blocked') {
-        onError?.(`Pop-up was blocked by your browser. Please allow pop-ups for ${currentHost}.`);
+        onError?.('Pop-up was blocked by your browser. Please allow pop-ups for this site.');
       } else if (err.code === 'auth/unauthorized-domain') {
-        onError?.(`Domain '${currentHost}' is not authorized in Firebase Authentication Console. Please add ${currentHost} to Authorized Domains in Firebase Console.`);
+        onError?.(err.message || 'This domain is not authorized in Firebase Authentication Console.');
       } else if (err.code === 'auth/operation-not-allowed') {
         onError?.('Google Sign-In provider is disabled in Firebase Console.');
       } else if (err.code === 'auth/network-request-failed') {
