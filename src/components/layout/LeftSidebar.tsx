@@ -70,7 +70,7 @@ export default function LeftSidebar({
         >
           <Link
             href={`/profile/${user.username}`}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', minWidth: 0, textDecoration: 'none' }}
           >
             <FeederAvatar
               src={user.avatarUrl}
@@ -78,7 +78,7 @@ export default function LeftSidebar({
               size={42}
               className="avatar-img"
             />
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
                   fontWeight: 700,
@@ -95,14 +95,6 @@ export default function LeftSidebar({
                 {user.feederLevel || 'Animal Guardian'}
               </div>
             </div>
-          </Link>
-
-          <Link
-            href="/settings"
-            style={{ color: 'var(--text-muted)', display: 'flex', padding: '4px', borderRadius: '50%' }}
-            title="Settings"
-          >
-            <Settings size={18} />
           </Link>
         </div>
       ) : (

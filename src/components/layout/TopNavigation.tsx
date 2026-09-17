@@ -26,6 +26,8 @@ import {
   Camera,
   MessageCircle,
   Sparkles,
+  Loader2,
+  CheckCircle2,
 } from 'lucide-react';
 import { formatTime } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
@@ -139,6 +141,17 @@ export default function TopNavigation({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Keyboard listener for Escape key to close search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setShowSearchDropdown(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleMarkNotificationsRead = async () => {
     try {
       await fetch('/api/notifications', { method: 'POST' });
@@ -155,7 +168,7 @@ export default function TopNavigation({
 
   return (
     <header className="app-topbar">
-      {/* Top Left: Brand Logo & Search */}
+      {/* Top Left: Brand Logo & Single Header Global Search */}
       <div className="topbar-left">
         <Link href="/" className="brand-logo" title="Feeder" aria-label="Feeder Home">
           <FeederLogo variant="responsive" height={36} />
@@ -172,10 +185,35 @@ export default function TopNavigation({
             onFocus={() => {
               if (searchResults) setShowSearchDropdown(true);
             }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setShowSearchDropdown(false);
+              }
+            }}
           />
-          {searchQuery && (
+
+          {isSearching ? (
+            <div
+              style={{
+                position: 'absolute',
+                right: '10px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--brand-primary)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Loader2 size={14} className="animate-spin" />
+            </div>
+          ) : searchQuery ? (
             <button
-              onClick={() => setSearchQuery('')}
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSearchResults(null);
+                setShowSearchDropdown(false);
+              }}
               style={{
                 position: 'absolute',
                 right: '10px',
@@ -185,13 +223,17 @@ export default function TopNavigation({
                 border: 'none',
                 cursor: 'pointer',
                 color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '2px',
               }}
+              aria-label="Clear search"
             >
               <X size={14} />
             </button>
-          )}
+          ) : null}
 
-          {/* Search Autocomplete Dropdown */}
+          {/* Real Search Autocomplete Dropdown */}
           {showSearchDropdown && searchResults && (
             <div
               className="card glass-panel"
@@ -199,111 +241,189 @@ export default function TopNavigation({
                 position: 'absolute',
                 top: '46px',
                 left: 0,
-                width: '320px',
-                maxWidth: 'calc(100vw - 24px)',
-                maxHeight: '400px',
+                width: '360px',
+                maxWidth: 'calc(100vw - 32px)',
+                maxHeight: '440px',
                 overflowY: 'auto',
-                zIndex: 200,
+                zIndex: 250,
                 padding: '12px',
+                borderRadius: '14px',
                 boxShadow: 'var(--shadow-xl)',
+                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-card)',
               }}
             >
-              <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', letterSpacing: '0.05em' }}>
                 SEARCH RESULTS
               </div>
 
-              {/* Communities Results */}
+              {/* 1. Real Users / People Results First */}
+              {searchResults.people?.length > 0 && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    People & Guardians
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {searchResults.people.map((p: any) => (
+                      <Link
+                        key={p.id}
+                        href={`/profile/${p.username}`}
+                        onClick={() => {
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                          transition: 'background 0.15s ease',
+                        }}
+                        className="sidebar-user-card"
+                      >
+                        <FeederAvatar src={p.avatar_url} alt={p.full_name} size={36} className="avatar-img" />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.full_name}
+                            </span>
+                            {p.is_verified && (
+                              <CheckCircle2 size={13} color="var(--brand-primary)" fill="var(--brand-primary-light)" style={{ flexShrink: 0 }} />
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                            <span>@{p.username}</span>
+                            {p.area_name && (
+                              <>
+                                <span>•</span>
+                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.area_name}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Real Communities Results */}
               {searchResults.communities?.length > 0 && (
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-primary)', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Communities
                   </div>
-                  {searchResults.communities.map((c: any) => (
-                    <Link
-                      key={c.id}
-                      href={`/communities/${c.id}`}
-                      onClick={() => setShowSearchDropdown(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px',
-                        borderRadius: '6px',
-                        margin: '2px 0',
-                      }}
-                      className="sidebar-user-card"
-                    >
-                      <Users2 size={16} color="var(--brand-primary)" />
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>{c.name}</div>
-                    </Link>
-                  ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {searchResults.communities.map((c: any) => (
+                      <Link
+                        key={c.id}
+                        href={`/communities/${c.id}`}
+                        onClick={() => {
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                        }}
+                        className="sidebar-user-card"
+                      >
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: 'var(--brand-primary-light)',
+                            color: 'var(--brand-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Users2 size={18} />
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.name}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                            {c.member_count} {c.member_count === 1 ? 'member' : 'members'} {c.location_area ? `• ${c.location_area}` : ''}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* SOS Emergency Results */}
+              {/* 3. Real Active SOS Emergency Results */}
               {searchResults.sos?.length > 0 && (
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-sos)', textTransform: 'uppercase' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--brand-sos)', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Active SOS
                   </div>
-                  {searchResults.sos.map((s: any) => (
-                    <Link
-                      key={s.id}
-                      href="/sos"
-                      onClick={() => setShowSearchDropdown(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px',
-                        borderRadius: '6px',
-                        margin: '2px 0',
-                      }}
-                      className="sidebar-user-card"
-                    >
-                      <AlertTriangle size={16} color="var(--brand-sos)" />
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>{s.title}</div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-
-              {/* People Results */}
-              {searchResults.people?.length > 0 && (
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    Feeders & Rescuers
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {searchResults.sos.map((s: any) => (
+                      <Link
+                        key={s.id}
+                        href="/sos"
+                        onClick={() => {
+                          setShowSearchDropdown(false);
+                          setSearchQuery('');
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          textDecoration: 'none',
+                        }}
+                        className="sidebar-user-card"
+                      >
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            borderRadius: '8px',
+                            background: '#fee2e2',
+                            color: 'var(--brand-sos)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <AlertTriangle size={18} />
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--brand-sos)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.title}
+                          </div>
+                          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                            {s.animal_type || 'Animal'} {s.approx_location_name ? `• ${s.approx_location_name}` : ''}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
-                  {searchResults.people.map((p: any) => (
-                    <Link
-                      key={p.id}
-                      href={`/profile/${p.username}`}
-                      onClick={() => setShowSearchDropdown(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px',
-                        borderRadius: '6px',
-                        margin: '2px 0',
-                      }}
-                      className="sidebar-user-card"
-                    >
-                      <img src={p.avatar_url} alt="" style={{ width: '22px', height: '22px', borderRadius: '50%' }} />
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600 }}>{p.full_name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{p.username}</div>
-                      </div>
-                    </Link>
-                  ))}
                 </div>
               )}
 
+              {/* Empty Search Result State */}
               {searchResults.communities?.length === 0 &&
                 searchResults.sos?.length === 0 &&
-                searchResults.people?.length === 0 && (
-                  <div style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
-                    No results found for &ldquo;{searchQuery}&rdquo;
+                searchResults.people?.length === 0 &&
+                searchResults.posts?.length === 0 && (
+                  <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    No users or results found for &ldquo;{searchQuery}&rdquo;
                   </div>
                 )}
             </div>
