@@ -11,6 +11,7 @@ interface GoogleSignInButtonProps {
   onSuccess?: () => void;
   className?: string;
   style?: React.CSSProperties;
+  buttonText?: string;
 }
 
 /**
@@ -22,6 +23,7 @@ export default function GoogleSignInButton({
   onSuccess,
   className = '',
   style,
+  buttonText = 'Continue with Google',
 }: GoogleSignInButtonProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -94,7 +96,7 @@ export default function GoogleSignInButton({
       onClick={handleGoogleClick}
       disabled={isLoading}
       className={`btn-google ${className}`.trim()}
-      aria-label="Continue with Google"
+      aria-label={buttonText}
       style={{
         width: '100%',
         display: 'flex',
@@ -140,7 +142,7 @@ export default function GoogleSignInButton({
             />
             <path fill="none" d="M0 0h48v48H0z" />
           </svg>
-          <span>Continue with Google</span>
+          <span>{buttonText}</span>
         </>
       )}
     </button>

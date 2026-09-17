@@ -1,0 +1,84 @@
+{
+  "brand": {
+    "name": "Feeder",
+    "tagline": "استكشف الأشياء التي تحبها."
+  },
+  "hero": {
+    "headlinePrefix": "استكشف الأشياء",
+    "headlineHighlight": "التي تحبها.",
+    "badgeAnimals": "الحيوانات",
+    "badgeAnimalsSub": "تجمع الناس معًا",
+    "badgeCare": "رعاية",
+    "badgeFeed": "إطعام",
+    "badgeRescue": "إنقاذ",
+    "badgeRepeat": "تكرار"
+  },
+  "login": {
+    "title": "تسجيل الدخول إلى Feeder",
+    "welcomeBack": "مرحبًا بعودتك",
+    "continue": "متابعة",
+    "useAnotherProfile": "استخدام ملف شخصي آخر",
+    "switchToSaved": "التبديل إلى الملف المحفوظ",
+    "or": "أو",
+    "continueWithGoogle": "المتابعة باستخدام Google",
+    "createNewAccount": "إنشاء حساب جديد",
+    "emailOrUsername": "البريد الإلكتروني أو اسم المستخدم",
+    "emailPlaceholder": "أدخل البريد الإلكتروني أو @اسم_المستخدم",
+    "password": "كلمة المرور",
+    "passwordPlaceholder": "أدخل كلمة المرور",
+    "forgotPassword": "هل نسيت كلمة المرور؟",
+    "logIn": "تسجيل الدخول",
+    "signingIn": "جارٍ تسجيل الدخول...",
+    "loggingIn": "جارٍ تسجيل الدخول...",
+    "selectLanguage": "اختر اللغة",
+    "userAvatar": "الصورة الرمزية للمستخدم"
+  },
+  "forgotPassword": {
+    "modalTitle": "إعادة تعيين كلمة المرور",
+    "modalDesc": "أدخل عنوان بريدك الإلكتروني المسجل وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.",
+    "emailLabel": "عنوان بريد الحساب",
+    "emailPlaceholder": "name@example.com",
+    "cancel": "إلغاء",
+    "sendLink": "إرسال رابط إعادة التعيين",
+    "sending": "جارٍ الإرسال...",
+    "successTitle": "تم إرسال بريد إعادة تعيين كلمة المرور",
+    "successDesc": "إذا كان هناك حساب مرتبط بـ {email}، فستتلقى بريدًا إلكترونيًا يحتوي على التعليمات قريبًا.",
+    "backToSignIn": "العودة لتسجيل الدخول"
+  },
+  "errors": {
+    "missingCredentials": "يرجى إدخال البريد الإلكتروني/اسم المستخدم وكلمة المرور.",
+    "invalidCredentials": "البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة.",
+    "invalidEmail": "يرجى إدخال عنوان بريد إلكتروني صالح.",
+    "userDisabled": "تم تعطيل هذا الحساب. يرجى الاتصال بالدعم.",
+    "tooManyRequests": "محاولات كثيرة غير ناجحة. يرجى المحاولة لاحقًا.",
+    "networkError": "تعذر الاتصال. يرجى التحقق من اتصالك بالإنترنت.",
+    "resetFailed": "تعذر إرسال بريد إعادة تعيين كلمة المرور. يرجى المحاولة مرة أخرى."
+  },
+  "footer": {
+    "moreLanguages": "المزيد من اللغات...",
+    "languages": "اللغات",
+    "signUp": "إنشاء حساب",
+    "logIn": "تسجيل الدخول",
+    "about": "عن Feeder",
+    "communities": "المجتمعات",
+    "animals": "الحيوانات",
+    "feeding": "الإطعام",
+    "sos": "نداء استغاثة وطوارئ",
+    "nearby": "بالقرب منك",
+    "askFeeder": "Ask Feeder AI",
+    "privacy": "الخصوصية",
+    "terms": "الشروط",
+    "guidelines": "إرشادات المجتمع",
+    "animalWelfare": "رفاهية الحيوان",
+    "help": "المساعدة والدعم",
+    "contact": "اتصل بنا",
+    "copyright": "Feeder.life © 2026. تمكين الرحمة والرفق بالحيوان حول العالم."
+  },
+  "modal": {
+    "selectLanguage": "اختر لغتك",
+    "searchPlaceholder": "ابحث عن اللغات بالاسم أو الخط الأصلي...",
+    "close": "إغلاق",
+    "allLanguages": "جميع اللغات",
+    "popular": "شائع في منطقتك"
+  }
+}

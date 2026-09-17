@@ -1,0 +1,84 @@
+{
+  "brand": {
+    "name": "Feeder",
+    "tagline": "Explore the things you love."
+  },
+  "hero": {
+    "headlinePrefix": "Explore the things",
+    "headlineHighlight": "you love.",
+    "badgeAnimals": "Animals",
+    "badgeAnimalsSub": "Bring People Together",
+    "badgeCare": "Care",
+    "badgeFeed": "Feed",
+    "badgeRescue": "Rescue",
+    "badgeRepeat": "Repeat"
+  },
+  "login": {
+    "title": "Sign in to Feeder",
+    "welcomeBack": "Welcome Back",
+    "continue": "Continue",
+    "useAnotherProfile": "Use another profile",
+    "switchToSaved": "Switch to saved profile",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "createNewAccount": "Create new account",
+    "emailOrUsername": "Email or Username",
+    "emailPlaceholder": "Enter email or @username",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password",
+    "forgotPassword": "Forgot password?",
+    "logIn": "Log In",
+    "signingIn": "Signing in...",
+    "loggingIn": "Logging in...",
+    "selectLanguage": "Select language",
+    "userAvatar": "User avatar"
+  },
+  "forgotPassword": {
+    "modalTitle": "Reset Password",
+    "modalDesc": "Enter your registered email address and we'll send you a link to reset your password.",
+    "emailLabel": "Account Email Address",
+    "emailPlaceholder": "name@example.com",
+    "cancel": "Cancel",
+    "sendLink": "Send Reset Link",
+    "sending": "Sending...",
+    "successTitle": "Password Reset Email Sent",
+    "successDesc": "If an account exists for {email}, you will receive an email with instructions shortly.",
+    "backToSignIn": "Back to Sign In"
+  },
+  "errors": {
+    "missingCredentials": "Please enter your email/username and password.",
+    "invalidCredentials": "Incorrect email/username or password.",
+    "invalidEmail": "Please enter a valid email address.",
+    "userDisabled": "This account has been deactivated. Please contact support.",
+    "tooManyRequests": "Too many failed attempts. Please try again later.",
+    "networkError": "Unable to connect. Please check your internet connection.",
+    "resetFailed": "Unable to send password reset email. Please try again."
+  },
+  "footer": {
+    "moreLanguages": "More languages...",
+    "languages": "Languages",
+    "signUp": "Sign up",
+    "logIn": "Log in",
+    "about": "About Feeder",
+    "communities": "Communities",
+    "animals": "Animals",
+    "feeding": "Feeding",
+    "sos": "SOS Rescue",
+    "nearby": "Nearby",
+    "askFeeder": "Ask Feeder AI",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "guidelines": "Community Guidelines",
+    "animalWelfare": "Animal Welfare",
+    "help": "Help & Support",
+    "contact": "Contact",
+    "copyright": "Feeder.life © 2026. Empowering Compassion for Animals Worldwide."
+  },
+  "modal": {
+    "selectLanguage": "Select Your Language",
+    "searchPlaceholder": "Search languages by name or native script...",
+    "close": "Close",
+    "allLanguages": "All Languages",
+    "popular": "Popular in Region"
+  }
+}

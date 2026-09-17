@@ -1,0 +1,84 @@
+{
+  "brand": {
+    "name": "Feeder",
+    "tagline": "আপনার পছন্দের বিষয়গুলি অন্বেষণ করুন।"
+  },
+  "hero": {
+    "headlinePrefix": "আপনার পছন্দের বিষয়গুলি",
+    "headlineHighlight": "অন্বেষণ করুন।",
+    "badgeAnimals": "প্রাণী",
+    "badgeAnimalsSub": "মানুষকে একত্রিত করে",
+    "badgeCare": "যত্ন",
+    "badgeFeed": "খাদ্যদান",
+    "badgeRescue": "উদ্ধার",
+    "badgeRepeat": "পুনরাবৃত্তি"
+  },
+  "login": {
+    "title": "Feeder-এ সাইন ইন করুন",
+    "welcomeBack": "স্বাগতম",
+    "continue": "চালিয়ে যান",
+    "useAnotherProfile": "অন্য প্রোফাইল ব্যবহার করুন",
+    "switchToSaved": "সংরক্ষিত প্রোফাইলে স্যুইচ করুন",
+    "or": "অথবা",
+    "continueWithGoogle": "Google দিয়ে চালিয়ে যান",
+    "createNewAccount": "নতুন অ্যাকাউন্ট তৈরি করুন",
+    "emailOrUsername": "ইমেল বা ব্যবহারকারীর নাম",
+    "emailPlaceholder": "ইমেল বা @ইউজারনেম লিখুন",
+    "password": "পাসওয়ার্ড",
+    "passwordPlaceholder": "পাসওয়ার্ড লিখুন",
+    "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
+    "logIn": "লগ ইন করুন",
+    "signingIn": "সাইন ইন হচ্ছে...",
+    "loggingIn": "লগ ইন হচ্ছে...",
+    "selectLanguage": "ভাষা নির্বাচন করুন",
+    "userAvatar": "ব্যবহারকারীর ছবি"
+  },
+  "forgotPassword": {
+    "modalTitle": "পাসওয়ার্ড পুনরায় সেট করুন",
+    "modalDesc": "আপনার নিবন্ধিত ইমেল ঠিকানা লিখুন এবং আমরা একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠাব।",
+    "emailLabel": "অ্যাকাউন্ট ইমেল ঠিকানা",
+    "emailPlaceholder": "name@example.com",
+    "cancel": "বাতিল",
+    "sendLink": "রিসেট লিঙ্ক পাঠান",
+    "sending": "পাঠানো হচ্ছে...",
+    "successTitle": "পাসওয়ার্ড রিসেট ইমেল পাঠানো হয়েছে",
+    "successDesc": "{email}-এর জন্য কোনো অ্যাকাউন্ট থাকলে, আপনি শীঘ্রই নির্দেশাবলী সহ একটি ইমেল পাবেন।",
+    "backToSignIn": "সাইন ইন-এ ফিরে যান"
+  },
+  "errors": {
+    "missingCredentials": "অনুগ্রহ করে আপনার ইমেল/ব্যবহারকারীর নাম এবং পাসওয়ার্ড লিখুন।",
+    "invalidCredentials": "ভুল ইমেল/ব্যবহারকারীর নাম বা পাসওয়ার্ড।",
+    "invalidEmail": "অনুগ্রহ করে একটি বৈধ ইমেল ঠিকানা লিখুন।",
+    "userDisabled": "এই অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে। সমর্থনে যোগাযোগ করুন।",
+    "tooManyRequests": "অনেক ব্যর্থ প্রচেষ্টা। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।",
+    "networkError": "সংযোগ স্থাপন করা যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করুন।",
+    "resetFailed": "পাসওয়ার্ড রিসেট ইমেল পাঠাতে ব্যর্থ হয়েছে।"
+  },
+  "footer": {
+    "moreLanguages": "আরও ভাষা...",
+    "languages": "ভাষা",
+    "signUp": "সাইন আপ করুন",
+    "logIn": "লগ ইন করুন",
+    "about": "Feeder সম্পর্কে",
+    "communities": "কমিউনিটি",
+    "animals": "প্রাণী",
+    "feeding": "খাদ্যদান",
+    "sos": "SOS জরুরি উদ্ধার",
+    "nearby": "কাছাকাছি",
+    "askFeeder": "Ask Feeder AI",
+    "privacy": "গোপনীয়তা",
+    "terms": "শর্তাবলী",
+    "guidelines": "কমিউনিটি নির্দেশিকা",
+    "animalWelfare": "প্রাণী কল্যাণ",
+    "help": "সাহায্য ও সহায়তা",
+    "contact": "যোগাযোগ",
+    "copyright": "Feeder.life © 2026. বিশ্বব্যাপী প্রাণীদের প্রতি করুণা ছড়িয়ে দেওয়া।"
+  },
+  "modal": {
+    "selectLanguage": "আপনার ভাষা নির্বাচন করুন",
+    "searchPlaceholder": "নাম বা লিপি দিয়ে ভাষা খুঁজুন...",
+    "close": "বন্ধ করুন",
+    "allLanguages": "সকল ভাষা",
+    "popular": "অঞ্চলে জনপ্রিয়"
+  }
+}

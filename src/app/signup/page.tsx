@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import FeederLogo from '@/components/common/FeederLogo';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import LanguageFooter from '@/components/common/LanguageFooter';
 import {
   Lock,
   Mail,
@@ -305,6 +306,9 @@ export default function SignupPage() {
         </div>
 
       </div>
+
+      {/* Global Multilingual Language Footer */}
+      <LanguageFooter />
     </div>
   );
 }

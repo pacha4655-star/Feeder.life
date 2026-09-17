@@ -1,0 +1,84 @@
+{
+  "brand": {
+    "name": "Feeder",
+    "tagline": "अपनी पसंदीदा चीज़ों को एक्सप्लोर करें।"
+  },
+  "hero": {
+    "headlinePrefix": "अपनी पसंदीदा चीज़ों",
+    "headlineHighlight": "को एक्सप्लोर करें।",
+    "badgeAnimals": "जानवर",
+    "badgeAnimalsSub": "लोगों को एक साथ लाते हैं",
+    "badgeCare": "देखभाल",
+    "badgeFeed": "भोजन",
+    "badgeRescue": "बचाव",
+    "badgeRepeat": "जारी रखें"
+  },
+  "login": {
+    "title": "Feeder में साइन इन करें",
+    "welcomeBack": "वापसी पर स्वागत है",
+    "continue": "आगे बढ़ें",
+    "useAnotherProfile": "दूसरी प्रोफ़ाइल का उपयोग करें",
+    "switchToSaved": "सहेजी गई प्रोफ़ाइल पर स्विच करें",
+    "or": "या",
+    "continueWithGoogle": "Google के साथ जारी रखें",
+    "createNewAccount": "नया खाता बनाएं",
+    "emailOrUsername": "ईमेल या उपयोगकर्ता नाम",
+    "emailPlaceholder": "ईमेल या @यूज़रनेम दर्ज करें",
+    "password": "पासवर्ड",
+    "passwordPlaceholder": "पासवर्ड दर्ज करें",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "logIn": "लॉग इन करें",
+    "signingIn": "साइन इन हो रहा है...",
+    "loggingIn": "लॉग इन हो रहा है...",
+    "selectLanguage": "भाषा चुनें",
+    "userAvatar": "उपयोगकर्ता अवतार"
+  },
+  "forgotPassword": {
+    "modalTitle": "पासवर्ड रीसेट करें",
+    "modalDesc": "अपना पंजीकृत ईमेल पता दर्ज करें और हम आपको पासवर्ड रीसेट करने के लिए एक लिंक भेजेंगे।",
+    "emailLabel": "खाता ईमेल पता",
+    "emailPlaceholder": "name@example.com",
+    "cancel": "रद्द करें",
+    "sendLink": "रीसेट लिंक भेजें",
+    "sending": "भेजा जा रहा है...",
+    "successTitle": "पासवर्ड रीसेट ईमेल भेजा गया",
+    "successDesc": "यदि {email} के लिए कोई खाता मौजूद है, तो आपको जल्द ही निर्देशों के साथ एक ईमेल प्राप्त होगा।",
+    "backToSignIn": "साइन इन पर वापस जाएं"
+  },
+  "errors": {
+    "missingCredentials": "कृपया अपना ईमेल/उपयोगकर्ता नाम और पासवर्ड दर्ज करें।",
+    "invalidCredentials": "गलत ईमेल/उपयोगकर्ता नाम या पासवर्ड।",
+    "invalidEmail": "कृपया एक मान्य ईमेल पता दर्ज करें।",
+    "userDisabled": "यह खाता निष्क्रिय कर दिया गया है। कृपया सहायता से संपर्क करें।",
+    "tooManyRequests": "बहुत सारे असफल प्रयास। कृपया कुछ देर बाद प्रयास करें।",
+    "networkError": "कनेक्ट करने में असमर्थ। कृपया अपना इंटरनेट कनेक्शन जांचें।",
+    "resetFailed": "पासवर्ड रीसेट ईमेल भेजने में असमर्थ। कृपया पुन: प्रयास करें।"
+  },
+  "footer": {
+    "moreLanguages": "अधिक भाषाएँ...",
+    "languages": "भाषाएँ",
+    "signUp": "साइन अप करें",
+    "logIn": "लॉग इन करें",
+    "about": "Feeder के बारे में",
+    "communities": "समुदाय",
+    "animals": "जानवर",
+    "feeding": "भोजन",
+    "sos": "SOS आपातकालीन बचाव",
+    "nearby": "आस-पास",
+    "askFeeder": "Ask Feeder AI",
+    "privacy": "गोपनीयता",
+    "terms": "शर्तें",
+    "guidelines": "समुदाय दिशानिर्देश",
+    "animalWelfare": "पशु कल्याण",
+    "help": "सहायता एवं समर्थन",
+    "contact": "संपर्क करें",
+    "copyright": "Feeder.life © 2026. दुनिया भर में जानवरों के प्रति करुणा को सशक्त बनाना।"
+  },
+  "modal": {
+    "selectLanguage": "अपनी भाषा चुनें",
+    "searchPlaceholder": "नाम या लिपि द्वारा भाषा खोजें...",
+    "close": "बंद करें",
+    "allLanguages": "सभी भाषाएँ",
+    "popular": "क्षेत्र में लोकप्रिय"
+  }
+}

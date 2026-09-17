@@ -37,6 +37,7 @@ export const viewport: Viewport = {
 };
 
 import FirebaseAnalytics from '@/components/common/FirebaseAnalytics';
+import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 
 export default function RootLayout({
   children,
@@ -47,7 +48,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <FirebaseAnalytics />
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

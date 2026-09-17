@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import LanguageFooter from '@/components/common/LanguageFooter';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import {
   Lock,
   Mail,
@@ -17,11 +20,12 @@ import {
   ChevronDown,
   Loader2,
   X,
-  UserCheck,
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { locale, language, setLocale, dir, t } = useLanguage();
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +41,6 @@ export default function LoginPage() {
   } | null>(null);
 
   // Language selector state
-  const [currentLang, setCurrentLang] = useState('English');
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   // Forgot password modal state
@@ -71,7 +74,7 @@ export default function LoginPage() {
 
   const handleLogin = async (targetId: string, targetPass: string) => {
     if (!targetId.trim() || !targetPass) {
-      setError('Please enter your email/username and password.');
+      setError(t('errors.missingCredentials'));
       setViewMode('credentials');
       return;
     }
@@ -87,7 +90,7 @@ export default function LoginPage() {
         const lookupRes = await fetch(`/api/auth/lookup?username=${encodeURIComponent(targetEmail)}`);
         const lookupData = await lookupRes.json();
         if (!lookupRes.ok || !lookupData.success || !lookupData.email) {
-          throw new Error(lookupData.error || 'No Feeder account found with this username.');
+          throw new Error(lookupData.error || t('errors.invalidCredentials'));
         }
         targetEmail = lookupData.email;
       }
@@ -137,19 +140,19 @@ export default function LoginPage() {
         err.code === 'auth/wrong-password' ||
         err.code === 'auth/invalid-credential'
       ) {
-        setError('Incorrect email/username or password.');
+        setError(t('errors.invalidCredentials'));
       } else if (err.code === 'auth/invalid-email') {
-        setError('Please enter a valid email address.');
+        setError(t('errors.invalidEmail'));
       } else if (err.code === 'auth/user-disabled') {
-        setError('This account has been deactivated. Please contact support.');
+        setError(t('errors.userDisabled'));
       } else if (err.code === 'auth/too-many-requests') {
-        setError('Too many failed login attempts. Please try again later.');
+        setError(t('errors.tooManyRequests'));
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Unable to connect. Please check your internet connection and try again.');
+        setError(t('errors.networkError'));
       } else if (err.message && !err.message.includes('object Object')) {
         setError(err.message);
       } else {
-        setError('Incorrect email/username or password.');
+        setError(t('errors.invalidCredentials'));
       }
       setViewMode('credentials');
     } finally {
@@ -169,7 +172,7 @@ export default function LoginPage() {
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail.trim()) {
-      setResetError('Please enter your registered email address.');
+      setResetError(t('errors.invalidEmail'));
       return;
     }
 
@@ -185,11 +188,11 @@ export default function LoginPage() {
       if (err.code === 'auth/user-not-found') {
         setResetSuccess(true);
       } else if (err.code === 'auth/invalid-email') {
-        setResetError('Please enter a valid email address.');
+        setResetError(t('errors.invalidEmail'));
       } else if (err.code === 'auth/too-many-requests') {
-        setResetError('Too many password reset requests. Please wait a few moments.');
+        setResetError(t('errors.tooManyRequests'));
       } else {
-        setResetError('Unable to send password reset email. Please try again.');
+        setResetError(t('errors.resetFailed'));
       }
     } finally {
       setResetLoading(false);
@@ -197,7 +200,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="feeder-exact-login-page">
+    <div className="feeder-exact-login-page" dir={dir}>
       <div className="feeder-exact-split-layout">
         
         {/* ============================================================
@@ -232,26 +235,26 @@ export default function LoginPage() {
                 className="feeder-language-btn"
                 onClick={() => setShowLangMenu(!showLangMenu)}
                 aria-expanded={showLangMenu}
-                aria-label="Select language"
+                aria-label={t('login.selectLanguage')}
               >
                 <Globe size={15} className="feeder-globe-icon" />
-                <span>{currentLang}</span>
+                <span>{language.nativeName}</span>
                 <ChevronDown size={14} className="feeder-chevron-icon" />
               </button>
 
               {showLangMenu && (
                 <div className="feeder-language-dropdown">
-                  {['English', 'Español', 'Français', 'Deutsch', 'हिन्दी', 'Tamil'].map((lang) => (
+                  {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
                     <button
-                      key={lang}
+                      key={lang.code}
                       type="button"
-                      className={`feeder-language-option ${currentLang === lang ? 'active' : ''}`}
+                      className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
                       onClick={() => {
-                        setCurrentLang(lang);
+                        setLocale(lang.code);
                         setShowLangMenu(false);
                       }}
                     >
-                      {lang}
+                      {lang.nativeName}
                     </button>
                   ))}
                 </div>
@@ -276,7 +279,7 @@ export default function LoginPage() {
                 <div className="feeder-avatar-circle-wrap">
                   <img
                     src={rememberedUser?.avatarUrl || '/images/feeder-default-avatar.jpg'}
-                    alt={rememberedUser?.name || 'User avatar'}
+                    alt={rememberedUser?.name || t('login.userAvatar')}
                     className="feeder-exact-user-avatar"
                   />
                 </div>
@@ -295,10 +298,10 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      <span>Signing in...</span>
+                      <span>{t('login.signingIn')}</span>
                     </>
                   ) : (
-                    <span>Continue</span>
+                    <span>{t('login.continue')}</span>
                   )}
                 </button>
 
@@ -311,7 +314,7 @@ export default function LoginPage() {
                   }}
                   className="feeder-exact-btn-secondary"
                 >
-                  Use another profile
+                  {t('login.useAnotherProfile')}
                 </button>
               </div>
             ) : (
@@ -325,7 +328,7 @@ export default function LoginPage() {
                 noValidate
               >
                 <div className="feeder-credentials-header">
-                  <h2 className="feeder-credentials-title">Sign in to Feeder</h2>
+                  <h2 className="feeder-credentials-title">{t('login.title')}</h2>
                   <button
                     type="button"
                     onClick={() => {
@@ -334,13 +337,13 @@ export default function LoginPage() {
                     }}
                     className="feeder-back-profile-btn"
                   >
-                    Switch to saved profile
+                    {t('login.switchToSaved')}
                   </button>
                 </div>
 
                 <div className="feeder-exact-form-group">
                   <label className="feeder-exact-label" htmlFor="feeder-login-identifier">
-                    Email or Username
+                    {t('login.emailOrUsername')}
                   </label>
                   <div className="feeder-exact-input-wrap">
                     <Mail size={16} className="feeder-exact-input-icon" />
@@ -348,7 +351,7 @@ export default function LoginPage() {
                       id="feeder-login-identifier"
                       type="text"
                       className="feeder-exact-input"
-                      placeholder="Enter email or @username"
+                      placeholder={t('login.emailPlaceholder')}
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       autoComplete="username"
@@ -361,7 +364,7 @@ export default function LoginPage() {
                 <div className="feeder-exact-form-group">
                   <div className="feeder-exact-label-row">
                     <label className="feeder-exact-label" htmlFor="feeder-login-password">
-                      Password
+                      {t('login.password')}
                     </label>
                     <button
                       type="button"
@@ -373,7 +376,7 @@ export default function LoginPage() {
                       }}
                       className="feeder-exact-forgot-btn"
                     >
-                      Forgot password?
+                      {t('login.forgotPassword')}
                     </button>
                   </div>
                   <div className="feeder-exact-input-wrap">
@@ -382,7 +385,7 @@ export default function LoginPage() {
                       id="feeder-login-password"
                       type={showPassword ? 'text' : 'password'}
                       className="feeder-exact-input feeder-exact-password-input"
-                      placeholder="Enter password"
+                      placeholder={t('login.passwordPlaceholder')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="current-password"
@@ -407,10 +410,10 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 size={18} className="animate-spin" />
-                      <span>Logging in...</span>
+                      <span>{t('login.loggingIn')}</span>
                     </>
                   ) : (
-                    <span>Log In</span>
+                    <span>{t('login.logIn')}</span>
                   )}
                 </button>
               </form>
@@ -419,7 +422,7 @@ export default function LoginPage() {
             {/* Divider: ────── or ────── */}
             <div className="feeder-exact-divider">
               <div className="feeder-exact-divider-line" />
-              <span className="feeder-exact-divider-text">or</span>
+              <span className="feeder-exact-divider-text">{t('login.or')}</span>
               <div className="feeder-exact-divider-line" />
             </div>
 
@@ -427,18 +430,24 @@ export default function LoginPage() {
             <GoogleSignInButton
               onError={(msg) => setError(msg)}
               className="feeder-exact-google-btn"
+              buttonText={t('login.continueWithGoogle')}
             />
 
             {/* Create new account CTA: Outline Button */}
             <div className="feeder-exact-signup-wrap">
               <Link href="/signup" className="feeder-exact-btn-create-account">
-                Create new account
+                {t('login.createNewAccount')}
               </Link>
             </div>
           </div>
         </section>
 
       </div>
+
+      {/* ============================================================
+          GLOBAL MULTILINGUAL FOOTER
+          ============================================================ */}
+      <LanguageFooter />
 
       {/* ============================================================
           FORGOT PASSWORD MODAL
@@ -455,7 +464,7 @@ export default function LoginPage() {
               type="button"
               className="feeder-modal-close-btn"
               onClick={() => setShowForgotModal(false)}
-              aria-label="Close dialog"
+              aria-label={t('modal.close')}
             >
               <X size={18} />
             </button>
@@ -464,9 +473,9 @@ export default function LoginPage() {
               <div className="feeder-modal-icon-wrap">
                 <Lock size={22} />
               </div>
-              <h3 className="feeder-modal-title">Reset Password</h3>
+              <h3 className="feeder-modal-title">{t('forgotPassword.modalTitle')}</h3>
               <p className="feeder-modal-desc">
-                Enter your registered email address and we&apos;ll send you a link to reset your password.
+                {t('forgotPassword.modalDesc')}
               </p>
             </div>
 
@@ -474,9 +483,9 @@ export default function LoginPage() {
               <div className="feeder-reset-success-box">
                 <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
                 <div>
-                  <p className="font-semibold text-emerald-900 text-sm">Password Reset Email Sent</p>
+                  <p className="font-semibold text-emerald-900 text-sm">{t('forgotPassword.successTitle')}</p>
                   <p className="text-xs text-emerald-800 mt-1">
-                    If an account exists for <strong>{resetEmail}</strong>, you will receive an email with instructions shortly.
+                    {t('forgotPassword.successDesc', { email: resetEmail })}
                   </p>
                 </div>
                 <button
@@ -484,7 +493,7 @@ export default function LoginPage() {
                   onClick={() => setShowForgotModal(false)}
                   className="feeder-exact-btn-continue mt-4 w-full"
                 >
-                  Back to Sign In
+                  {t('forgotPassword.backToSignIn')}
                 </button>
               </div>
             ) : (
@@ -498,7 +507,7 @@ export default function LoginPage() {
 
                 <div className="feeder-exact-form-group">
                   <label className="feeder-exact-label" htmlFor="exact-reset-email">
-                    Account Email Address
+                    {t('forgotPassword.emailLabel')}
                   </label>
                   <div className="feeder-exact-input-wrap">
                     <Mail size={16} className="feeder-exact-input-icon" />
@@ -506,7 +515,7 @@ export default function LoginPage() {
                       id="exact-reset-email"
                       type="email"
                       className="feeder-exact-input"
-                      placeholder="name@example.com"
+                      placeholder={t('forgotPassword.emailPlaceholder')}
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       required
@@ -521,7 +530,7 @@ export default function LoginPage() {
                     onClick={() => setShowForgotModal(false)}
                     className="feeder-modal-cancel-btn"
                   >
-                    Cancel
+                    {t('forgotPassword.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -532,10 +541,10 @@ export default function LoginPage() {
                     {resetLoading ? (
                       <>
                         <Loader2 size={16} className="animate-spin" />
-                        <span>Sending...</span>
+                        <span>{t('forgotPassword.sending')}</span>
                       </>
                     ) : (
-                      <span>Send Reset Link</span>
+                      <span>{t('forgotPassword.sendLink')}</span>
                     )}
                   </button>
                 </div>
