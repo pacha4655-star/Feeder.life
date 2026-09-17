@@ -8,7 +8,6 @@ import { auth } from '@/lib/firebase/config';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import {
   ArrowLeft,
-  ArrowRight,
   User,
   Mail,
   Lock,
@@ -16,46 +15,39 @@ import {
   EyeOff,
   CheckCircle2,
   AlertCircle,
-  Camera,
   Globe,
   MapPin,
   ShieldCheck,
   Loader2,
   Leaf,
-  PawPrint,
 } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
 
-  // Current Step: 1, 2, 3, 4
-  const [step, setStep] = useState(1);
-
   // Form State
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  // Profile / Location State
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [country, setCountry] = useState('');
-  const [stateRegion, setStateRegion] = useState('');
   const [city, setCity] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  // Validation / Loading State
+  // UI state
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Username validation state
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameError, setUsernameError] = useState('');
 
-  // Real Username Availability Checker
+  // Real Username Availability Checker (Debounced)
   useEffect(() => {
     const cleanUser = username.trim().toLowerCase();
     if (!cleanUser || cleanUser.length < 3) {
@@ -64,7 +56,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Format validation
     if (!/^[a-z0-9_]+$/.test(cleanUser)) {
       setUsernameAvailable(false);
       setUsernameError('Only lowercase letters, numbers, and underscores allowed.');
@@ -94,23 +85,42 @@ export default function SignupPage() {
     return () => clearTimeout(timer);
   }, [username]);
 
-  // Back Navigation Handler
-  const handleBack = () => {
-    setError('');
-    if (step === 1) {
-      router.push('/login');
-    } else {
-      setStep((prev) => prev - 1);
+  // Password strength calculation
+  const getPasswordStrength = (pwd: string) => {
+    if (!pwd) return { score: 0, label: '', color: '#cbd5e1' };
+    let score = 0;
+    if (pwd.length >= 6) score += 1;
+    if (pwd.length >= 8) score += 1;
+    if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+
+    switch (score) {
+      case 1:
+        return { score: 1, label: 'Weak', color: '#ef4444' };
+      case 2:
+        return { score: 2, label: 'Fair', color: '#f59e0b' };
+      case 3:
+        return { score: 3, label: 'Good', color: '#10b981' };
+      case 4:
+        return { score: 4, label: 'Strong', color: '#059669' };
+      default:
+        return { score: 0, label: '', color: '#cbd5e1' };
     }
   };
 
-  // Step 1 Validation -> Proceed to Step 2
-  const handleStep1Submit = (e: React.FormEvent) => {
+  const pwdStrength = getPasswordStrength(password);
+
+  // Submit Handler
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
     const cleanFirst = firstName.trim();
     const cleanLast = lastName.trim();
+    const cleanUser = username.trim().toLowerCase();
+    const cleanEmail = email.trim().toLowerCase();
 
+    // Client validation
     if (!cleanFirst) {
       setError('Please enter your first name.');
       return;
@@ -121,26 +131,6 @@ export default function SignupPage() {
     }
     if (!cleanLast) {
       setError('Please enter your last name.');
-      return;
-    }
-
-    setStep(2);
-  };
-
-  // Step 2 Validation -> Proceed to Step 3
-  const handleStep2Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanUser = username.trim().toLowerCase();
-
-    if (!cleanEmail) {
-      setError('Please enter your email address.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
-      setError('Please enter a valid email address.');
       return;
     }
     if (!cleanUser) {
@@ -155,21 +145,18 @@ export default function SignupPage() {
       setError('Username can only contain lowercase letters, numbers, and underscores.');
       return;
     }
-
-    // Verify username availability if not yet confirmed
     if (usernameAvailable === false) {
       setError(usernameError || 'This username is already taken. Please choose another.');
       return;
     }
-
-    setStep(3);
-  };
-
-  // Step 3 Validation -> Proceed to Step 4
-  const handleStep3Submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
+    if (!cleanEmail) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     if (!password) {
       setError('Please create a password.');
       return;
@@ -182,15 +169,6 @@ export default function SignupPage() {
       setError('Passwords do not match. Please re-enter your password.');
       return;
     }
-
-    setStep(4);
-  };
-
-  // Step 4 Final Account Creation
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
     if (!agreedToTerms) {
       setError('You must agree to the Terms of Service and Privacy Policy to create an account.');
       return;
@@ -199,9 +177,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanUser = username.trim().toLowerCase();
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const fullName = `${cleanFirst} ${cleanLast}`.trim();
 
       // 1. Create real account in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
@@ -210,7 +186,6 @@ export default function SignupPage() {
       try {
         await updateProfile(userCredential.user, {
           displayName: fullName,
-          photoURL: avatarPreview || undefined,
         });
       } catch (profileErr) {
         console.warn('[Signup] Firebase updateProfile notice:', profileErr);
@@ -227,10 +202,8 @@ export default function SignupPage() {
           idToken,
           username: cleanUser,
           fullName,
-          avatarUrl: avatarPreview || null,
           profileData: {
             country: country.trim() || undefined,
-            state: stateRegion.trim() || undefined,
             city: city.trim() || undefined,
           },
         }),
@@ -264,359 +237,190 @@ export default function SignupPage() {
     }
   };
 
-  // Avatar Photo Picker Handler
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Profile photo must be smaller than 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Password strength calculation
-  const getPasswordStrength = (pwd: string) => {
-    if (!pwd) return { score: 0, label: '', color: '#e2e8f0' };
-    let score = 0;
-    if (pwd.length >= 6) score += 1;
-    if (pwd.length >= 8) score += 1;
-    if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score += 1;
-    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
-
-    switch (score) {
-      case 1:
-        return { score: 1, label: 'Weak', color: '#ef4444' };
-      case 2:
-        return { score: 2, label: 'Fair', color: '#f59e0b' };
-      case 3:
-        return { score: 3, label: 'Good', color: '#10b981' };
-      case 4:
-        return { score: 4, label: 'Strong', color: '#059669' };
-      default:
-        return { score: 0, label: '', color: '#e2e8f0' };
-    }
-  };
-
-  const pwdStrength = getPasswordStrength(password);
-
-  const stepTitles = [
-    'Your Name',
-    'Account Details',
-    'Security',
-    'Profile & Location',
-  ];
-
   return (
-    <div className="feeder-signup-page">
-      <div className="feeder-signup-wrapper">
-        
-        {/* Top Header Bar */}
-        <header className="feeder-signup-header">
-          <button
-            id="btn-signup-back"
-            type="button"
-            onClick={handleBack}
-            className="feeder-signup-back-btn"
-            aria-label="Go back"
-          >
-            <ArrowLeft size={18} />
-            <span>Back</span>
-          </button>
+    <div className="feeder-compact-signup-page">
+      
+      {/* Top Bar with Back Button */}
+      <div className="feeder-compact-signup-topbar">
+        <button
+          id="btn-signup-back"
+          type="button"
+          onClick={() => router.push('/login')}
+          className="feeder-compact-back-btn"
+          aria-label="Go back to login"
+        >
+          <ArrowLeft size={16} />
+          <span>Back</span>
+        </button>
+      </div>
 
-          <Link href="/" className="feeder-signup-logo-link" title="Feeder.life">
+      {/* Main Centered Container */}
+      <div className="feeder-compact-signup-container">
+        
+        {/* Brand Header */}
+        <div className="feeder-compact-signup-brand">
+          <Link href="/" className="feeder-compact-logo-link" title="Feeder.life">
             <img
               src="/images/feeder-logo.svg"
               alt="Feeder"
-              className="feeder-signup-logo-img"
+              className="feeder-compact-logo-img"
             />
           </Link>
-
-          <div className="feeder-signup-header-spacer" />
-        </header>
-
-        {/* Step Progress Bar & Counter */}
-        <div className="feeder-signup-progress-wrap">
-          <div className="feeder-signup-progress-meta">
-            <span className="feeder-signup-step-counter">
-              Step {step} of 4
-            </span>
-            <span className="feeder-signup-step-title">
-              {stepTitles[step - 1]}
-            </span>
-          </div>
-
-          <div className="feeder-signup-progress-track">
-            {[1, 2, 3, 4].map((s) => (
-              <div
-                key={s}
-                className={`feeder-signup-progress-segment ${step >= s ? 'active' : ''}`}
-              />
-            ))}
-          </div>
+          <h1 className="feeder-compact-signup-title">Create your Feeder account</h1>
+          <p className="feeder-compact-signup-desc">
+            Join a global community of people who care for animals.
+          </p>
         </div>
 
-        {/* Main Card */}
-        <div className="feeder-signup-card">
+        {/* Signup Card */}
+        <div className="feeder-compact-signup-card">
           
-          {/* Error Banner */}
+          {/* Error Alert Banner */}
           {error && (
-            <div className="feeder-exact-alert-error mb-4" role="alert">
+            <div className="feeder-exact-alert-error mb-3" role="alert">
               <AlertCircle size={16} className="shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* ============================================================
-              STEP 1: NAME
-              ============================================================ */}
-          {step === 1 && (
-            <form onSubmit={handleStep1Submit} className="feeder-signup-form" noValidate>
-              <div className="feeder-signup-heading-group">
-                <h1 className="feeder-signup-title">What&apos;s your name?</h1>
-                <p className="feeder-signup-subtitle">
-                  Enter your name so animal caretakers and rescue teams can recognize you.
-                </p>
-              </div>
-
-              <div className="feeder-signup-fields-grid">
-                <div className="feeder-exact-form-group">
-                  <label className="feeder-exact-label" htmlFor="signup-firstname">
-                    First name
-                  </label>
-                  <div className="feeder-exact-input-wrap">
-                    <User size={16} className="feeder-exact-input-icon" />
-                    <input
-                      id="signup-firstname"
-                      type="text"
-                      className="feeder-exact-input"
-                      placeholder="Enter your first name"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      autoComplete="given-name"
-                      autoFocus
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="feeder-exact-form-group">
-                  <label className="feeder-exact-label" htmlFor="signup-lastname">
-                    Last name
-                  </label>
-                  <div className="feeder-exact-input-wrap">
-                    <User size={16} className="feeder-exact-input-icon" />
-                    <input
-                      id="signup-lastname"
-                      type="text"
-                      className="feeder-exact-input"
-                      placeholder="Enter your last name"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      autoComplete="family-name"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button
-                id="btn-signup-continue"
-                type="submit"
-                className="feeder-signup-btn-continue"
-              >
-                <span>Continue</span>
-                <ArrowRight size={16} />
-              </button>
-
-              {/* Alternative One-Tap Google Signup */}
-              <div className="feeder-exact-divider">
-                <div className="feeder-exact-divider-line" />
-                <span className="feeder-exact-divider-text">OR</span>
-                <div className="feeder-exact-divider-line" />
-              </div>
-
-              <GoogleSignInButton
-                onError={(msg) => setError(msg)}
-                className="feeder-mobile-btn-google"
-                buttonText="Continue with Google"
-              />
-
-              <div className="feeder-signup-login-footer">
-                <span>Already have an account?</span>{' '}
-                <Link href="/login" className="feeder-signup-login-link">
-                  Log in
-                </Link>
-              </div>
-            </form>
-          )}
-
-          {/* ============================================================
-              STEP 2: ACCOUNT DETAILS (EMAIL & USERNAME)
-              ============================================================ */}
-          {step === 2 && (
-            <form onSubmit={handleStep2Submit} className="feeder-signup-form" noValidate>
-              <div className="feeder-signup-heading-group">
-                <h1 className="feeder-signup-title">How can we reach you?</h1>
-                <p className="feeder-signup-subtitle">
-                  Choose a unique username and an email for notifications and emergency SOS alerts.
-                </p>
-              </div>
-
-              <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="signup-email">
-                  Email address
+          <form onSubmit={handleSubmit} className="feeder-compact-signup-form" noValidate>
+            
+            {/* Name Fields (2 Columns) */}
+            <div className="feeder-compact-grid-2col">
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-firstname">
+                  First name
                 </label>
-                <div className="feeder-exact-input-wrap">
-                  <Mail size={16} className="feeder-exact-input-icon" />
+                <div className="feeder-compact-input-wrap">
+                  <User size={15} className="feeder-compact-input-icon" />
                   <input
-                    id="signup-email"
-                    type="email"
-                    className="feeder-exact-input"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                    autoFocus
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="feeder-exact-form-group">
-                <div className="feeder-exact-label-row">
-                  <label className="feeder-exact-label" htmlFor="signup-username">
-                    Username
-                  </label>
-                  {usernameChecking && (
-                    <span className="text-[11px] text-[#64748b] flex items-center gap-1">
-                      <Loader2 size={11} className="animate-spin" /> Checking availability...
-                    </span>
-                  )}
-                  {!usernameChecking && usernameAvailable === true && (
-                    <span className="text-[11px] text-[#15803d] font-semibold flex items-center gap-1">
-                      <CheckCircle2 size={12} /> Available
-                    </span>
-                  )}
-                </div>
-                <div className="feeder-exact-input-wrap">
-                  <span className="feeder-signup-username-prefix">@</span>
-                  <input
-                    id="signup-username"
+                    id="signup-firstname"
                     type="text"
-                    className="feeder-exact-input feeder-signup-username-input"
-                    placeholder="choose_username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                    autoComplete="username"
+                    className="feeder-compact-input"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="given-name"
                     required
                   />
                 </div>
-                {usernameError && (
-                  <p className="text-[11.5px] text-[#b91c1c] mt-1 font-medium">
-                    {usernameError}
-                  </p>
-                )}
-                <p className="text-[11px] text-[#64748b] mt-1">
-                  Only lowercase letters, numbers, and underscores (3–30 characters).
-                </p>
               </div>
 
-              <button
-                id="btn-signup-continue"
-                type="submit"
-                className="feeder-signup-btn-continue"
-                disabled={usernameChecking || usernameAvailable === false}
-              >
-                <span>Continue</span>
-                <ArrowRight size={16} />
-              </button>
-
-              <div className="feeder-signup-login-footer">
-                <span>Already have an account?</span>{' '}
-                <Link href="/login" className="feeder-signup-login-link">
-                  Log in
-                </Link>
-              </div>
-            </form>
-          )}
-
-          {/* ============================================================
-              STEP 3: PASSWORD & SECURITY
-              ============================================================ */}
-          {step === 3 && (
-            <form onSubmit={handleStep3Submit} className="feeder-signup-form" noValidate>
-              <div className="feeder-signup-heading-group">
-                <h1 className="feeder-signup-title">Secure your account</h1>
-                <p className="feeder-signup-subtitle">
-                  Create a strong password to protect your account and animal welfare records.
-                </p>
-              </div>
-
-              <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="signup-password">
-                  Create a password
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-lastname">
+                  Last name
                 </label>
-                <div className="feeder-exact-input-wrap">
-                  <Lock size={16} className="feeder-exact-input-icon" />
+                <div className="feeder-compact-input-wrap">
+                  <User size={15} className="feeder-compact-input-icon" />
+                  <input
+                    id="signup-lastname"
+                    type="text"
+                    className="feeder-compact-input"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="family-name"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Username Field */}
+            <div className="feeder-compact-field">
+              <div className="feeder-compact-label-row">
+                <label className="feeder-compact-label" htmlFor="signup-username">
+                  Username
+                </label>
+                {usernameChecking && (
+                  <span className="text-[11px] text-[#64748b] flex items-center gap-1">
+                    <Loader2 size={11} className="animate-spin" /> Checking...
+                  </span>
+                )}
+                {!usernameChecking && usernameAvailable === true && (
+                  <span className="text-[11px] text-[#15803d] font-semibold flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Available
+                  </span>
+                )}
+              </div>
+              <div className="feeder-compact-input-wrap">
+                <span className="feeder-compact-username-prefix">@</span>
+                <input
+                  id="signup-username"
+                  type="text"
+                  className="feeder-compact-input feeder-compact-input-username"
+                  placeholder="choose_username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  autoComplete="username"
+                  required
+                />
+              </div>
+              {usernameError && (
+                <p className="text-[11px] text-[#b91c1c] font-medium mt-0.5">{usernameError}</p>
+              )}
+            </div>
+
+            {/* Email Address */}
+            <div className="feeder-compact-field">
+              <label className="feeder-compact-label" htmlFor="signup-email">
+                Email address
+              </label>
+              <div className="feeder-compact-input-wrap">
+                <Mail size={15} className="feeder-compact-input-icon" />
+                <input
+                  id="signup-email"
+                  type="email"
+                  className="feeder-compact-input"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password & Confirm Password (2 Columns on Desktop) */}
+            <div className="feeder-compact-grid-2col">
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-password">
+                  Password
+                </label>
+                <div className="feeder-compact-input-wrap">
+                  <Lock size={15} className="feeder-compact-input-icon" />
                   <input
                     id="signup-password"
                     type={showPassword ? 'text' : 'password'}
-                    className="feeder-exact-input feeder-exact-password-input"
-                    placeholder="At least 6 characters"
+                    className="feeder-compact-input feeder-compact-input-password"
+                    placeholder="Min 6 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
-                    autoFocus
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="feeder-exact-eye-btn"
+                    className="feeder-compact-eye-btn"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
-
-                {/* Password Strength Meter */}
-                {password && (
-                  <div className="feeder-signup-strength-meter">
-                    <div className="feeder-signup-strength-bars">
-                      {[1, 2, 3, 4].map((lvl) => (
-                        <div
-                          key={lvl}
-                          className="feeder-signup-strength-bar"
-                          style={{
-                            background: pwdStrength.score >= lvl ? pwdStrength.color : '#e2e8f0',
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <span className="feeder-signup-strength-label" style={{ color: pwdStrength.color }}>
-                      {pwdStrength.label}
-                    </span>
-                  </div>
-                )}
               </div>
 
-              <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="signup-confirm-password">
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-confirm-password">
                   Confirm password
                 </label>
-                <div className="feeder-exact-input-wrap">
-                  <Lock size={16} className="feeder-exact-input-icon" />
+                <div className="feeder-compact-input-wrap">
+                  <Lock size={15} className="feeder-compact-input-icon" />
                   <input
                     id="signup-confirm-password"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    className="feeder-exact-input feeder-exact-password-input"
-                    placeholder="Re-enter your password"
+                    className="feeder-compact-input feeder-compact-input-password"
+                    placeholder="Re-enter password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     autoComplete="new-password"
@@ -625,198 +429,150 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="feeder-exact-eye-btn"
+                    className="feeder-compact-eye-btn"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
                 </div>
               </div>
+            </div>
 
-              <button
-                id="btn-signup-continue"
-                type="submit"
-                className="feeder-signup-btn-continue"
-              >
-                <span>Continue</span>
-                <ArrowRight size={16} />
-              </button>
-
-              <div className="feeder-signup-login-footer">
-                <span>Already have an account?</span>{' '}
-                <Link href="/login" className="feeder-signup-login-link">
-                  Log in
-                </Link>
-              </div>
-            </form>
-          )}
-
-          {/* ============================================================
-              STEP 4: PROFILE PHOTO, LOCATION & TERMS
-              ============================================================ */}
-          {step === 4 && (
-            <form onSubmit={handleFinalSubmit} className="feeder-signup-form" noValidate>
-              <div className="feeder-signup-heading-group">
-                <h1 className="feeder-signup-title">Make Feeder yours</h1>
-                <p className="feeder-signup-subtitle">
-                  Add an optional profile photo and your city/region to connect with nearby feeders and rescue cases.
-                </p>
-              </div>
-
-              {/* Optional Profile Photo */}
-              <div className="feeder-signup-photo-section">
-                <div className="feeder-signup-avatar-wrap">
-                  {avatarPreview ? (
-                    <img
-                      src={avatarPreview}
-                      alt="Profile preview"
-                      className="feeder-signup-avatar-img"
+            {/* Compact Password Strength Meter */}
+            {password && (
+              <div className="feeder-compact-strength-row">
+                <div className="feeder-compact-strength-bars">
+                  {[1, 2, 3, 4].map((lvl) => (
+                    <div
+                      key={lvl}
+                      className="feeder-compact-strength-bar"
+                      style={{
+                        background: pwdStrength.score >= lvl ? pwdStrength.color : '#e2e8f0',
+                      }}
                     />
-                  ) : (
-                    <div className="feeder-signup-avatar-placeholder">
-                      <User size={36} className="text-[#94a3b8]" />
-                    </div>
-                  )}
-                  <label htmlFor="signup-photo-input" className="feeder-signup-photo-badge">
-                    <Camera size={14} className="text-white" />
-                  </label>
+                  ))}
                 </div>
+                <span className="feeder-compact-strength-text" style={{ color: pwdStrength.color }}>
+                  {pwdStrength.label}
+                </span>
+              </div>
+            )}
 
-                <input
-                  id="signup-photo-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  className="feeder-signup-photo-input-hidden hidden"
-                />
-
-                <label htmlFor="signup-photo-input" className="feeder-signup-photo-btn">
-                  {avatarPreview ? 'Change photo' : 'Add profile photo'}
+            {/* Optional Location (Country & City) */}
+            <div className="feeder-compact-grid-2col">
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-country">
+                  Country <span className="text-[#94a3b8] font-normal">(Optional)</span>
                 </label>
-              </div>
-
-              {/* Location Fields (Optional & Country-Agnostic) */}
-              <div className="feeder-signup-location-group">
-                <div className="feeder-exact-form-group">
-                  <label className="feeder-exact-label" htmlFor="signup-country">
-                    Country <span className="text-[#94a3b8] font-normal">(Optional)</span>
-                  </label>
-                  <div className="feeder-exact-input-wrap">
-                    <Globe size={16} className="feeder-exact-input-icon" />
-                    <input
-                      id="signup-country"
-                      type="text"
-                      className="feeder-exact-input"
-                      placeholder="e.g. United States, India, UK..."
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      autoComplete="country-name"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="feeder-exact-form-group">
-                    <label className="feeder-exact-label" htmlFor="signup-state">
-                      State / Region
-                    </label>
-                    <div className="feeder-exact-input-wrap">
-                      <MapPin size={16} className="feeder-exact-input-icon" />
-                      <input
-                        id="signup-state"
-                        type="text"
-                        className="feeder-exact-input"
-                        placeholder="State / Province"
-                        value={stateRegion}
-                        onChange={(e) => setStateRegion(e.target.value)}
-                        autoComplete="address-level1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="feeder-exact-form-group">
-                    <label className="feeder-exact-label" htmlFor="signup-city">
-                      City
-                    </label>
-                    <div className="feeder-exact-input-wrap">
-                      <MapPin size={16} className="feeder-exact-input-icon" />
-                      <input
-                        id="signup-city"
-                        type="text"
-                        className="feeder-exact-input"
-                        placeholder="City"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        autoComplete="address-level2"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Terms Checkbox */}
-              <div className="feeder-signup-terms-box">
-                <label className="feeder-signup-checkbox-label">
+                <div className="feeder-compact-input-wrap">
+                  <Globe size={15} className="feeder-compact-input-icon" />
                   <input
-                    id="signup-terms"
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="feeder-signup-checkbox"
-                    required
+                    id="signup-country"
+                    type="text"
+                    className="feeder-compact-input"
+                    placeholder="Country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    autoComplete="country-name"
                   />
-                  <span className="feeder-signup-checkbox-text">
-                    I agree to Feeder&apos;s{' '}
-                    <a href="#terms" className="feeder-signup-legal-link">
-                      Terms of Service
-                    </a>{' '}
-                    and{' '}
-                    <a href="#privacy" className="feeder-signup-legal-link">
-                      Privacy Policy
-                    </a>
-                    .
-                  </span>
+                </div>
+              </div>
+
+              <div className="feeder-compact-field">
+                <label className="feeder-compact-label" htmlFor="signup-city">
+                  City <span className="text-[#94a3b8] font-normal">(Optional)</span>
                 </label>
+                <div className="feeder-compact-input-wrap">
+                  <MapPin size={15} className="feeder-compact-input-icon" />
+                  <input
+                    id="signup-city"
+                    type="text"
+                    className="feeder-compact-input"
+                    placeholder="City / Location"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    autoComplete="address-level2"
+                  />
+                </div>
               </div>
+            </div>
 
-              {/* Final Submit Button */}
-              <button
-                id="btn-signup-submit"
-                type="submit"
-                className="feeder-signup-btn-submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>Creating your account...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create account</span>
-                    <ShieldCheck size={18} />
-                  </>
-                )}
-              </button>
+            {/* Required Terms Checkbox */}
+            <div className="feeder-compact-terms-wrap">
+              <label className="feeder-compact-checkbox-label">
+                <input
+                  id="signup-terms"
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="feeder-compact-checkbox"
+                  required
+                />
+                <span className="feeder-compact-terms-text">
+                  I agree to Feeder&apos;s{' '}
+                  <a href="#terms" className="feeder-compact-legal-link">
+                    Terms of Service
+                  </a>{' '}
+                  and{' '}
+                  <a href="#privacy" className="feeder-compact-legal-link">
+                    Privacy Policy
+                  </a>
+                  .
+                </span>
+              </label>
+            </div>
 
-              <div className="feeder-signup-login-footer">
-                <span>Already have an account?</span>{' '}
-                <Link href="/login" className="feeder-signup-login-link">
-                  Log in
-                </Link>
-              </div>
-            </form>
-          )}
+            {/* Create Account Primary CTA */}
+            <button
+              id="btn-signup-submit"
+              type="submit"
+              className="feeder-compact-btn-submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Creating your account...</span>
+                </>
+              ) : (
+                <>
+                  <span>Create account</span>
+                  <ShieldCheck size={16} />
+                </>
+              )}
+            </button>
 
+            {/* OR Divider */}
+            <div className="feeder-compact-divider">
+              <div className="feeder-compact-divider-line" />
+              <span className="feeder-compact-divider-text">OR</span>
+              <div className="feeder-compact-divider-line" />
+            </div>
+
+            {/* One-Tap Google Signup */}
+            <GoogleSignInButton
+              onError={(msg) => setError(msg)}
+              className="feeder-mobile-btn-google"
+              buttonText="Continue with Google"
+            />
+
+            {/* Already have an account */}
+            <div className="feeder-compact-login-footer">
+              <span>Already have an account?</span>{' '}
+              <Link href="/login" className="feeder-compact-login-link">
+                Log in
+              </Link>
+            </div>
+          </form>
         </div>
 
         {/* Footer Brand Line */}
-        <footer className="feeder-signup-footer-brand">
-          <div className="feeder-mobile-footer-logo-row">
-            <Leaf size={14} className="text-[#2e7d32]" />
-            <span className="feeder-mobile-footer-text">feeder.life</span>
+        <footer className="feeder-compact-footer">
+          <div className="feeder-compact-footer-row">
+            <Leaf size={13} className="text-[#2e7d32]" />
+            <span className="feeder-compact-footer-domain">feeder.life</span>
           </div>
-          <p className="feeder-mobile-footer-tagline">
+          <p className="feeder-compact-footer-copy">
             Connect. Care. Rescue. Repeat.
           </p>
         </footer>
