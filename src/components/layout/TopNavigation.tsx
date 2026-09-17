@@ -70,6 +70,7 @@ export default function TopNavigation({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
 
@@ -95,7 +96,7 @@ export default function TopNavigation({
     else if (pathname.startsWith('/messages')) currentActiveTab = 'messages';
   }
 
-  // Fetch notifications with live polling
+  // Fetch notifications and unread messages with live polling
   const loadNotifications = () => {
     if (!user) return;
     fetch('/api/notifications')
@@ -109,9 +110,25 @@ export default function TopNavigation({
       .catch(() => {});
   };
 
+  const loadUnreadMessages = () => {
+    if (!user) return;
+    fetch('/api/messages/unread-count')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && typeof data.unreadCount === 'number') {
+          setUnreadMessagesCount(data.unreadCount);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000); // 30s polling
+    loadUnreadMessages();
+    const interval = setInterval(() => {
+      loadNotifications();
+      loadUnreadMessages();
+    }, 20000); // 20s polling
     return () => clearInterval(interval);
   }, [user]);
 
@@ -740,9 +757,11 @@ export default function TopNavigation({
               href="/messages"
               className={`topbar-action-icon ${currentActiveTab === 'messages' ? 'active-icon' : ''}`}
               title="Messages"
-              aria-label="Direct Messages"
+              aria-label={`Direct Messages ${unreadMessagesCount > 0 ? `(${unreadMessagesCount} unread)` : ''}`}
+              style={{ position: 'relative' }}
             >
               <MessageCircle size={20} />
+              {unreadMessagesCount > 0 && <span className="action-badge-green">{unreadMessagesCount}</span>}
             </Link>
 
             {/* Notifications Bell */}

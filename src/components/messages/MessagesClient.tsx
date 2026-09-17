@@ -1,20 +1,23 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import {
   MessageSquare,
   Send,
   Search,
-  Image as ImageIcon,
   Plus,
   ArrowLeft,
   Trash2,
   Reply,
   Loader2,
+  Check,
   CheckCheck,
   Paperclip,
   X,
+  AlertCircle,
+  ChevronDown,
+  UserX,
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import type { ConversationSummary, ChatMessage } from '@/lib/services/messaging';
@@ -46,6 +49,7 @@ export default function MessagesClient({
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
@@ -57,12 +61,17 @@ export default function MessagesClient({
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [replyingToMessage, setReplyingToMessage] = useState<ChatMessage | null>(null);
+  const [hasNewMessagesBelow, setHasNewMessagesBelow] = useState(false);
 
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const channelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isScrolledToBottomRef = useRef(true);
 
+  // Responsive check
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768;
@@ -78,25 +87,59 @@ export default function MessagesClient({
 
   const activeConversation = conversations.find((c) => c.id === selectedConvId);
 
-  // Fetch initial messages when conversation changes
-  const fetchMessages = async (convId: string) => {
-    setIsLoadingMessages(true);
-    try {
-      const res = await fetch(`/api/messages/conversations/${convId}`);
-      const data = await res.json();
-      if (data.success) {
-        setMessages(data.messages || []);
-        // Mark unread as 0 locally
-        setConversations((prev) =>
-          prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
-        );
-      }
-    } catch {
-    } finally {
-      setIsLoadingMessages(false);
+  // Scroll handler to track whether user is at bottom
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isBottom = scrollHeight - scrollTop - clientHeight < 80;
+    isScrolledToBottomRef.current = isBottom;
+    if (isBottom) {
+      setHasNewMessagesBelow(false);
     }
   };
 
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+      setHasNewMessagesBelow(false);
+    }
+  }, []);
+
+  // Fetch messages when conversation changes
+  const fetchMessages = useCallback(
+    async (convId: string, isSilent = false) => {
+      if (!isSilent) setIsLoadingMessages(true);
+      setSendError(null);
+      try {
+        const res = await fetch(`/api/messages/conversations/${convId}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.messages)) {
+          setMessages((prev) => {
+            const hasChanged = data.messages.length !== prev.length ||
+              (data.messages.length > 0 && prev.length > 0 && data.messages[data.messages.length - 1].id !== prev[prev.length - 1].id);
+            if (hasChanged && !isScrolledToBottomRef.current && !isSilent) {
+              setHasNewMessagesBelow(true);
+            }
+            return data.messages;
+          });
+
+          // Mark unread as 0 locally
+          setConversations((prev) =>
+            prev.map((c) => (c.id === convId ? { ...c, unreadCount: 0 } : c))
+          );
+        }
+      } catch {
+      } finally {
+        if (!isSilent) {
+          setIsLoadingMessages(false);
+          setTimeout(() => scrollToBottom(false), 50);
+        }
+      }
+    },
+    [scrollToBottom]
+  );
+
+  // Refresh active conversation messages and presence
   useEffect(() => {
     if (!selectedConvId || !user) return;
 
@@ -104,7 +147,7 @@ export default function MessagesClient({
     setOtherUserTyping(false);
     setIsOtherUserOnline(false);
 
-    // Setup real Supabase Realtime channel
+    // Setup Supabase Realtime channel
     const supabase = getSupabaseClient();
     const channelName = `conversation:${selectedConvId}`;
     const channel = supabase.channel(channelName, {
@@ -121,9 +164,16 @@ export default function MessagesClient({
         if (payload && payload.conversationId === selectedConvId) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === payload.id)) return prev;
-            return [...prev, payload];
+            const updated = [...prev, payload];
+            if (isScrolledToBottomRef.current) {
+              setTimeout(() => scrollToBottom(true), 50);
+            } else {
+              setHasNewMessagesBelow(true);
+            }
+            return updated;
           });
-          // Update conversation last message in list
+
+          // Update conversation list preview
           setConversations((prev) =>
             prev.map((c) =>
               c.id === selectedConvId
@@ -143,7 +193,13 @@ export default function MessagesClient({
       })
       .on('broadcast', { event: 'message_deleted' }, ({ payload }) => {
         if (payload?.messageId) {
-          setMessages((prev) => prev.filter((m) => m.id !== payload.messageId));
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === payload.messageId
+                ? { ...m, body: 'This message was deleted.', status: 'deleted', mediaUrl: null }
+                : m
+            )
+          );
         }
       })
       .on('broadcast', { event: 'typing' }, ({ payload }) => {
@@ -176,19 +232,20 @@ export default function MessagesClient({
         }
       });
 
+    // Resilient fallback polling every 4 seconds to guarantee delivery
+    const pollInterval = setInterval(() => {
+      fetchMessages(selectedConvId, true);
+    }, 4000);
+
     return () => {
+      clearInterval(pollInterval);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
       }
     };
-  }, [selectedConvId, user, activeConversation?.otherParticipant?.id]);
+  }, [selectedConvId, user, activeConversation?.otherParticipant?.id, fetchMessages, scrollToBottom]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, otherUserTyping]);
-
-  // Debounced typing broadcast to realtime channel
+  // Typing event emitter
   const handleTyping = (text: string) => {
     setMessageText(text);
 
@@ -215,6 +272,7 @@ export default function MessagesClient({
     if (!file) return;
 
     setIsUploadingMedia(true);
+    setSendError(null);
     const formData = new FormData();
     formData.append('file', file);
 
@@ -226,19 +284,23 @@ export default function MessagesClient({
       const data = await res.json();
       if (data.success && data.url) {
         setMediaUrl(data.url);
+      } else {
+        setSendError(data.error || 'Failed to upload media file.');
       }
     } catch {
+      setSendError('Network error uploading media.');
     } finally {
       setIsUploadingMedia(false);
       if (e.target) e.target.value = '';
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if ((!messageText.trim() && !mediaUrl) || !selectedConvId || isSending) return;
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = messageText.trim();
+    if ((!trimmed && !mediaUrl) || !selectedConvId || isSending) return;
 
-    let fullBody = messageText.trim();
+    let fullBody = trimmed;
     if (replyingToMessage) {
       fullBody = `[Replying to ${replyingToMessage.senderName}: "${replyingToMessage.body.slice(0, 40)}..."]\n${fullBody}`;
     }
@@ -248,6 +310,7 @@ export default function MessagesClient({
     setMediaUrl(null);
     setReplyingToMessage(null);
     setIsSending(true);
+    setSendError(null);
 
     try {
       const res = await fetch(`/api/messages/conversations/${selectedConvId}`, {
@@ -262,6 +325,7 @@ export default function MessagesClient({
       const data = await res.json();
       if (data.success && data.message) {
         setMessages((prev) => [...prev, data.message]);
+        setTimeout(() => scrollToBottom(true), 50);
 
         // Broadcast to other participant via Supabase Realtime
         if (channelRef.current) {
@@ -270,7 +334,6 @@ export default function MessagesClient({
             event: 'new_message',
             payload: data.message,
           });
-          // Also stop typing status
           channelRef.current.send({
             type: 'broadcast',
             event: 'typing',
@@ -294,10 +357,19 @@ export default function MessagesClient({
               : c
           )
         );
+      } else {
+        setSendError(data.error || "Couldn't send message. Try again.");
+        // Restore unsent text
+        setMessageText(trimmed);
+        setMediaUrl(currentMedia);
       }
     } catch {
+      setSendError("Couldn't send message. Check network connection.");
+      setMessageText(trimmed);
+      setMediaUrl(currentMedia);
     } finally {
       setIsSending(false);
+      textInputRef.current?.focus();
     }
   };
 
@@ -309,7 +381,13 @@ export default function MessagesClient({
       });
       const data = await res.json();
       if (data.success) {
-        setMessages((prev) => prev.filter((m) => m.id !== messageId));
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === messageId
+              ? { ...m, body: 'This message was deleted.', status: 'deleted', mediaUrl: null }
+              : m
+          )
+        );
         if (channelRef.current) {
           channelRef.current.send({
             type: 'broadcast',
@@ -347,7 +425,7 @@ export default function MessagesClient({
         <MessageSquare size={48} color="var(--brand-primary)" style={{ margin: '0 auto 16px auto' }} />
         <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>Direct Messaging</h2>
         <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-          Sign in to direct message local animal feeders, rescuers, and community shelter coordinators.
+          Sign in to direct message animal feeders, rescuers, and community shelter coordinators.
         </p>
         <Link href="/login" className="btn btn-primary" style={{ display: 'inline-flex', padding: '10px 24px', textDecoration: 'none' }}>
           Sign In
@@ -376,7 +454,7 @@ export default function MessagesClient({
       style={{
         maxWidth: '1080px',
         margin: '0 auto',
-        height: isMobile ? 'calc(100vh - 124px)' : 'calc(100vh - 84px)',
+        height: isMobile ? 'calc(100dvh - 120px)' : 'calc(100dvh - 84px)',
         display: isMobile ? 'flex' : 'grid',
         gridTemplateColumns: isMobile ? undefined : '320px 1fr',
         gap: '12px',
@@ -447,7 +525,7 @@ export default function MessagesClient({
           {filteredConversations.length === 0 ? (
             <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <MessageSquare size={32} style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
-              <div style={{ fontSize: '13.5px', fontWeight: 600 }}>No conversations</div>
+              <div style={{ fontSize: '13.5px', fontWeight: 600 }}>No messages yet.</div>
               <div style={{ fontSize: '12px', marginTop: '4px' }}>Click + to message a fellow animal guardian.</div>
             </div>
           ) : (
@@ -469,7 +547,7 @@ export default function MessagesClient({
                     transition: 'background 0.1s ease',
                   }}
                 >
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
                     <img
                       src={other?.avatarUrl || '/avatars/default.png'}
                       alt={other?.fullName || 'User'}
@@ -499,6 +577,7 @@ export default function MessagesClient({
                             fontWeight: 700,
                             padding: '1px 6px',
                             borderRadius: '9999px',
+                            flexShrink: 0,
                           }}
                         >
                           {conv.unreadCount}
@@ -516,7 +595,7 @@ export default function MessagesClient({
                         marginTop: '2px',
                       }}
                     >
-                      {conv.lastMessage?.body || 'Started a conversation'}
+                      {conv.lastMessage?.body || 'Start the conversation.'}
                     </div>
                   </div>
                 </div>
@@ -537,6 +616,7 @@ export default function MessagesClient({
           width: isMobile ? '100%' : undefined,
           overflow: 'hidden',
           padding: 0,
+          position: 'relative',
         }}
       >
         {activeConversation ? (
@@ -570,7 +650,7 @@ export default function MessagesClient({
                     <ArrowLeft size={20} />
                   </button>
                 )}
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
                   <img
                     src={activeConversation.otherParticipant?.avatarUrl || '/avatars/default.png'}
                     alt={activeConversation.otherParticipant?.fullName || ''}
@@ -594,13 +674,13 @@ export default function MessagesClient({
                 </div>
                 <div>
                   <div style={{ fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>{activeConversation.otherParticipant?.fullName}</span>
+                    <span>{activeConversation.otherParticipant?.fullName || 'Guardian'}</span>
                     {isOtherUserOnline && (
                       <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>&bull; Online</span>
                     )}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    @{activeConversation.otherParticipant?.username}
+                    @{activeConversation.otherParticipant?.username || 'member'}
                   </div>
                 </div>
               </div>
@@ -616,8 +696,37 @@ export default function MessagesClient({
               )}
             </div>
 
+            {/* Error Banner */}
+            {sendError && (
+              <div
+                style={{
+                  background: '#FEE2E2',
+                  borderBottom: '1px solid #FCA5A5',
+                  color: '#B91C1C',
+                  padding: '8px 16px',
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <AlertCircle size={15} />
+                  <span>{sendError}</span>
+                </div>
+                <button
+                  onClick={() => setSendError(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#B91C1C' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             {/* Messages Scroll Area */}
             <div
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
               style={{
                 flex: 1,
                 overflowY: 'auto',
@@ -626,23 +735,27 @@ export default function MessagesClient({
                 flexDirection: 'column',
                 gap: '12px',
                 background: 'var(--bg-secondary)',
+                position: 'relative',
               }}
             >
               {isLoadingMessages ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  <Loader2 className="animate-spin" size={24} style={{ margin: '0 auto 8px auto' }} />
                   Loading conversation history...
                 </div>
               ) : messages.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
                   <MessageSquare size={36} style={{ margin: '0 auto 8px auto', opacity: 0.4 }} />
-                  <div style={{ fontSize: '15px', fontWeight: 700 }}>No messages yet.</div>
+                  <div style={{ fontSize: '15px', fontWeight: 700 }}>Start the conversation.</div>
                   <div style={{ fontSize: '12.5px', marginTop: '4px' }}>
-                    Send a message to coordinate local rescue actions, morning feedings, or veterinary advice.
+                    Send a private message to coordinate feedings, emergency rescues, or veterinary care.
                   </div>
                 </div>
               ) : (
                 messages.map((msg) => {
                   const isMine = msg.senderId === user.id;
+                  const isDeleted = msg.status === 'deleted';
+
                   return (
                     <div
                       key={msg.id}
@@ -663,10 +776,10 @@ export default function MessagesClient({
                       )}
                       <div
                         style={{
-                          maxWidth: '72%',
+                          maxWidth: '74%',
                           padding: '10px 14px',
                           borderRadius: isMine ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                          background: isMine ? '#059669' : 'var(--bg-card)',
+                          background: isMine ? (isDeleted ? '#9CA3AF' : '#059669') : 'var(--bg-card)',
                           color: isMine ? '#ffffff' : 'var(--text-main)',
                           border: isMine ? 'none' : '1px solid var(--border-subtle)',
                           boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -674,10 +787,11 @@ export default function MessagesClient({
                           lineHeight: 1.45,
                           wordBreak: 'break-word',
                           position: 'relative',
+                          fontStyle: isDeleted ? 'italic' : 'normal',
                         }}
                       >
                         {/* Media rendering if message has attachment */}
-                        {msg.mediaUrl && (
+                        {msg.mediaUrl && !isDeleted && (
                           <div style={{ marginBottom: '8px', borderRadius: '8px', overflow: 'hidden' }}>
                             {msg.mediaUrl.endsWith('.mp4') || msg.mediaUrl.endsWith('.webm') ? (
                               <video src={msg.mediaUrl} controls style={{ width: '100%', maxHeight: '220px', objectFit: 'cover' }} />
@@ -701,29 +815,35 @@ export default function MessagesClient({
                           }}
                         >
                           <span>{formatTime(msg.createdAt)}</span>
-                          {isMine && <CheckCheck size={13} color="white" />}
+                          {isMine && !isDeleted && (
+                            <span title={msg.status === 'read' ? 'Read' : 'Sent'} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              {msg.status === 'read' ? <CheckCheck size={13} color="white" /> : <Check size={13} color="white" />}
+                            </span>
+                          )}
                         </div>
                       </div>
 
                       {/* Action buttons (Reply & Delete for own message) */}
-                      <div style={{ display: 'flex', gap: '4px', opacity: 0.6, alignSelf: 'center' }}>
-                        <button
-                          onClick={() => setReplyingToMessage(msg)}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
-                          title="Reply"
-                        >
-                          <Reply size={13} />
-                        </button>
-                        {isMine && (
+                      {!isDeleted && (
+                        <div style={{ display: 'flex', gap: '4px', opacity: 0.6, alignSelf: 'center' }}>
                           <button
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
-                            title="Delete message"
+                            onClick={() => setReplyingToMessage(msg)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
+                            title="Reply"
                           >
-                            <Trash2 size={13} />
+                            <Reply size={13} />
                           </button>
-                        )}
-                      </div>
+                          {isMine && (
+                            <button
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: '#ef4444' }}
+                              title="Delete message"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -744,6 +864,35 @@ export default function MessagesClient({
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Floating "New message below" pill */}
+            {hasNewMessagesBelow && (
+              <button
+                onClick={() => scrollToBottom(true)}
+                style={{
+                  position: 'absolute',
+                  bottom: '74px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                  cursor: 'pointer',
+                  zIndex: 20,
+                }}
+              >
+                <span>New messages</span>
+                <ChevronDown size={14} />
+              </button>
+            )}
+
             {/* Replying banner */}
             {replyingToMessage && (
               <div style={{ padding: '6px 16px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
@@ -760,7 +909,7 @@ export default function MessagesClient({
             {mediaUrl && (
               <div style={{ padding: '8px 16px', background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img src={mediaUrl} alt="Preview" style={{ width: '44px', height: '44px', borderRadius: '6px', objectFit: 'cover' }} />
-                <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>Image ready to send</span>
+                <span style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>Attachment ready to send</span>
                 <button onClick={() => setMediaUrl(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto' }}>
                   <X size={14} />
                 </button>
@@ -811,10 +960,17 @@ export default function MessagesClient({
               </button>
 
               <input
+                ref={textInputRef}
                 type="text"
-                placeholder="Type a message to your fellow guardian..."
+                placeholder="Type a message..."
                 value={messageText}
                 onChange={(e) => handleTyping(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
                 style={{
                   flex: 1,
                   padding: '10px 16px',

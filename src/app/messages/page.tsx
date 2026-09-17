@@ -9,19 +9,30 @@ export const dynamic = 'force-dynamic';
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ user?: string }>;
+  searchParams: Promise<{ user?: string; with?: string }>;
 }) {
   const user = await getCurrentUser();
-  const { user: targetUserId } = await searchParams;
+  const params = await searchParams;
+  const targetUserParam = params.user || params.with;
 
   let initialConversations: ConversationSummary[] = [];
   let availableGuardians: any[] = [];
   let initialSelectedConvId: string | null = null;
 
   if (user) {
-    if (targetUserId && targetUserId !== user.id) {
+    if (targetUserParam && targetUserParam !== user.id && targetUserParam !== user.username) {
       try {
-        initialSelectedConvId = await MessagingService.getOrCreateDirectConversation(user.id, targetUserId);
+        const supabase = getSupabaseServerClient();
+        // Look up by user id or username
+        const { data: matchedUser } = await supabase
+          .from('users')
+          .select('id')
+          .or(`id.eq.${targetUserParam},username.eq.${targetUserParam.toLowerCase()}`)
+          .maybeSingle();
+
+        if (matchedUser && matchedUser.id !== user.id) {
+          initialSelectedConvId = await MessagingService.getOrCreateDirectConversation(user.id, matchedUser.id);
+        }
       } catch {}
     }
 

@@ -16,6 +16,7 @@ export interface CreateNotificationParams {
     | 'COMMUNITY_APPROVE'
     | 'COMMUNITY_POST'
     | 'SOS_RESPONSE'
+    | 'MESSAGE'
     | 'SYSTEM';
   title: string;
   body: string;
