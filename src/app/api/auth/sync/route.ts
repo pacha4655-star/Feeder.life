@@ -4,6 +4,9 @@ import { syncUserWithSupabase } from '@/lib/supabase/admin';
 import { createSessionToken } from '@/lib/auth/session';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
