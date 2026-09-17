@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "You've reached the current usage limit. Please try again later.",
+          error: "You're sending messages too quickly. Please try again in a moment.",
           retryAfter: rateCheck.retryAfterSeconds,
         },
         { status: 429 }
@@ -54,11 +54,16 @@ export async function POST(request: NextRequest) {
     if (error.message === 'FORBIDDEN') {
       return NextResponse.json({ success: false, error: 'Forbidden.' }, { status: 403 });
     }
+    if (error.message === 'RATE_LIMITED' || error.message?.includes('429')) {
+      return NextResponse.json(
+        { success: false, error: "You're sending messages too quickly. Please try again in a moment." },
+        { status: 429 }
+      );
+    }
     console.error('Ask Feeder error:', error);
     return NextResponse.json(
-      { success: false, error: 'Ask Feeder is temporarily unavailable. Please try again.' },
+      { success: false, error: "Sorry, I couldn't process that right now. Please try again." },
       { status: 500 }
     );
   }
 }
-

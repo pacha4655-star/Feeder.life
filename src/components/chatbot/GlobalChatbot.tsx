@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Sparkles, Loader2, RefreshCw, Minus, AlertCircle } from 'lucide-react';
+import { X, Send, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 
 interface ChatMessage {
@@ -27,12 +27,13 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
 
   const quickPrompts = [
     '🐶 Safe feeding for street dogs',
+    '💬 En dog saapdala enna panna?',
     '🚨 How to report an SOS emergency',
+    '📝 Write an animal adoption post',
     '🐾 First aid for an injured animal',
-    '🥗 Toxic foods dogs should never eat',
+    '🥗 Toxic foods pets should never eat',
   ];
 
-  // Auto-scroll to latest message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -46,7 +47,6 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
     }
   }, [isOpen, messages, isThinking]);
 
-  // Start a fresh new chat session
   const handleNewChat = () => {
     setMessages([]);
     setConversationId(null);
@@ -71,7 +71,6 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
     setIsThinking(true);
 
     try {
-      // 1. Send to authenticated AI chat endpoint
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -99,31 +98,14 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
 
         setMessages((prev) => [...prev, aiMessage]);
       } else if (res.status === 401) {
-        // Fallback to guest direct AI endpoint if unauthenticated
-        const guestRes = await fetch('/api/ai/ask', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: text }),
-        });
-        const guestData = await guestRes.json();
-        if (guestRes.ok && guestData.success) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `ai_msg_${Date.now()}`,
-              role: 'assistant',
-              content: guestData.answer,
-              createdAt: new Date().toISOString(),
-            },
-          ]);
-        } else {
-          setErrorMessage(guestData.error || 'Feeder Assistant is currently busy. Please try again.');
-        }
+        setErrorMessage('Please sign in to chat with Feeder AI.');
+      } else if (res.status === 429) {
+        setErrorMessage("You're sending messages too quickly. Please try again in a moment.");
       } else {
-        setErrorMessage(data.error || 'Feeder Assistant encountered an issue. Please try again.');
+        setErrorMessage(data.error || "Sorry, I couldn't process that right now. Please try again.");
       }
-    } catch (err: any) {
-      setErrorMessage('Network connection lost. Please check your internet connection.');
+    } catch {
+      setErrorMessage('Network connection error. Please check your internet connection.');
     } finally {
       setIsThinking(false);
     }
@@ -138,19 +120,19 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
 
   return (
     <>
-      {/* 1. Floating Feeder Chatbot Trigger Button */}
+      {/* 1. Floating Feeder AI Trigger Button */}
       {!isOpen && (
         <div className="global-chatbot-fab-wrap">
           <button
             onClick={() => setIsOpen(true)}
             className="global-chatbot-fab"
-            aria-label="Open Feeder Assistant"
-            title="Feeder Assistant"
+            aria-label="Open Feeder AI"
+            title="Feeder AI"
           >
             <div className="global-chatbot-fab-inner">
               <img
                 src="/images/feeder-icon.svg"
-                alt="Feeder Assistant"
+                alt="Feeder AI"
                 className="global-chatbot-fab-icon"
               />
             </div>
@@ -170,11 +152,11 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
               </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: '14.5px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>Feeder Assistant</span>
-                  <span className="global-chatbot-status-dot" title="Online AI Companion" />
+                  <span>Feeder AI</span>
+                  <span className="global-chatbot-status-dot" title="Gemini-Powered AI Companion" />
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--brand-primary)', fontWeight: 600 }}>
-                  Animal Welfare Companion
+                  Multilingual AI Companion
                 </div>
               </div>
             </div>
@@ -203,7 +185,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
 
           {/* Messages Body */}
           <div className="global-chatbot-body">
-            {/* Welcome message if no conversation yet */}
+            {/* Welcome message */}
             {messages.length === 0 && (
               <div className="global-chatbot-welcome">
                 <div className="global-chatbot-welcome-icon">
@@ -213,7 +195,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
                   Hi, {user?.fullName?.split(' ')[0] || 'there'}! 🐾
                 </h4>
                 <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '14px' }}>
-                  I can assist you with stray animal feeding, first-aid advice, community rescue coordination, or using Feeder.life features.
+                  I&apos;m Feeder AI, powered by Google Gemini. Ask me anything in English, Tamil, Tanglish, Hindi, or any language!
                 </p>
 
                 <div className="global-chatbot-quick-list">
@@ -249,7 +231,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
               </div>
             ))}
 
-            {/* Thinking / Loading State */}
+            {/* Thinking State */}
             {isThinking && (
               <div className="global-chatbot-msg-row msg-assistant">
                 <div className="global-chatbot-msg-avatar">
@@ -288,7 +270,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
                 value={inputQuery}
                 onChange={(e) => setInputQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Feeder anything..."
+                placeholder="Ask Feeder AI in any language..."
                 rows={1}
                 disabled={isThinking}
                 className="global-chatbot-input"
@@ -303,7 +285,7 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
               </button>
             </div>
             <div className="global-chatbot-disclaimer">
-              Educational guide. Consult a licensed vet for medical emergencies.
+              Educational guide. Consult a licensed veterinarian for medical emergencies.
             </div>
           </div>
         </div>

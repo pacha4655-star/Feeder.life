@@ -9,18 +9,18 @@ export async function POST(request: NextRequest) {
     const user = await resolveAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Please sign in.' },
+        { success: false, error: 'Unauthorized. Please sign in to chat with Feeder AI.' },
         { status: 401 }
       );
     }
 
-    // 2. Server-side Rate Limiting based on authenticated user identity
+    // 2. Server-side Rate Limiting based on verified user identity
     const rateCheck = checkRateLimit('ai_chat', user.id, RATE_LIMIT_CONFIG.ai);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         {
           success: false,
-          error: "You've reached the current usage limit. Please try again later.",
+          error: "You're sending messages too quickly. Please try again in a moment.",
           retryAfter: rateCheck.retryAfterSeconds,
         },
         {
@@ -52,9 +52,9 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanMessage = rawMessage.trim();
-    if (cleanMessage.length > 2000) {
+    if (cleanMessage.length > 4000) {
       return NextResponse.json(
-        { success: false, error: 'Message exceeds maximum length of 2000 characters.' },
+        { success: false, error: 'Message exceeds maximum length of 4000 characters.' },
         { status: 400 }
       );
     }
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       conversationId = rawConvId;
     }
 
-    // 4. Execute AI pipeline with conversation memory & ownership verification
+    // 4. Execute AI pipeline with Google Gemini & conversation memory
     const response = await AiChatService.sendMessage({
       userId: user.id,
       conversationId,
@@ -99,11 +99,16 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+    if (error.message === 'RATE_LIMITED' || error.message?.includes('429')) {
+      return NextResponse.json(
+        { success: false, error: "You're sending messages too quickly. Please try again in a moment." },
+        { status: 429 }
+      );
+    }
 
-    console.error('[POST /api/ai/chat] Unexpected error:', error);
-    // Never expose database or API secrets
+    console.error('[POST /api/ai/chat] Gemini API error:', error);
     return NextResponse.json(
-      { success: false, error: 'Ask Feeder is temporarily unavailable. Please try again.' },
+      { success: false, error: "Sorry, I couldn't process that right now. Please try again." },
       { status: 500 }
     );
   }
