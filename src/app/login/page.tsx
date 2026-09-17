@@ -211,8 +211,7 @@ export default function LoginPage() {
             aria-expanded={showLangMenu}
             aria-label={t('login.selectLanguage')}
           >
-            <Globe size={14} className="feeder-globe-icon" />
-            <span>{language.nativeName || 'English'}</span>
+            <span>{locale === 'en' ? 'English' : (language.nativeName || 'English')}</span>
             <ChevronDown size={13} className="feeder-chevron-icon" />
           </button>
 
@@ -289,7 +288,12 @@ export default function LoginPage() {
 
             <div className="feeder-mobile-feature-item">
               <div className="feeder-mobile-feature-icon-box">
-                <Utensils size={18} className="text-[#1B5E20]" />
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 12a8 8 0 0 0 16 0H4z" fill="#1B5E20" />
+                  <circle cx="8" cy="8" r="1.5" fill="#1B5E20" />
+                  <circle cx="12" cy="6" r="1.5" fill="#1B5E20" />
+                  <circle cx="16" cy="8" r="1.5" fill="#1B5E20" />
+                </svg>
               </div>
               <span className="feeder-mobile-feature-label">{t('login.supportFeeding') || 'Support Feeding'}</span>
             </div>
@@ -347,6 +351,19 @@ export default function LoginPage() {
                   className="feeder-mobile-btn-google"
                   buttonText={t('login.continueWithGoogle')}
                 />
+
+                {/* Continue with Apple */}
+                <button
+                  type="button"
+                  onClick={() => setError('Apple Sign-In is configured for iOS Native / Safari. Please use Google or Email to continue.')}
+                  className="feeder-mobile-btn-apple"
+                  aria-label="Continue with Apple"
+                >
+                  <svg width="16" height="16" viewBox="0 0 170 170" fill="currentColor" className="shrink-0">
+                    <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.69-3.04-7.59-7.71-11.72-14.01-6-9.13-10.79-19.58-14.38-31.33-3.6-11.75-5.4-22.95-5.4-33.6 0-14.57 3.79-26.6 11.37-36.1 7.58-9.5 17.07-14.35 28.47-14.56 4.79 0 10.15 1.25 16.08 3.75 5.93 2.5 9.87 3.79 11.82 3.87 1.48 0 5.48-1.33 12.01-3.99 6.53-2.65 12.1-3.8 16.71-3.44 12.44.88 22.42 5.53 29.93 13.96-10.99 6.64-16.38 15.72-16.17 27.24.22 9.03 3.65 16.63 10.3 22.8 6.65 6.17 14.57 9.58 23.77 10.23-2.17 6.41-4.8 12.82-7.89 19.24zM119.22 31.84c0-7.39 2.67-14.28 8.01-20.67 5.34-6.39 11.96-10.42 19.86-12.09.22 1.41.33 2.61.33 3.6 0 7.39-2.78 14.4-8.34 21.03-5.56 6.63-12.28 10.59-20.17 11.88-.22-1.3-.33-2.55-.33-3.75z"/>
+                  </svg>
+                  <span>{t('login.continueWithApple') && t('login.continueWithApple') !== 'login.continueWithApple' ? t('login.continueWithApple') : 'Continue with Apple'}</span>
+                </button>
 
                 {/* Divider: ──── OR ──── */}
                 <div className="feeder-exact-divider">
