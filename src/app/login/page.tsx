@@ -147,6 +147,41 @@ export default function LoginPage() {
 
   return (
     <div className="feeder-exact-login-page" dir={dir}>
+      {/* Top Right Language Selector (Fixed/Pinned top-right on Desktop & Mobile) */}
+      <header className="feeder-exact-top-bar" aria-label="Language selection">
+        <div className="feeder-language-selector-wrap">
+          <button
+            type="button"
+            className="feeder-language-btn"
+            onClick={() => setShowLangMenu(!showLangMenu)}
+            aria-expanded={showLangMenu}
+            aria-label={t('login.selectLanguage')}
+          >
+            <Globe size={15} className="feeder-globe-icon" />
+            <span>{language.nativeName}</span>
+            <ChevronDown size={14} className="feeder-chevron-icon" />
+          </button>
+
+          {showLangMenu && (
+            <div className="feeder-language-dropdown">
+              {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
+                  onClick={() => {
+                    setLocale(lang.code);
+                    setShowLangMenu(false);
+                  }}
+                >
+                  {lang.nativeName}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </header>
+
       <div className="feeder-exact-split-layout">
         
         {/* ============================================================
@@ -172,42 +207,6 @@ export default function LoginPage() {
             RIGHT SECTION (≈ 40%): Generic Feeder Authentication Panel
             ============================================================ */}
         <section className="feeder-exact-right-panel" aria-label="Account login">
-          
-          {/* Top Right Language Selector */}
-          <div className="feeder-exact-top-bar">
-            <div className="feeder-language-selector-wrap">
-              <button
-                type="button"
-                className="feeder-language-btn"
-                onClick={() => setShowLangMenu(!showLangMenu)}
-                aria-expanded={showLangMenu}
-                aria-label={t('login.selectLanguage')}
-              >
-                <Globe size={15} className="feeder-globe-icon" />
-                <span>{language.nativeName}</span>
-                <ChevronDown size={14} className="feeder-chevron-icon" />
-              </button>
-
-              {showLangMenu && (
-                <div className="feeder-language-dropdown">
-                  {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
-                      onClick={() => {
-                        setLocale(lang.code);
-                        setShowLangMenu(false);
-                      }}
-                    >
-                      {lang.nativeName}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Centered Generic Login Content */}
           <div className="feeder-exact-auth-container">
             
