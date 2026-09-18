@@ -3747,7 +3747,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
    ============================================================ */
 
 /* Tablet & Desktop Split-Screen Layout (>= 769px width and > 520px height) */
-@media (min-width: 769px) and (min-height: 521px) {
+@media (min-width: 768px) and (min-height: 501px) {
   .feeder-exact-login-page {
     width: 100vw;
     min-height: 100vh;
@@ -3774,28 +3774,28 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   }
 }
 
-/* Tablet Landscape & Medium Screen (769px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) and (min-height: 521px) {
+/* Tablet Landscape & Medium Screen (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) and (min-height: 501px) {
   .feeder-exact-left-panel {
-    flex: 0 0 54%;
-    width: 54%;
-    padding: 24px;
+    flex: 0 0 52%;
+    width: 52%;
+    padding: 24px 20px;
   }
   .feeder-exact-right-panel {
-    flex: 0 0 46%;
-    width: 46%;
-    padding: 24px 28px;
+    flex: 0 0 48%;
+    width: 48%;
+    padding: 24px 24px;
   }
   .feeder-auth-welcome-title {
     font-size: 20px;
   }
 }
 
-/* Mobile Phone Experience (<= 768px or Landscape Mobile with height <= 520px) */
-@media (max-width: 768px), (max-height: 520px) {
+/* Mobile Phone Experience (<= 767px or Landscape Mobile with height <= 500px) */
+@media (max-width: 767px), (max-height: 500px) {
   html,
   body {
-    background: #cce7cf;
+    background: #ffffff;
     padding: 0;
     margin: 0;
   }
@@ -3805,7 +3805,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
     max-width: 100%;
     min-height: 100dvh;
     min-height: 100vh;
-    background: #cce7cf;
+    background: #ffffff;
     display: flex;
     flex-direction: column;
     overflow-x: hidden;
