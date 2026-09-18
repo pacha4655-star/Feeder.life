@@ -3766,10 +3766,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  justify-content: space-between;
-  align-items: center;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #d8ecd9 0%, #eaf5ec 45%, #fbf8f0 100%);
+  background: linear-gradient(180deg, #dcf2de 0%, #eaf6ec 40%, #f4faf4 100%);
 }
 
 /* Top Branding Header */
@@ -3779,10 +3777,11 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   align-items: center;
   text-align: center;
   width: 100%;
-  padding: 12px 16px 2px 16px;
+  padding: 14px 16px 4px 16px;
   box-sizing: border-box;
   z-index: 10;
   position: relative;
+  flex-shrink: 0;
 }
 
 .feeder-mobile-logo-wrap {
@@ -3817,13 +3816,13 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   letter-spacing: 0.2px;
 }
 
-/* Hero Wildlife Art Composition */
+/* Hero Wildlife Art Composition - directly connected to white card with overlap */
 .feeder-mobile-hero-wrapper {
   width: 100%;
   display: block;
   position: relative;
-  margin-top: 0;
-  margin-bottom: -22px;
+  margin-top: auto;
+  margin-bottom: -32px;
   z-index: 5;
   flex-shrink: 0;
 }
@@ -3832,16 +3831,15 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   width: 100%;
   height: auto;
   aspect-ratio: 682 / 338;
-  object-fit: contain;
   display: block;
 }
 
-/* Rounded White Auth Panel */
+/* Rounded White Auth Panel - sits directly over lower hero visual */
 .feeder-mobile-auth-panel {
   width: 100%;
   background: #ffffff;
   border-radius: 28px 28px 0 0;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.09);
+  box-shadow: 0 -8px 30px rgba(27, 94, 32, 0.08);
   padding: 14px 18px clamp(8px, 1.5vh, 14px) 18px;
   box-sizing: border-box;
   display: flex;
