@@ -21,7 +21,6 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle2,
-  Globe,
   ChevronDown,
   Loader2,
   X,
@@ -32,7 +31,6 @@ import {
   Leaf,
   Users,
   ArrowRight,
-  ArrowLeft,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -116,24 +114,25 @@ export default function LoginPage() {
       // 4. Redirect to authenticated application
       router.push(data.redirectTo || (data.isNewUser ? '/onboarding' : '/'));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Firebase Login Error]:', err);
+      const authError = err as { code?: string; message?: string };
       if (
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/wrong-password' ||
-        err.code === 'auth/invalid-credential'
+        authError.code === 'auth/user-not-found' ||
+        authError.code === 'auth/wrong-password' ||
+        authError.code === 'auth/invalid-credential'
       ) {
         setError(t('errors.invalidCredentials'));
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         setError(t('errors.invalidEmail'));
-      } else if (err.code === 'auth/user-disabled') {
+      } else if (authError.code === 'auth/user-disabled') {
         setError(t('errors.userDisabled'));
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (authError.code === 'auth/too-many-requests') {
         setError(t('errors.tooManyRequests'));
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (authError.code === 'auth/network-request-failed') {
         setError(t('errors.networkError'));
-      } else if (err.message && !err.message.includes('object Object')) {
-        setError(err.message);
+      } else if (authError.message && !authError.message.includes('object Object')) {
+        setError(authError.message);
       } else {
         setError(t('errors.invalidCredentials'));
       }
@@ -166,16 +165,17 @@ export default function LoginPage() {
 
       router.push(data.redirectTo || (data.isNewUser ? '/onboarding' : '/'));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Google Login Error]:', err);
+      const authError = err as { code?: string; message?: string };
       if (
-        err.code === 'auth/popup-closed-by-user' ||
-        err.code === 'auth/cancelled-popup-request' ||
-        err.message?.includes('closed-by-user')
+        authError.code === 'auth/popup-closed-by-user' ||
+        authError.code === 'auth/cancelled-popup-request' ||
+        authError.message?.includes('closed-by-user')
       ) {
         setError('Sign-in cancelled. Please select your Google account to proceed.');
       } else {
-        setError(err.message || 'Google sign-in failed. Please try again.');
+        setError(authError.message || 'Google sign-in failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -220,18 +220,19 @@ export default function LoginPage() {
       setResolvedEmailDisplay(targetEmail.includes('@') ? targetEmail : cleanInput);
       setResetSuccess(true);
       setResendCooldown(30);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[Password Reset Error]:', err);
-      if (err.code === 'auth/user-not-found') {
+      const authError = err as { code?: string; message?: string };
+      if (authError.code === 'auth/user-not-found') {
         // Privacy-preserving non-enumeration
         setResolvedEmailDisplay(cleanInput);
         setResetSuccess(true);
         setResendCooldown(30);
-      } else if (err.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         setResetError(t('errors.invalidEmail') || 'Please enter a valid email address.');
-      } else if (err.code === 'auth/too-many-requests') {
+      } else if (authError.code === 'auth/too-many-requests') {
         setResetError(t('errors.tooManyRequests') || 'Too many reset attempts. Please wait a moment before trying again.');
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (authError.code === 'auth/network-request-failed') {
         setResetError(t('errors.networkError') || 'Network error. Please check your internet connection.');
       } else {
         setResetError(t('errors.resetFailed') || 'Unable to send password reset email. Please try again.');
