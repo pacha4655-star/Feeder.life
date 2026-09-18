@@ -561,22 +561,23 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Pagination Dots */}
-          <div className="feeder-mobile-dots-row">
-            <span className="feeder-mobile-dot active" />
-            <span className="feeder-mobile-dot" />
-            <span className="feeder-mobile-dot" />
-          </div>
-
-          {/* feeder.life Footer */}
-          <div className="feeder-mobile-footer-wrap">
-            <div className="feeder-mobile-footer-brand">
-              <Leaf size={14} className="feeder-mobile-footer-leaf" />
-              <span>feeder.life</span>
+          {/* Bottom Group: Pagination Dots & feeder.life Footer */}
+          <div className="feeder-mobile-bottom-group">
+            <div className="feeder-mobile-dots-row">
+              <span className="feeder-mobile-dot active" />
+              <span className="feeder-mobile-dot" />
+              <span className="feeder-mobile-dot" />
             </div>
-            <p className="feeder-mobile-footer-tagline">
-              For animals. For people. For a better tomorrow.
-            </p>
+
+            <div className="feeder-mobile-footer-wrap">
+              <div className="feeder-mobile-footer-brand">
+                <Leaf size={14} className="feeder-mobile-footer-leaf" />
+                <span>feeder.life</span>
+              </div>
+              <p className="feeder-mobile-footer-tagline">
+                For animals. For people. For a better tomorrow.
+              </p>
+            </div>
           </div>
         </div>
       </div>
