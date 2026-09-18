@@ -15,47 +15,45 @@ async function runComprehensiveVerification() {
   const page = await browser.newPage();
 
   const testViewports = [
-    // Short phones
-    { width: 320, height: 480, name: 'iPhone 4S / Short Phone' },
-    { width: 320, height: 568, name: 'iPhone 5 / SE (1st gen)' },
-    { width: 360, height: 640, name: 'Android Galaxy S8' },
-    // Normal phones
-    { width: 360, height: 720, name: 'Android Standard' },
-    { width: 375, height: 667, name: 'iPhone 8 / SE (2nd gen)' },
-    { width: 375, height: 812, name: 'iPhone X / 11 Pro' },
-    { width: 390, height: 844, name: 'iPhone 12 / 13 / 14' },
-    { width: 393, height: 852, name: 'iPhone 14 Pro / 15 Pro' },
-    { width: 400, height: 800, name: 'Android Modern' },
-    { width: 412, height: 915, name: 'Pixel 7' },
-    { width: 414, height: 896, name: 'iPhone 11 / XR' },
-    { width: 430, height: 932, name: 'iPhone 14/15 Pro Max' },
-    { width: 480, height: 900, name: 'Wide Mobile' },
-    { width: 540, height: 960, name: 'Foldable Outer' },
-    { width: 600, height: 1024, name: 'Phablet / Tablet Mini' },
-    // Intermediate Widths & Heights
-    { width: 330, height: 700, name: 'Intermediate 330x700' },
-    { width: 340, height: 740, name: 'Intermediate 340x740' },
-    { width: 402, height: 820, name: 'Intermediate 402x820' },
-    { width: 406, height: 860, name: 'Intermediate 406x860' },
-    { width: 440, height: 880, name: 'Intermediate 440x880' },
-    { width: 460, height: 900, name: 'Intermediate 460x900' },
-    { width: 560, height: 900, name: 'Intermediate 560x900' },
-    { width: 576, height: 900, name: 'Intermediate 576x900' },
-    // Mobile Breakpoint Boundaries
-    { width: 680, height: 800, name: 'Mobile Max (680x800)' },
-    { width: 768, height: 800, name: 'Mobile Upper Boundary (768x800)' },
-    // Landscape Phones
+    // 320px width series
+    { width: 320, height: 480, name: 'Phone 320x480' },
+    { width: 320, height: 568, name: 'Phone 320x568' },
+    { width: 320, height: 640, name: 'Phone 320x640' },
+    { width: 320, height: 667, name: 'Phone 320x667' },
+    { width: 320, height: 720, name: 'Phone 320x720' },
+    // Intermediate small
+    { width: 330, height: 700, name: 'Phone 330x700' },
+    { width: 340, height: 740, name: 'Phone 340x740' },
+    // Standard phone widths
+    { width: 360, height: 640, name: 'Phone 360x640' },
+    { width: 360, height: 720, name: 'Phone 360x720' },
+    { width: 375, height: 667, name: 'Phone 375x667' },
+    { width: 375, height: 812, name: 'Phone 375x812' },
+    { width: 390, height: 664, name: 'Phone 390x664 (Safari bar)' },
+    { width: 390, height: 844, name: 'Phone 390x844' },
+    { width: 393, height: 727, name: 'Phone 393x727 (Chrome bar)' },
+    { width: 393, height: 852, name: 'Phone 393x852' },
+    { width: 400, height: 800, name: 'Phone 400x800' },
+    { width: 402, height: 820, name: 'Phone 402x820' },
+    { width: 406, height: 860, name: 'Phone 406x860' },
+    { width: 412, height: 915, name: 'Phone 412x915' },
+    { width: 414, height: 896, name: 'Phone 414x896' },
+    { width: 430, height: 932, name: 'Phone 430x932' },
+    { width: 440, height: 880, name: 'Phone 440x880' },
+    { width: 460, height: 900, name: 'Phone 460x900' },
+    { width: 480, height: 900, name: 'Phone 480x900' },
+    // Landscape mobile
     { width: 640, height: 360, name: 'Landscape 640x360' },
-    { width: 844, height: 390, name: 'Landscape 844x390 (iPhone 12/13/14)' },
-    { width: 896, height: 414, name: 'Landscape 896x414 (iPhone 11)' },
-    { width: 915, height: 412, name: 'Landscape 915x412 (Pixel 7)' },
-    { width: 932, height: 430, name: 'Landscape 932x430 (iPhone 15 Pro Max)' },
-    // Tablets & Desktop
-    { width: 768, height: 1024, name: 'iPad Portrait (768x1024)' },
-    { width: 820, height: 1180, name: 'iPad Air (820x1180)' },
-    { width: 1024, height: 1366, name: 'iPad Pro (1024x1366)' },
-    { width: 1280, height: 800, name: 'Desktop Standard (1280x800)' },
-    { width: 1440, height: 900, name: 'Desktop Large (1440x900)' },
+    { width: 667, height: 375, name: 'Landscape 667x375' },
+    { width: 720, height: 360, name: 'Landscape 720x360' },
+    { width: 844, height: 390, name: 'Landscape 844x390' },
+    { width: 896, height: 414, name: 'Landscape 896x414' },
+    { width: 915, height: 412, name: 'Landscape 915x412' },
+    { width: 932, height: 430, name: 'Landscape 932x430' },
+    // Tablets
+    { width: 768, height: 1024, name: 'iPad Portrait 768x1024' },
+    { width: 820, height: 1180, name: 'iPad Air 820x1180' },
+    { width: 1024, height: 1366, name: 'iPad Pro 1024x1366' },
   ];
 
   const results: TestResult[] = [];
