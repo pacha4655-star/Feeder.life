@@ -3339,6 +3339,18 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   border-color: #cbd5e1;
 }
 
+@media (max-width: 768px) {
+  .feeder-exact-top-bar {
+    top: 14px;
+    right: 14px;
+  }
+  .feeder-language-btn {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    border-radius: 9999px;
+  }
+}
+
 .feeder-language-dropdown {
   position: absolute;
   top: calc(100% + 4px);
@@ -3768,9 +3780,57 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #dcf2de 0%, #eaf6ec 30%, #e2f1e4 65%, #d5ebd7 100%);
-  padding: 0 0 16px 0;
+  background: linear-gradient(180deg, #dcf2de 0%, #edf7ee 20%, #e5f2e7 50%, #d8edd9 80%, #cfead2 100%);
+  padding: 0 0 14px 0;
   align-items: center;
+}
+
+/* Decorative Nature Corner Foliage */
+.feeder-foliage-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.feeder-foliage-top-left {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: clamp(95px, 26vw, 140px);
+  height: auto;
+  filter: blur(0.5px);
+}
+
+.feeder-foliage-top-right {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: clamp(85px, 22vw, 120px);
+  height: auto;
+  filter: blur(0.7px);
+}
+
+.feeder-foliage-bottom-left {
+  position: absolute;
+  bottom: -10px;
+  left: -10px;
+  width: clamp(100px, 28vw, 150px);
+  height: auto;
+  filter: blur(0.8px);
+}
+
+.feeder-foliage-bottom-right {
+  position: absolute;
+  bottom: -10px;
+  right: -10px;
+  width: clamp(100px, 28vw, 150px);
+  height: auto;
+  filter: blur(0.8px);
 }
 
 /* Top Branding Header */
@@ -3780,7 +3840,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   align-items: center;
   text-align: center;
   width: 100%;
-  padding: 14px 16px 4px 16px;
+  padding: 24px 16px 4px 16px;
   box-sizing: border-box;
   z-index: 10;
   position: relative;
@@ -3791,32 +3851,32 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .feeder-mobile-logo-svg {
-  width: 108px;
+  width: 116px;
   height: auto;
-  max-width: 114px;
+  max-width: 122px;
   object-fit: contain;
   display: block;
 }
 
 .feeder-mobile-main-tagline {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 700;
-  color: #134e19;
-  margin: 3px 0 1px 0;
+  color: #0f4c16;
+  margin: 4px 0 2px 0;
   letter-spacing: -0.01em;
 }
 
 .feeder-mobile-sub-tagline {
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 500;
-  color: #2e7d32;
+  color: #24752c;
   margin: 0;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.25px;
 }
 
 /* Hero Wildlife Art Composition - spans 100% width */
@@ -3840,12 +3900,12 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Rounded White Auth Panel - Floating Card with rounded corners overlapping the hero image */
 .feeder-mobile-auth-panel {
   width: calc(100% - 24px);
-  max-width: 440px;
-  margin: -36px auto 0 auto;
+  max-width: 430px;
+  margin: -54px auto 16px auto;
   background: #ffffff;
-  border-radius: 28px;
-  box-shadow: 0 10px 32px rgba(19, 78, 25, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
-  padding: 15px 16px 14px 16px;
+  border-radius: 30px;
+  box-shadow: 0 16px 45px rgba(15, 78, 22, 0.14), 0 3px 12px rgba(0, 0, 0, 0.05);
+  padding: 20px 18px 16px 18px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -3859,8 +3919,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 .feeder-mobile-features-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
-  margin-bottom: 11px;
+  gap: 5px;
+  margin-bottom: 13px;
   width: 100%;
 }
 
@@ -3869,15 +3929,15 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 3px;
+  gap: 3.5px;
 }
 
 .feeder-mobile-feature-icon-box {
-  width: clamp(30px, 8.2vw, 36px);
-  height: clamp(30px, 8.2vw, 36px);
+  width: clamp(34px, 8.8vw, 38px);
+  height: clamp(34px, 8.8vw, 38px);
   border-radius: 50%;
-  background: #eef7ee;
-  border: 1px solid #d0ebd0;
+  background: #ebf6ec;
+  border: 1px solid #d4ebd5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3886,13 +3946,13 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 
 .feeder-mobile-feature-icon-box:hover {
   transform: scale(1.05);
-  background: #e2f3e2;
+  background: #dff0e0;
 }
 
 .feeder-mobile-feature-label {
-  font-size: clamp(7.5px, 2.1vw, 9px);
+  font-size: clamp(7.8px, 2.15vw, 9.2px);
   font-weight: 600;
-  color: #1f4827;
+  color: #144e1c;
   line-height: 1.15;
   white-space: normal;
   text-align: center;
@@ -3908,18 +3968,18 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 .feeder-mobile-quick-actions {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 9px;
   width: 100%;
 }
 
 /* Continue with Email Button */
 .feeder-mobile-btn-email {
   width: 100%;
-  height: clamp(38px, 5vh, 44px);
+  height: clamp(42px, 5.4vh, 46px);
   border-radius: 9999px;
-  background: #135d1b;
+  background: #0e5318;
   color: #ffffff;
-  font-size: clamp(12.5px, 3.2vw, 13.5px);
+  font-size: clamp(13px, 3.3vw, 13.8px);
   font-weight: 600;
   border: none;
   cursor: pointer;
@@ -3928,23 +3988,23 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   justify-content: center;
   gap: 8px;
   transition: all 0.18s ease;
-  box-shadow: 0 2px 8px rgba(19, 93, 27, 0.22);
+  box-shadow: 0 2px 8px rgba(14, 83, 24, 0.22);
 }
 
 .feeder-mobile-btn-email:hover {
-  background: #0f4c16;
-  box-shadow: 0 4px 12px rgba(19, 93, 27, 0.32);
+  background: #0a4012;
+  box-shadow: 0 4px 12px rgba(14, 83, 24, 0.32);
 }
 
 /* Continue with Google Button */
 .feeder-mobile-btn-google {
   width: 100% !important;
-  height: clamp(38px, 5vh, 44px) !important;
+  height: clamp(42px, 5.4vh, 46px) !important;
   border-radius: 9999px !important;
-  border: 1px solid #cbd5e1 !important;
+  border: 1px solid #d1d5db !important;
   background: #ffffff !important;
   color: #334155 !important;
-  font-size: clamp(12.5px, 3.1vw, 13px) !important;
+  font-size: clamp(12.8px, 3.2vw, 13.5px) !important;
   font-weight: 600 !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
   display: flex !important;
@@ -3960,12 +4020,12 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Continue with Apple Button */
 .feeder-mobile-btn-apple {
   width: 100%;
-  height: clamp(38px, 5vh, 44px);
+  height: clamp(42px, 5.4vh, 46px);
   border-radius: 9999px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #d1d5db;
   background: #ffffff;
   color: #0f172a;
-  font-size: clamp(12.5px, 3.1vw, 13px);
+  font-size: clamp(12.8px, 3.2vw, 13.5px);
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   display: flex;
@@ -3986,12 +4046,12 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Create Account Button */
 .feeder-mobile-btn-create {
   width: 100%;
-  height: clamp(36px, 4.8vh, 40px);
+  height: clamp(40px, 5vh, 43px);
   border-radius: 9999px;
-  border: 1.5px solid #135d1b;
+  border: 1.5px solid #0e5318;
   background: #ffffff;
-  color: #135d1b;
-  font-size: clamp(12.5px, 3.1vw, 13px);
+  color: #0e5318;
+  font-size: clamp(12.8px, 3.2vw, 13.5px);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -4003,20 +4063,20 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 
 .feeder-mobile-btn-create:hover {
   background: #f0fdf4;
-  border-color: #0f4c16;
-  color: #0f4c16;
+  border-color: #0a4012;
+  color: #0a4012;
 }
 
 .feeder-mobile-login-toggle-wrap {
   text-align: center;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .feeder-mobile-login-link {
   background: none;
   border: none;
-  font-size: clamp(11.5px, 2.9vw, 12.5px);
-  color: #135d1b;
+  font-size: clamp(12px, 3vw, 13px);
+  color: #0e5318;
   font-weight: 700;
   cursor: pointer;
   padding: 0;
