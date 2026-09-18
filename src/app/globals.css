@@ -3979,7 +3979,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   .feeder-mobile-actions-stack {
     display: flex;
     flex-direction: column;
-    gap: clamp(4px, 1vh, 8px);
+    gap: clamp(6px, 1.3vh, 10px);
     width: 100%;
     max-width: 440px;
     margin: 0 auto;
