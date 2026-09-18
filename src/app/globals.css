@@ -3748,16 +3748,22 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 
 /* Tablet & Desktop Split-Screen Layout (>= 769px width and > 520px height) */
 @media (min-width: 768px) and (min-height: 501px) {
+  html, body {
+    overflow: hidden !important;
+    height: 100% !important;
+  }
   .feeder-exact-login-page {
+    position: fixed;
+    inset: 0;
     width: 100vw;
-    min-height: 100vh;
-    min-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
     background: #ffffff;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    overflow-x: hidden;
-    position: relative;
+    overflow: hidden;
     box-sizing: border-box;
   }
   .feeder-mobile-nature-container {
