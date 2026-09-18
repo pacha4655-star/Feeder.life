@@ -3289,17 +3289,19 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
    FEEDER EXACT REFERENCE-BASED LOGIN EXPERIENCE (60% / 40%)
    ============================================================ */
 
-.feeder-exact-login-page {
-  width: 100vw;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow-x: hidden;
-  position: relative;
-  box-sizing: border-box;
+@media (min-width: 769px) {
+  .feeder-exact-login-page {
+    width: 100vw;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-x: hidden;
+    position: relative;
+    box-sizing: border-box;
+  }
 }
 
 /* Global Top-Right Language Selector */
@@ -4006,7 +4008,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 @media (max-width: 768px) {
-  body:has(.feeder-mobile-nature-container) {
+  html,
+  body {
     min-height: auto !important;
     height: auto !important;
     background: #ffffff !important;
@@ -4016,25 +4019,50 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 
   .feeder-exact-login-page {
     width: 100% !important;
-    min-height: auto !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
     height: auto !important;
     max-height: none !important;
-    background: #ffffff !important;
+    background: transparent !important;
     display: block !important;
     overflow-x: hidden !important;
     padding: 0 !important;
     margin: 0 !important;
+    border: none !important;
   }
 
   .feeder-mobile-nature-container {
     display: block !important;
     width: 100% !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     height: auto !important;
     max-height: none !important;
     background: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
+    border: none !important;
+  }
+
+  .feeder-mobile-backdrop-wrap {
+    width: 100% !important;
+    max-width: 480px !important;
+    position: relative !important;
+    display: block !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  .feeder-mobile-backdrop-img {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 682 / 1024 !important;
+    display: block !important;
+    user-select: none !important;
+    -webkit-user-drag: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
   }
 
   .feeder-exact-split-layout {
