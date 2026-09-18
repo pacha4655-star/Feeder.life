@@ -3780,8 +3780,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #dcf2de 0%, #edf7ee 20%, #e5f2e7 50%, #d8edd9 80%, #cfead2 100%);
-  padding: 0 0 14px 0;
+  background: linear-gradient(180deg, #f4faf5 0%, #eaf5ec 22%, #dff0e2 50%, #d2ebd6 80%, #c2e3c7 100%);
+  padding: 0 0 16px 0;
   align-items: center;
 }
 
