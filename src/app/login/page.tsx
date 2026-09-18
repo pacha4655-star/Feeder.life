@@ -293,37 +293,6 @@ export default function LoginPage() {
             className="feeder-mobile-hero-img"
             loading="eager"
           />
-
-          {/* Mobile Language Selector on Top-Right Side */}
-          <div className="feeder-mobile-lang-trigger-wrap">
-            <button
-              type="button"
-              className="feeder-mobile-lang-btn"
-              onClick={() => setShowLangMenu(!showLangMenu)}
-              aria-expanded={showLangMenu}
-              aria-label={t('login.selectLanguage')}
-            >
-              <span>{locale === 'en' ? 'English' : (language.nativeName || 'English')}</span>
-              <ChevronDown size={13} className={`feeder-chevron-icon transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
-            </button>
-            {showLangMenu && (
-              <div className="feeder-language-dropdown feeder-mobile-language-dropdown">
-                {SUPPORTED_LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.code}
-                    type="button"
-                    className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
-                    onClick={() => {
-                      setLocale(lang.code);
-                      setShowLangMenu(false);
-                    }}
-                  >
-                    {lang.nativeName}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* White Rounded Login Panel (Overlays the bottom of the animal hero) */}
