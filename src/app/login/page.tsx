@@ -294,18 +294,21 @@ export default function LoginPage() {
             loading="eager"
           />
 
-          {/* Mobile Language Selector Hit Area over English button */}
+          {/* Mobile Language Selector on Top-Right Side */}
           <div className="feeder-mobile-lang-trigger-wrap">
             <button
               type="button"
-              className="feeder-mobile-lang-hitarea"
+              className="feeder-mobile-lang-btn"
               onClick={() => setShowLangMenu(!showLangMenu)}
               aria-expanded={showLangMenu}
               aria-label={t('login.selectLanguage')}
-            />
+            >
+              <span>{locale === 'en' ? 'English' : (language.nativeName || 'English')}</span>
+              <ChevronDown size={13} className={`feeder-chevron-icon transition-transform duration-200 ${showLangMenu ? 'rotate-180' : ''}`} />
+            </button>
             {showLangMenu && (
               <div className="feeder-language-dropdown feeder-mobile-language-dropdown">
-                {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
+                {SUPPORTED_LANGUAGES.map((lang) => (
                   <button
                     key={lang.code}
                     type="button"
