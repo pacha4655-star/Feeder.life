@@ -40,6 +40,7 @@ async function runComprehensiveVerification() {
     { width: 414, height: 896, name: 'Phone 414x896' },
     { width: 430, height: 932, name: 'Phone 430x932' },
     { width: 440, height: 880, name: 'Phone 440x880' },
+    { width: 440, height: 956, name: 'iPhone 16 Pro Max 440x956' },
     { width: 460, height: 900, name: 'Phone 460x900' },
     { width: 480, height: 900, name: 'Phone 480x900' },
     // Landscape mobile
