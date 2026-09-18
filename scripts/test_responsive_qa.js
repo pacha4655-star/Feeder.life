@@ -46,12 +46,13 @@ async function runTests() {
       let visualElementsExist = false;
       if (isMobile) {
         const backdrop = !!document.querySelector('.feeder-mobile-backdrop-img');
-        const card = !!document.querySelector('.feeder-mobile-auth-panel');
-        const emailBtn = !!document.querySelector('.feeder-mobile-btn-email');
-        const googleBtn = !!document.querySelector('.feeder-mobile-btn-google');
-        const appleBtn = !!document.querySelector('.feeder-mobile-btn-apple');
-        const features = document.querySelectorAll('.feeder-mobile-feature-item').length;
-        visualElementsExist = backdrop && card && emailBtn && googleBtn && appleBtn && features === 6;
+        const emailHit = !!document.querySelector('.feeder-hitarea-email');
+        const googleHit = !!document.querySelector('.feeder-hitarea-google');
+        const appleHit = !!document.querySelector('.feeder-hitarea-apple');
+        const createHit = !!document.querySelector('.feeder-hitarea-create');
+        const loginHit = !!document.querySelector('.feeder-hitarea-login');
+        const noDuplicateCard = !document.querySelector('.feeder-mobile-auth-panel');
+        visualElementsExist = backdrop && emailHit && googleHit && appleHit && createHit && loginHit && noDuplicateCard;
       } else {
         const desktopLeft = !!document.querySelector('.feeder-exact-left-panel');
         const desktopRight = !!document.querySelector('.feeder-exact-right-panel');

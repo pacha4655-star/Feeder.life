@@ -3770,7 +3770,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 /* ============================================================
-   MOBILE NATURE-INSPIRED LOGIN (EXACT UPLOADED ASSET UI)
+   MOBILE NATURE-INSPIRED LOGIN (SINGLE EXACT ASSET UI)
    ============================================================ */
 
 .feeder-mobile-nature-container {
@@ -3783,9 +3783,10 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
-  background: #cbe7ce;
-  padding: 0 0 16px 0;
+  background: linear-gradient(180deg, #e2eff7 0%, #d8dcc1 100%);
   align-items: center;
+  justify-content: flex-start;
+  padding: 0;
 }
 
 /* Single Exact Uploaded Visual Asset Backdrop */
@@ -3795,6 +3796,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   position: relative;
   display: block;
   flex-shrink: 0;
+  margin: 0 auto;
 }
 
 .feeder-mobile-backdrop-img {
@@ -3802,358 +3804,160 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   height: auto;
   aspect-ratio: 682 / 1024;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-/* Rounded White Auth Panel - Overlays the lower section of the uploaded image */
-.feeder-mobile-auth-panel {
-  width: calc(100% - 20px);
-  max-width: 435px;
-  margin: -77% auto 16px auto;
-  background: #ffffff;
-  border-radius: 28px;
-  box-shadow: 0 16px 45px rgba(15, 78, 22, 0.14), 0 3px 12px rgba(0, 0, 0, 0.05);
-  padding: 16px 16px 14px 16px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  z-index: 15;
-  position: relative;
-  flex-shrink: 0;
-}
-
-/* 6 Feature Action Circles in Single Row */
-.feeder-mobile-features-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 5px;
-  margin-bottom: 13px;
-  width: 100%;
-}
-
-.feeder-mobile-feature-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 3.5px;
-}
-
-.feeder-mobile-feature-icon-box {
-  width: clamp(34px, 8.8vw, 38px);
-  height: clamp(34px, 8.8vw, 38px);
-  border-radius: 50%;
-  background: #ebf6ec;
-  border: 1px solid #d4ebd5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.feeder-mobile-feature-icon-box:hover {
-  transform: scale(1.05);
-  background: #dff0e0;
-}
-
-.feeder-mobile-feature-label {
-  font-size: clamp(7.8px, 2.15vw, 9.2px);
-  font-weight: 600;
-  color: #144e1c;
-  line-height: 1.15;
-  white-space: normal;
-  text-align: center;
-}
-
-/* Auth Actions */
-.feeder-mobile-auth-actions-wrap {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.feeder-mobile-quick-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  width: 100%;
-}
-
-/* Continue with Email Button */
-.feeder-mobile-btn-email {
-  width: 100%;
-  height: clamp(42px, 5.4vh, 46px);
-  border-radius: 9999px;
-  background: #0e5318;
-  color: #ffffff;
-  font-size: clamp(13px, 3.3vw, 13.8px);
-  font-weight: 600;
+/* Invisible Interactive Hit Areas Over Image Buttons */
+.feeder-hitarea-email {
+  position: absolute;
+  top: 61.8%;
+  left: 12.8%;
+  width: 74.4%;
+  height: 5.2%;
+  background: transparent;
   border: none;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.18s ease;
-  box-shadow: 0 2px 8px rgba(14, 83, 24, 0.22);
-}
-
-.feeder-mobile-btn-email:hover {
-  background: #0a4012;
-  box-shadow: 0 4px 12px rgba(14, 83, 24, 0.32);
-}
-
-/* Continue with Google Button */
-.feeder-mobile-btn-google {
-  width: 100% !important;
-  height: clamp(42px, 5.4vh, 46px) !important;
-  border-radius: 9999px !important;
-  border: 1px solid #d1d5db !important;
-  background: #ffffff !important;
-  color: #334155 !important;
-  font-size: clamp(12.8px, 3.2vw, 13.5px) !important;
-  font-weight: 600 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.feeder-mobile-btn-google:hover {
-  background: #f8fafc !important;
-  border-color: #94a3b8 !important;
-}
-
-/* Continue with Apple Button */
-.feeder-mobile-btn-apple {
-  width: 100%;
-  height: clamp(42px, 5.4vh, 46px);
+  z-index: 10;
   border-radius: 9999px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: #0f172a;
-  font-size: clamp(12.8px, 3.2vw, 13.5px);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  padding: 0 16px;
-  box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
 }
 
-.feeder-mobile-btn-apple:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
-}
-
-/* Create Account Button */
-.feeder-mobile-btn-create {
-  width: 100%;
-  height: clamp(40px, 5vh, 43px);
-  border-radius: 9999px;
-  border: 1.5px solid #0e5318;
-  background: #ffffff;
-  color: #0e5318;
-  font-size: clamp(12.8px, 3.2vw, 13.5px);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  transition: all 0.18s ease;
-  box-sizing: border-box;
-}
-
-.feeder-mobile-btn-create:hover {
-  background: #f0fdf4;
-  border-color: #0a4012;
-  color: #0a4012;
-}
-
-.feeder-mobile-login-toggle-wrap {
-  text-align: center;
-  margin-top: 4px;
-}
-
-.feeder-mobile-login-link {
-  background: none;
+.feeder-hitarea-google {
+  position: absolute;
+  top: 67.4%;
+  left: 12.8%;
+  width: 74.4%;
+  height: 5.2%;
+  background: transparent;
   border: none;
-  font-size: clamp(12px, 3vw, 13px);
-  color: #0e5318;
-  font-weight: 700;
   cursor: pointer;
+  z-index: 10;
+  border-radius: 9999px;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+}
+
+.feeder-hitarea-apple {
+  position: absolute;
+  top: 73.0%;
+  left: 12.8%;
+  width: 74.4%;
+  height: 5.2%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 9999px;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+}
+
+.feeder-hitarea-create {
+  position: absolute;
+  top: 80.4%;
+  left: 12.8%;
+  width: 74.4%;
+  height: 4.8%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 9999px;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+  display: block;
+}
+
+.feeder-hitarea-login {
+  position: absolute;
+  top: 86.0%;
+  left: 28%;
+  width: 44%;
+  height: 3.2%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Floating Error Banner */
+.feeder-mobile-floating-error {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 400px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 150;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Floating Email Login Modal */
+.feeder-mobile-auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   padding: 0;
-  margin-left: 4px;
+  animation: fadeIn 0.2s ease-out;
 }
 
-.feeder-mobile-login-link:hover {
-  text-decoration: underline;
+.feeder-mobile-auth-modal-card {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 24px 24px 0 0;
+  padding: 24px 20px 32px 20px;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
 }
 
-.feeder-mobile-back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: none;
-  border: none;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #135d1b;
-  cursor: pointer;
-  margin-top: 4px;
-  padding: 3px;
-}
-
-.feeder-mobile-back-btn:hover {
-  text-decoration: underline;
-}
-
-/* Pagination Dots */
-.feeder-mobile-pagination-dots {
+.feeder-mobile-modal-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin-top: 7px;
-  margin-bottom: 2px;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
-.feeder-mobile-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  transition: all 0.2s ease;
-}
-
-.feeder-mobile-dot.active {
-  width: 5px;
-  height: 5px;
-  background: #135d1b;
-}
-
-/* Footer Brand */
-.feeder-mobile-footer-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  margin-top: 2px;
-}
-
-.feeder-mobile-footer-logo-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.feeder-mobile-footer-text {
+.feeder-mobile-modal-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 11.5px;
+  font-size: 18px;
   font-weight: 700;
-  color: #134e19;
+  color: #0f4c16;
+  margin: 0;
 }
 
-.feeder-mobile-footer-tagline {
-  font-size: clamp(8.5px, 2.3vw, 9.5px);
+.feeder-mobile-modal-close {
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #64748b;
-  margin: 1px 0 0 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-/* Height-Aware Adaptations for Compact Phones (e.g. 568px, 640px, 667px) */
-@media (max-height: 740px) and (max-width: 768px) {
-  .feeder-mobile-brand-header {
-    padding: 8px 12px 2px 12px;
-  }
-  .feeder-mobile-logo-svg {
-    width: 88px;
-    max-width: 95px;
-  }
-  .feeder-mobile-main-tagline {
-    font-size: 12px;
-    margin: 2px 0 1px 0;
-  }
-  .feeder-mobile-sub-tagline {
-    font-size: 9px;
-  }
-  .feeder-mobile-auth-panel {
-    margin: -28px auto 0 auto;
-    padding: 10px 14px 6px 14px;
-    border-radius: 22px;
-  }
-  .feeder-mobile-features-grid {
-    margin-bottom: 6px;
-    gap: 3px;
-  }
-  .feeder-mobile-feature-icon-box {
-    width: 28px;
-    height: 28px;
-  }
-  .feeder-mobile-feature-label {
-    font-size: 7.5px;
-  }
-  .feeder-mobile-quick-actions {
-    gap: 5px;
-  }
-  .feeder-mobile-btn-email,
-  .feeder-mobile-btn-google,
-  .feeder-mobile-btn-apple {
-    height: 35px !important;
-    font-size: 12px !important;
-  }
-  .feeder-mobile-btn-create {
-    height: 33px;
-    font-size: 12px;
-  }
-  .feeder-mobile-pagination-dots {
-    margin-top: 4px;
-    margin-bottom: 1px;
-  }
-  .feeder-mobile-footer-brand {
-    margin-top: 1px;
-  }
-  .feeder-mobile-footer-text {
-    font-size: 10.5px;
-  }
-  .feeder-mobile-footer-tagline {
-    font-size: 8px;
-  }
-}
-
-@media (max-height: 600px) and (max-width: 768px) {
-  .feeder-mobile-brand-header {
-    padding: 6px 10px 1px 10px;
-  }
-  .feeder-mobile-logo-svg {
-    width: 76px;
-    max-width: 82px;
-  }
-  .feeder-mobile-main-tagline {
-    font-size: 11px;
-  }
-  .feeder-mobile-sub-tagline {
-    font-size: 8.5px;
-  }
-  .feeder-mobile-auth-panel {
-    margin: -20px auto 0 auto;
-    padding: 8px 12px 4px 12px;
-    border-radius: 18px;
-  }
-  .feeder-mobile-btn-email,
-  .feeder-mobile-btn-google,
-  .feeder-mobile-btn-apple {
-    height: 32px !important;
-    font-size: 11.5px !important;
-  }
-  .feeder-mobile-btn-create {
-    height: 30px;
-    font-size: 11.5px;
-  }
+.feeder-mobile-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
 }
 
 /* View Switchers: Desktop vs Mobile */
