@@ -236,80 +236,20 @@ export default function LoginPage() {
       </header>
 
       {/* ============================================================
-          1. MOBILE LOGIN EXPERIENCE (< 769px) - NATURE REFERENCE UI
+          1. MOBILE LOGIN EXPERIENCE (< 769px) - EXACT UPLOADED ASSET UI
           ============================================================ */}
       <div className="feeder-mobile-nature-container">
-        {/* Decorative Nature Corner Foliage */}
-        <div className="feeder-foliage-wrap" aria-hidden="true">
-          {/* Top Left Branch */}
-          <svg className="feeder-foliage-top-left" viewBox="0 0 160 170" fill="none">
-            {/* Branch Stem */}
-            <path d="M-10 -10 Q 35 30 75 90 T 110 145" stroke="#4a3728" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
-            <path d="M35 30 Q 55 20 80 25" stroke="#4a3728" strokeWidth="1.5" opacity="0.5" />
-            <path d="M60 70 Q 85 65 110 75" stroke="#4a3728" strokeWidth="1.5" opacity="0.5" />
-            {/* Leaves */}
-            <path d="M-15 10 C 15 -10 35 15 25 35 C 10 45 -5 30 -15 10 Z" fill="#2d6a36" opacity="0.9" />
-            <path d="M10 20 C 40 5 65 25 55 50 C 35 60 20 45 10 20 Z" fill="#439352" opacity="0.85" />
-            <path d="M45 15 C 75 5 95 25 85 45 C 65 55 50 40 45 15 Z" fill="#5cae6c" opacity="0.75" />
-            <path d="M35 45 C 65 35 90 55 80 80 C 60 90 45 75 35 45 Z" fill="#2d6a36" opacity="0.9" />
-            <path d="M65 55 C 95 45 120 70 110 95 C 90 105 75 90 65 55 Z" fill="#439352" opacity="0.8" />
-            <path d="M60 90 C 90 85 115 110 105 130 C 85 140 70 120 60 90 Z" fill="#357d42" opacity="0.85" />
-            <path d="M85 115 C 110 110 130 130 120 150 C 105 158 95 140 85 115 Z" fill="#5cae6c" opacity="0.75" />
-          </svg>
-
-          {/* Top Right Branch */}
-          <svg className="feeder-foliage-top-right" viewBox="0 0 140 140" fill="none">
-            <path d="M150 -10 Q 115 30 75 75" stroke="#4a3728" strokeWidth="2" opacity="0.5" />
-            <path d="M145 10 C 115 -5 95 15 105 35 C 120 45 135 30 145 10 Z" fill="#2d6a36" opacity="0.8" />
-            <path d="M120 25 C 90 15 70 35 80 55 C 100 65 115 50 120 25 Z" fill="#439352" opacity="0.7" />
-            <path d="M95 45 C 70 35 55 55 65 75 C 80 85 95 70 95 45 Z" fill="#5cae6c" opacity="0.6" />
-          </svg>
-
-          {/* Bottom Left Foliage */}
-          <svg className="feeder-foliage-bottom-left" viewBox="0 0 160 160" fill="none">
-            <path d="M-15 165 C 15 125 45 145 35 175 C 15 185 -5 175 -15 165 Z" fill="#1b4d24" opacity="0.9" />
-            <path d="M5 145 C 35 105 75 125 60 160 C 40 170 20 160 5 145 Z" fill="#2d6a36" opacity="0.85" />
-            <path d="M40 135 C 70 100 105 120 90 150 C 70 160 55 150 40 135 Z" fill="#439352" opacity="0.8" />
-            <path d="M75 140 C 100 115 130 130 115 155 C 100 165 85 155 75 140 Z" fill="#5cae6c" opacity="0.65" />
-          </svg>
-
-          {/* Bottom Right Foliage */}
-          <svg className="feeder-foliage-bottom-right" viewBox="0 0 160 160" fill="none">
-            <path d="M175 165 C 145 125 115 145 125 175 C 145 185 165 175 175 165 Z" fill="#1b4d24" opacity="0.9" />
-            <path d="M155 145 C 125 105 85 125 100 160 C 120 170 140 160 155 145 Z" fill="#2d6a36" opacity="0.85" />
-            <path d="M120 135 C 90 100 55 120 70 150 C 90 160 105 150 120 135 Z" fill="#439352" opacity="0.8" />
-            <path d="M85 140 C 60 115 30 130 45 155 C 60 165 75 155 85 140 Z" fill="#5cae6c" opacity="0.65" />
-          </svg>
-        </div>
-        
-        {/* Top Branding Section */}
-        <div className="feeder-mobile-brand-header">
-          <div className="feeder-mobile-logo-wrap">
-            <img
-              src="/images/feeder-logo.svg"
-              alt="Feeder"
-              className="feeder-mobile-logo-svg"
-            />
-          </div>
-          <h1 className="feeder-mobile-main-tagline">
-            {t('login.taglineMain') || 'A kinder world for every animal.'}
-          </h1>
-          <p className="feeder-mobile-sub-tagline">
-            {t('login.taglineSub') || 'Connect • Care • Protect • Empower'}
-          </p>
-        </div>
-
-        {/* Hero Wildlife Art Composition */}
-        <div className="feeder-mobile-hero-wrapper" aria-hidden="true">
+        {/* Single Exact Uploaded Visual Asset Backdrop */}
+        <div className="feeder-mobile-backdrop-wrap" aria-hidden="true">
           <img
-            src="/images/feeder-wildlife-hero.jpg"
-            alt="Feeder Wildlife"
-            className="feeder-mobile-hero-image"
+            src="/images/feeder-mobile-login-bg.jpg"
+            alt="Feeder Nature Background"
+            className="feeder-mobile-backdrop-img"
             loading="eager"
           />
         </div>
 
-        {/* Rounded Authentication Panel */}
+        {/* Real Interactive White Authentication Panel Overlapping Lower Section */}
         <div className="feeder-mobile-auth-panel">
           
           {/* Feature Action Circles */}

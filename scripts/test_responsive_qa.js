@@ -45,14 +45,13 @@ async function runTests() {
 
       let visualElementsExist = false;
       if (isMobile) {
-        const logo = !!document.querySelector('.feeder-mobile-logo-svg');
-        const hero = !!document.querySelector('.feeder-mobile-hero-image');
+        const backdrop = !!document.querySelector('.feeder-mobile-backdrop-img');
         const card = !!document.querySelector('.feeder-mobile-auth-panel');
         const emailBtn = !!document.querySelector('.feeder-mobile-btn-email');
         const googleBtn = !!document.querySelector('.feeder-mobile-btn-google');
         const appleBtn = !!document.querySelector('.feeder-mobile-btn-apple');
         const features = document.querySelectorAll('.feeder-mobile-feature-item').length;
-        visualElementsExist = logo && hero && card && emailBtn && googleBtn && appleBtn && features === 6;
+        visualElementsExist = backdrop && card && emailBtn && googleBtn && appleBtn && features === 6;
       } else {
         const desktopLeft = !!document.querySelector('.feeder-exact-left-panel');
         const desktopRight = !!document.querySelector('.feeder-exact-right-panel');

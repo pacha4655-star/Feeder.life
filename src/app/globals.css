@@ -3341,13 +3341,16 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 
 @media (max-width: 768px) {
   .feeder-exact-top-bar {
-    top: 14px;
-    right: 14px;
+    top: 20px;
+    right: 12px;
   }
   .feeder-language-btn {
-    padding: 4px 10px;
-    font-size: 11.5px;
-    border-radius: 9999px;
+    opacity: 0;
+    width: 84px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    background: transparent;
   }
 }
 
@@ -3767,7 +3770,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 /* ============================================================
-   MOBILE NATURE-INSPIRED LOGIN (EXACT REFERENCE DESIGN)
+   MOBILE NATURE-INSPIRED LOGIN (EXACT UPLOADED ASSET UI)
    ============================================================ */
 
 .feeder-mobile-nature-container {
@@ -3780,132 +3783,36 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #f4faf5 0%, #eaf5ec 22%, #dff0e2 50%, #d2ebd6 80%, #c2e3c7 100%);
+  background: #cbe7ce;
   padding: 0 0 16px 0;
   align-items: center;
 }
 
-/* Decorative Nature Corner Foliage */
-.feeder-foliage-wrap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  overflow: hidden;
-  z-index: 2;
-}
-
-.feeder-foliage-top-left {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  width: clamp(95px, 26vw, 140px);
-  height: auto;
-  filter: blur(0.5px);
-}
-
-.feeder-foliage-top-right {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: clamp(85px, 22vw, 120px);
-  height: auto;
-  filter: blur(0.7px);
-}
-
-.feeder-foliage-bottom-left {
-  position: absolute;
-  bottom: -10px;
-  left: -10px;
-  width: clamp(100px, 28vw, 150px);
-  height: auto;
-  filter: blur(0.8px);
-}
-
-.feeder-foliage-bottom-right {
-  position: absolute;
-  bottom: -10px;
-  right: -10px;
-  width: clamp(100px, 28vw, 150px);
-  height: auto;
-  filter: blur(0.8px);
-}
-
-/* Top Branding Header */
-.feeder-mobile-brand-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+/* Single Exact Uploaded Visual Asset Backdrop */
+.feeder-mobile-backdrop-wrap {
   width: 100%;
-  padding: 24px 16px 4px 16px;
-  box-sizing: border-box;
-  z-index: 10;
+  max-width: 480px;
   position: relative;
+  display: block;
   flex-shrink: 0;
 }
 
-.feeder-mobile-logo-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 3px;
-}
-
-.feeder-mobile-logo-svg {
-  width: 116px;
-  height: auto;
-  max-width: 122px;
-  object-fit: contain;
-  display: block;
-}
-
-.feeder-mobile-main-tagline {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #0f4c16;
-  margin: 4px 0 2px 0;
-  letter-spacing: -0.01em;
-}
-
-.feeder-mobile-sub-tagline {
-  font-size: 10.5px;
-  font-weight: 500;
-  color: #24752c;
-  margin: 0;
-  letter-spacing: 0.25px;
-}
-
-/* Hero Wildlife Art Composition - spans 100% width */
-.feeder-mobile-hero-wrapper {
-  width: 100%;
-  display: block;
-  position: relative;
-  margin-top: 0;
-  margin-bottom: 0;
-  z-index: 5;
-  flex-shrink: 0;
-}
-
-.feeder-mobile-hero-image {
+.feeder-mobile-backdrop-img {
   width: 100%;
   height: auto;
-  aspect-ratio: 682 / 338;
+  aspect-ratio: 682 / 1024;
   display: block;
 }
 
-/* Rounded White Auth Panel - Floating Card with rounded corners overlapping the hero image */
+/* Rounded White Auth Panel - Overlays the lower section of the uploaded image */
 .feeder-mobile-auth-panel {
-  width: calc(100% - 24px);
-  max-width: 430px;
-  margin: -54px auto 16px auto;
+  width: calc(100% - 20px);
+  max-width: 435px;
+  margin: -77% auto 16px auto;
   background: #ffffff;
-  border-radius: 30px;
+  border-radius: 28px;
   box-shadow: 0 16px 45px rgba(15, 78, 22, 0.14), 0 3px 12px rgba(0, 0, 0, 0.05);
-  padding: 20px 18px 16px 18px;
+  padding: 16px 16px 14px 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
