@@ -257,11 +257,11 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Hero Wildlife Art Composition spanning full width */}
-        <div className="feeder-mobile-hero-wrapper">
+        {/* Hero Wildlife Art Composition */}
+        <div className="feeder-mobile-hero-wrapper" aria-hidden="true">
           <img
             src="/images/feeder-wildlife-hero.jpg"
-            alt="Feeder. A kinder world for every animal."
+            alt="Feeder Wildlife"
             className="feeder-mobile-hero-image"
             loading="eager"
           />
