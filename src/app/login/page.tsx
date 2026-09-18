@@ -294,20 +294,6 @@ export default function LoginPage() {
             loading="eager"
           />
 
-          {/* Top Center Feeder Branding */}
-          <div className="feeder-mobile-hero-branding">
-            <div className="feeder-mobile-hero-logo-row">
-              <img
-                src="/images/feeder-icon.svg"
-                alt="Feeder"
-                className="feeder-mobile-hero-paw-icon"
-              />
-              <span className="feeder-mobile-hero-brand-name">Feeder</span>
-            </div>
-            <p className="feeder-mobile-hero-tagline">A kinder world for every animal.</p>
-            <p className="feeder-mobile-hero-subtagline">Connect • Care • Protect • Empower</p>
-          </div>
-
           {/* Mobile Language Selector on Top-Right Side */}
           <div className="feeder-mobile-lang-trigger-wrap">
             <button
