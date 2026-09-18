@@ -3321,16 +3321,17 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(248, 250, 252, 0.9);
-  border: 1px solid #e2e8f0;
-  font-size: 13px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 12.5px;
   font-weight: 500;
   color: #1e293b;
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 8px;
+  padding: 5px 11px;
+  border-radius: 12px;
   transition: all 0.15s ease;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .feeder-language-btn:hover {
@@ -3767,7 +3768,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   overflow-x: hidden;
   overflow-y: auto;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #dcf2de 0%, #eaf6ec 40%, #f4faf4 100%);
+  background: linear-gradient(180deg, #dcf2de 0%, #eaf6ec 30%, #e2f1e4 65%, #d5ebd7 100%);
+  padding: 0 0 16px 0;
+  align-items: center;
 }
 
 /* Top Branding Header */
@@ -3792,9 +3795,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 .feeder-mobile-logo-svg {
-  width: 100px;
+  width: 108px;
   height: auto;
-  max-width: 108px;
+  max-width: 114px;
   object-fit: contain;
   display: block;
 }
@@ -3803,7 +3806,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 13.5px;
   font-weight: 700;
-  color: #1B5E20;
+  color: #134e19;
   margin: 3px 0 1px 0;
   letter-spacing: -0.01em;
 }
@@ -3811,18 +3814,18 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 .feeder-mobile-sub-tagline {
   font-size: 10px;
   font-weight: 500;
-  color: #3b6e47;
+  color: #2e7d32;
   margin: 0;
   letter-spacing: 0.2px;
 }
 
-/* Hero Wildlife Art Composition - directly connected to white card with overlap */
+/* Hero Wildlife Art Composition - spans 100% width */
 .feeder-mobile-hero-wrapper {
   width: 100%;
   display: block;
   position: relative;
-  margin-top: auto;
-  margin-bottom: -32px;
+  margin-top: 0;
+  margin-bottom: 0;
   z-index: 5;
   flex-shrink: 0;
 }
@@ -3834,13 +3837,15 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   display: block;
 }
 
-/* Rounded White Auth Panel - sits directly over lower hero visual */
+/* Rounded White Auth Panel - Floating Card with rounded corners overlapping the hero image */
 .feeder-mobile-auth-panel {
-  width: 100%;
+  width: calc(100% - 24px);
+  max-width: 440px;
+  margin: -36px auto 0 auto;
   background: #ffffff;
-  border-radius: 28px 28px 0 0;
-  box-shadow: 0 -8px 30px rgba(27, 94, 32, 0.08);
-  padding: 14px 18px clamp(8px, 1.5vh, 14px) 18px;
+  border-radius: 28px;
+  box-shadow: 0 10px 32px rgba(19, 78, 25, 0.10), 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 15px 16px 14px 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -3855,7 +3860,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 11px;
   width: 100%;
 }
 
@@ -3910,9 +3915,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Continue with Email Button */
 .feeder-mobile-btn-email {
   width: 100%;
-  height: clamp(38px, 5vh, 42px);
+  height: clamp(38px, 5vh, 44px);
   border-radius: 9999px;
-  background: #1B5E20;
+  background: #135d1b;
   color: #ffffff;
   font-size: clamp(12.5px, 3.2vw, 13.5px);
   font-weight: 600;
@@ -3923,18 +3928,18 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   justify-content: center;
   gap: 8px;
   transition: all 0.18s ease;
-  box-shadow: 0 2px 8px rgba(27, 94, 32, 0.22);
+  box-shadow: 0 2px 8px rgba(19, 93, 27, 0.22);
 }
 
 .feeder-mobile-btn-email:hover {
-  background: #154d1a;
-  box-shadow: 0 4px 12px rgba(27, 94, 32, 0.32);
+  background: #0f4c16;
+  box-shadow: 0 4px 12px rgba(19, 93, 27, 0.32);
 }
 
 /* Continue with Google Button */
 .feeder-mobile-btn-google {
   width: 100% !important;
-  height: clamp(38px, 5vh, 42px) !important;
+  height: clamp(38px, 5vh, 44px) !important;
   border-radius: 9999px !important;
   border: 1px solid #cbd5e1 !important;
   background: #ffffff !important;
@@ -3955,7 +3960,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Continue with Apple Button */
 .feeder-mobile-btn-apple {
   width: 100%;
-  height: clamp(38px, 5vh, 42px);
+  height: clamp(38px, 5vh, 44px);
   border-radius: 9999px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -3983,9 +3988,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   width: 100%;
   height: clamp(36px, 4.8vh, 40px);
   border-radius: 9999px;
-  border: 1.5px solid #1B5E20;
+  border: 1.5px solid #135d1b;
   background: #ffffff;
-  color: #1B5E20;
+  color: #135d1b;
   font-size: clamp(12.5px, 3.1vw, 13px);
   font-weight: 600;
   display: flex;
@@ -3998,8 +4003,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 
 .feeder-mobile-btn-create:hover {
   background: #f0fdf4;
-  border-color: #154d1a;
-  color: #154d1a;
+  border-color: #0f4c16;
+  color: #0f4c16;
 }
 
 .feeder-mobile-login-toggle-wrap {
@@ -4011,7 +4016,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   background: none;
   border: none;
   font-size: clamp(11.5px, 2.9vw, 12.5px);
-  color: #1B5E20;
+  color: #135d1b;
   font-weight: 700;
   cursor: pointer;
   padding: 0;
@@ -4031,7 +4036,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   border: none;
   font-size: 11.5px;
   font-weight: 600;
-  color: #1B5E20;
+  color: #135d1b;
   cursor: pointer;
   margin-top: 4px;
   padding: 3px;
@@ -4047,7 +4052,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  margin-top: 6px;
+  margin-top: 7px;
   margin-bottom: 2px;
 }
 
@@ -4062,7 +4067,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 .feeder-mobile-dot.active {
   width: 5px;
   height: 5px;
-  background: #1B5E20;
+  background: #135d1b;
 }
 
 /* Footer Brand */
@@ -4084,7 +4089,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   font-family: 'Outfit', sans-serif;
   font-size: 11.5px;
   font-weight: 700;
-  color: #1B5E20;
+  color: #134e19;
 }
 
 .feeder-mobile-footer-tagline {
@@ -4110,8 +4115,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
     font-size: 9px;
   }
   .feeder-mobile-auth-panel {
+    margin: -28px auto 0 auto;
     padding: 10px 14px 6px 14px;
-    border-radius: 22px 22px 0 0;
+    border-radius: 22px;
   }
   .feeder-mobile-features-grid {
     margin-bottom: 6px;
@@ -4167,8 +4173,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
     font-size: 8.5px;
   }
   .feeder-mobile-auth-panel {
+    margin: -20px auto 0 auto;
     padding: 8px 12px 4px 12px;
-    border-radius: 18px 18px 0 0;
+    border-radius: 18px;
   }
   .feeder-mobile-btn-email,
   .feeder-mobile-btn-google,
