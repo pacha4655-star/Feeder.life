@@ -3769,7 +3769,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   justify-content: space-between;
   align-items: center;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #dcf2de 0%, #eaf6ec 30%, #e2f1e4 65%, #d5ebd7 100%);
+  background: linear-gradient(180deg, #d8ecd9 0%, #eaf5ec 45%, #fbf8f0 100%);
 }
 
 /* Top Branding Header */
@@ -3820,22 +3820,19 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* Hero Wildlife Art Composition */
 .feeder-mobile-hero-wrapper {
   width: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  overflow: hidden;
+  display: block;
+  position: relative;
   margin-top: 0;
-  margin-bottom: -18px;
+  margin-bottom: -22px;
   z-index: 5;
-  flex: 1 1 auto;
+  flex-shrink: 0;
 }
 
 .feeder-mobile-hero-image {
   width: 100%;
   height: auto;
-  max-height: clamp(150px, 32vh, 280px);
-  object-fit: cover;
-  object-position: center bottom;
+  aspect-ratio: 682 / 338;
+  object-fit: contain;
   display: block;
 }
 
@@ -4114,9 +4111,6 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   .feeder-mobile-sub-tagline {
     font-size: 9px;
   }
-  .feeder-mobile-hero-image {
-    max-height: clamp(95px, 19vh, 135px);
-  }
   .feeder-mobile-auth-panel {
     padding: 10px 14px 6px 14px;
     border-radius: 22px 22px 0 0;
@@ -4173,9 +4167,6 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   }
   .feeder-mobile-sub-tagline {
     font-size: 8.5px;
-  }
-  .feeder-mobile-hero-image {
-    max-height: clamp(75px, 15vh, 105px);
   }
   .feeder-mobile-auth-panel {
     padding: 8px 12px 4px 12px;
