@@ -3854,7 +3854,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
     align-items: flex-start;
     line-height: 0;
     flex-shrink: 0;
-    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+    padding-top: 0;
     box-sizing: border-box;
   }
 
@@ -3897,7 +3897,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
     background: #ffffff;
     border-radius: 28px 28px 0 0;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
-    padding: clamp(14px, 2vh, 20px) clamp(14px, 4vw, 20px) calc(clamp(14px, 2vh, 24px) + env(safe-area-inset-bottom, 0px)) clamp(14px, 4vw, 20px);
+    padding: clamp(12px, 1.8vh, 18px) clamp(14px, 4vw, 20px) calc(clamp(10px, 1.5vh, 16px) + env(safe-area-inset-bottom, 0px)) clamp(14px, 4vw, 20px);
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -4168,7 +4168,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
   .feeder-mobile-bottom-group {
     width: 100%;
     max-width: 440px;
-    margin-top: clamp(8px, 1.6vh, 16px);
+    margin-top: clamp(6px, 1.4vh, 12px);
     padding-top: 0;
     padding-bottom: 0;
     display: flex;
