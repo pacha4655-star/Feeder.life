@@ -4006,25 +4006,45 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 }
 
 @media (max-width: 768px) {
+  body:has(.feeder-mobile-nature-container) {
+    min-height: auto !important;
+    height: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   .feeder-exact-login-page {
     width: 100% !important;
     min-height: auto !important;
     height: auto !important;
+    max-height: none !important;
     background: #ffffff !important;
     display: block !important;
     overflow-x: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
+
   .feeder-mobile-nature-container {
-    display: flex !important;
+    display: block !important;
+    width: 100% !important;
     min-height: auto !important;
     height: auto !important;
+    max-height: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
+
   .feeder-exact-split-layout {
     display: none !important;
   }
+
   .feeder-global-lang-footer {
     display: none !important;
   }
+
   .feeder-desktop-top-bar {
     display: none !important;
   }
@@ -4033,11 +4053,6 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img) {
 /* ============================================================
    GLOBAL MULTILINGUAL LANGUAGE FOOTER & SELECTOR MODAL
    ============================================================ */
-
-.feeder-exact-login-page {
-  flex-direction: column !important;
-  justify-content: space-between !important;
-}
 
 .feeder-global-lang-footer {
   width: 100%;
