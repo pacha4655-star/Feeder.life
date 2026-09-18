@@ -41,18 +41,33 @@ async function runTests() {
       const scrollWidth = document.documentElement.scrollWidth;
       const clientWidth = document.documentElement.clientWidth;
       const innerWidth = window.innerWidth;
-      const hasHorizontalOverflow = scrollWidth > innerWidth + 1; // 1px threshold for subpixel
+      const innerHeight = window.innerHeight;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const hasHorizontalOverflow = scrollWidth > innerWidth + 1;
 
       let visualElementsExist = false;
+      let noBottomGap = true;
       if (isMobile) {
-        const backdrop = !!document.querySelector('.feeder-mobile-backdrop-img');
+        const backdrop = document.querySelector('.feeder-mobile-backdrop-img');
         const emailHit = !!document.querySelector('.feeder-hitarea-email');
         const googleHit = !!document.querySelector('.feeder-hitarea-google');
         const appleHit = !!document.querySelector('.feeder-hitarea-apple');
         const createHit = !!document.querySelector('.feeder-hitarea-create');
         const loginHit = !!document.querySelector('.feeder-hitarea-login');
         const noDuplicateCard = !document.querySelector('.feeder-mobile-auth-panel');
-        visualElementsExist = backdrop && emailHit && googleHit && appleHit && createHit && loginHit && noDuplicateCard;
+        
+        visualElementsExist = !!backdrop && emailHit && googleHit && appleHit && createHit && loginHit && noDuplicateCard;
+        
+        // Ensure the backdrop image is loaded and natural height ends cleanly
+        if (backdrop) {
+          const imgRect = backdrop.getBoundingClientRect();
+          // Height of container should match image rendered height without extra spacer
+          const container = document.querySelector('.feeder-mobile-nature-container');
+          const containerRect = container ? container.getBoundingClientRect() : null;
+          if (containerRect && Math.abs(containerRect.height - imgRect.height) > 10) {
+            noBottomGap = false;
+          }
+        }
       } else {
         const desktopLeft = !!document.querySelector('.feeder-exact-left-panel');
         const desktopRight = !!document.querySelector('.feeder-exact-right-panel');
@@ -62,12 +77,14 @@ async function runTests() {
       return {
         hasHorizontalOverflow,
         scrollWidth,
-        innerWidth,
-        visualElementsExist
+        scrollHeight,
+        innerHeight,
+        visualElementsExist,
+        noBottomGap
       };
     }, vp.width <= 768);
 
-    const status = !checks.hasHorizontalOverflow && checks.visualElementsExist ? 'PASS' : 'FAIL';
+    const status = !checks.hasHorizontalOverflow && checks.visualElementsExist && checks.noBottomGap ? 'PASS' : 'FAIL';
     if (status === 'FAIL') allPass = false;
 
     console.log(`[${status}] ${vp.name} (${vp.width}x${vp.height}) - Scroll: ${checks.scrollWidth}/${checks.innerWidth}px, Elements: ${checks.visualElementsExist}`);

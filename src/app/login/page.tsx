@@ -245,9 +245,9 @@ export default function LoginPage() {
     <div className="feeder-exact-login-page" dir={dir}>
       
       {/* ============================================================
-          TOP RIGHT LANGUAGE SELECTOR (GLOBAL)
+          DESKTOP TOP RIGHT LANGUAGE SELECTOR (>= 769px)
           ============================================================ */}
-      <header className="feeder-exact-top-bar" aria-label="Language selection">
+      <header className="feeder-exact-top-bar feeder-desktop-top-bar" aria-label="Language selection">
         <div className="feeder-language-selector-wrap">
           <button
             type="button"
@@ -292,6 +292,34 @@ export default function LoginPage() {
             className="feeder-mobile-backdrop-img"
             loading="eager"
           />
+
+          {/* Mobile Language Selector Hit Area */}
+          <div className="feeder-mobile-lang-trigger-wrap">
+            <button
+              type="button"
+              className="feeder-mobile-lang-hitarea"
+              onClick={() => setShowLangMenu(!showLangMenu)}
+              aria-expanded={showLangMenu}
+              aria-label={t('login.selectLanguage')}
+            />
+            {showLangMenu && (
+              <div className="feeder-language-dropdown feeder-mobile-language-dropdown">
+                {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
+                    onClick={() => {
+                      setLocale(lang.code);
+                      setShowLangMenu(false);
+                    }}
+                  >
+                    {lang.nativeName}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Invisible Interactive Hit Areas Over Image Buttons */}
           <button
