@@ -76,6 +76,9 @@ async function runVerification() {
         const langBtnRect = langBtn?.getBoundingClientRect();
         const langBtnOk = langBtnRect ? (langBtnRect.right <= window.innerWidth && langBtnRect.top >= 0) : false;
 
+        const subtitle = document.querySelector('.feeder-auth-welcome-subtitle');
+        const subtitleText = subtitle?.textContent?.trim() || '';
+
         return {
           type: vpType,
           scrollWidth,
@@ -91,6 +94,7 @@ async function runVerification() {
           leftImgRenderedHeight: leftImg?.offsetHeight || 0,
           leftImgVisible,
           ratioDelta,
+          subtitleText,
           rightPanelPresent: !!rightPanel,
           googleBtnPresent: !!googleBtn,
           identifierInputPresent: !!identifierInput,
@@ -122,21 +126,23 @@ async function runVerification() {
 
     console.log(`[Viewport: ${vp.name} (${vp.width}x${vp.height})]`);
     if (vp.type === 'laptop' || vp.type === 'tablet') {
-      const imgOk = audit.leftImgVisible && audit.leftImgSrc.includes('feeder-login-left-composition.jpg');
+      const imgOk = audit.leftImgVisible && audit.leftImgSrc.includes('feeder-login-left-composition.png');
       const ratioOk = (audit.ratioDelta || 0) < 0.05; // Aspect ratio preserved without distortion
       const hOverflowOk = !audit.hasHorizontalOverflow;
       const vScrollOk = vp.type === 'laptop' ? !audit.hasVerticalOverflow : true;
       const rightUiOk = audit.rightPanelPresent && audit.googleBtnPresent && audit.identifierInputPresent && audit.passwordInputPresent && audit.loginBtnPresent && audit.createAccountBtnPresent;
       const langOk = audit.langBtnOk;
+      const captionOk = audit.subtitleText === 'Connect. Care. Protect. Make a difference.';
 
       console.log(`  - Left Image Asset: ${audit.leftImgSrc.split('/').pop()} (${audit.leftImgNaturalWidth}x${audit.leftImgNaturalHeight})`);
       console.log(`  - Left Image Rendered: ${audit.leftImgRenderedWidth}x${audit.leftImgRenderedHeight} | Aspect ratio preservation: ${ratioOk ? 'EXACT' : 'MISMATCH'}`);
+      console.log(`  - Caption Text: "${audit.subtitleText}" | Valid: ${captionOk ? 'YES' : 'NO'}`);
       console.log(`  - Right Panel UI Elements: ${rightUiOk ? 'ALL PRESENT & UNCHANGED' : 'FAILED'}`);
       console.log(`  - Language Button Positioning: ${langOk ? 'VALID (Top-Right)' : 'FAILED'}`);
       console.log(`  - Horizontal Overflow: ${hOverflowOk ? 'NONE (0px)' : `FAILED (${audit.scrollWidth} > ${audit.clientWidth})`}`);
       console.log(`  - Vertical Overflow: ${!audit.hasVerticalOverflow ? 'NONE (0px)' : `SCROLL (${audit.scrollHeight} > ${audit.clientHeight})`}`);
 
-      const pass = imgOk && ratioOk && hOverflowOk && rightUiOk && langOk && (vp.type !== 'laptop' || vScrollOk);
+      const pass = imgOk && ratioOk && hOverflowOk && rightUiOk && langOk && captionOk && (vp.type !== 'laptop' || vScrollOk);
       if (!pass) allPassed = false;
       console.log(`  => RESULT: ${pass ? 'PASSED ✅' : 'FAILED ❌'}\n`);
     } else {
