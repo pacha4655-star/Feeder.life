@@ -687,8 +687,8 @@ export default function LoginPage() {
         <section className="feeder-exact-left-panel" aria-label="Feeder platform overview">
           <div className="feeder-exact-composition-wrapper">
             <img
-              src="/images/feeder-login-left-composition.png"
-              alt="Feeder. Explore the things you love. Animals Bring People Together, Care Feed Rescue Repeat."
+              src="/images/feeder-login-left-composition.jpg"
+              alt="Feeder - A kinder world for every animal"
               className="feeder-exact-left-hero-image"
               loading="eager"
             />
