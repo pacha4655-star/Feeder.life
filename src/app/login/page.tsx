@@ -94,7 +94,7 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, targetEmail, password);
 
       // 2. Obtain cryptographically verified Firebase ID token
-      const idToken = await userCredential.user.getIdToken(true);
+      const idToken = await userCredential.user.getIdToken(); // cached token — fresh from signIn, no force-refresh needed
 
       // 3. Synchronize user profile into Supabase & issue secure session cookie
       const res = await fetch('/api/auth/sync', {
@@ -150,7 +150,7 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await signInWithPopup(auth, provider);
-      const idToken = await userCredential.user.getIdToken(true);
+      const idToken = await userCredential.user.getIdToken(); // cached token — fresh from signIn, no force-refresh needed
 
       const res = await fetch('/api/auth/sync', {
         method: 'POST',
@@ -244,130 +244,7 @@ export default function LoginPage() {
 
   return (
     <div className="feeder-exact-login-page" dir={dir}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        @media (min-width: 768px) and (max-height: 800px) {
-          html, body {
-            overflow: hidden !important;
-            height: 100vh !important;
-          }
-          .feeder-exact-login-page {
-            height: 100vh !important;
-            height: 100dvh !important;
-            max-height: 100vh !important;
-            overflow: hidden !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-          }
-          .feeder-desktop-top-bar {
-            padding: 2px 24px !important;
-            height: 24px !important;
-            min-height: 24px !important;
-          }
-          .feeder-language-btn {
-            padding: 2px 8px !important;
-            font-size: 11px !important;
-          }
-          .feeder-exact-split-layout {
-            flex: 1 1 auto !important;
-            min-height: 0 !important;
-            max-height: calc(100vh - 95px) !important;
-          }
-          .feeder-exact-left-hero-image {
-            max-height: min(44vh, 320px) !important;
-            width: auto !important;
-            object-fit: contain !important;
-          }
-          .feeder-exact-left-panel {
-            padding: 4px 16px !important;
-          }
-          .feeder-exact-right-panel {
-            padding: 4px 24px !important;
-          }
-          .feeder-auth-welcome-header {
-            margin-bottom: 4px !important;
-          }
-          .feeder-login-brand-icon-wrap {
-            width: 28px !important;
-            height: 28px !important;
-            margin-bottom: 2px !important;
-          }
-          .feeder-login-paw-icon {
-            width: 16px !important;
-            height: 16px !important;
-          }
-          .feeder-auth-welcome-title {
-            font-size: 16px !important;
-            margin-bottom: 2px !important;
-          }
-          .feeder-auth-welcome-subtitle {
-            font-size: 10.5px !important;
-            margin-bottom: 4px !important;
-          }
-          .feeder-exact-divider-row {
-            margin: 4px 0 !important;
-          }
-          .feeder-exact-form-group {
-            margin-bottom: 4px !important;
-          }
-          .feeder-exact-label {
-            font-size: 10.5px !important;
-            margin-bottom: 2px !important;
-          }
-          .feeder-exact-input-wrap {
-            height: 32px !important;
-          }
-          .feeder-exact-input {
-            font-size: 11.5px !important;
-          }
-          .feeder-exact-google-btn {
-            height: 32px !important;
-            font-size: 11.5px !important;
-            margin-bottom: 4px !important;
-          }
-          .feeder-exact-btn-continue {
-            height: 32px !important;
-            font-size: 12px !important;
-          }
-          .feeder-exact-btn-create-account {
-            height: 28px !important;
-            font-size: 11px !important;
-          }
-          .feeder-exact-forgot-bottom-link {
-            font-size: 10.5px !important;
-          }
-          .feeder-global-lang-footer {
-            padding: 4px 16px 6px 16px !important;
-            margin-top: 0 !important;
-            flex-shrink: 0 !important;
-          }
-          .feeder-footer-inner-container {
-            gap: 2px !important;
-          }
-          .feeder-footer-lang-list {
-            gap: 2px 8px !important;
-          }
-          .feeder-footer-lang-btn {
-            font-size: 10px !important;
-            line-height: 1.2 !important;
-          }
-          .feeder-footer-links-row {
-            margin-top: 1px !important;
-          }
-          .feeder-footer-links-list {
-            gap: 2px 8px !important;
-          }
-          .feeder-footer-nav-link {
-            font-size: 9.5px !important;
-            line-height: 1.2 !important;
-          }
-          .feeder-footer-copyright-row {
-            margin-top: 1px !important;
-            font-size: 9px !important;
-            line-height: 1.2 !important;
-          }
-        }
-      `}} />
+
       
       {/* ============================================================
           DESKTOP TOP RIGHT LANGUAGE SELECTOR (>= 769px)
@@ -691,6 +568,10 @@ export default function LoginPage() {
               alt="Feeder - A kinder world for every animal"
               className="feeder-exact-left-hero-image"
               loading="eager"
+              // @ts-expect-error — fetchpriority is a valid HTML attribute for LCP
+              fetchpriority="high"
+              width={1024}
+              height={935}
             />
           </div>
         </section>

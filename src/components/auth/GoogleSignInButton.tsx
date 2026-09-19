@@ -39,7 +39,7 @@ export default function GoogleSignInButton({
 
       // 1. Trigger real Google OAuth popup via Firebase
       const userCredential = await signInWithPopup(auth, provider);
-      const idToken = await userCredential.user.getIdToken(true);
+      const idToken = await userCredential.user.getIdToken(); // cached token — fresh from signIn, no force-refresh needed
 
       // 2. Send verified ID token to backend for cryptographic verification & user sync
       const res = await fetch('/api/auth/sync', {
@@ -59,29 +59,30 @@ export default function GoogleSignInButton({
       const destination = data.redirectTo || (data.isNewUser ? '/onboarding' : '/');
       router.push(destination);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const authErr = err as { code?: string; message?: string; name?: string };
       console.error('[Google Auth Diagnostic Error]:', {
-        code: err.code,
-        message: err.message,
-        name: err.name,
+        code: authErr.code,
+        message: authErr.message,
+        name: authErr.name,
       });
 
       if (
-        err.code === 'auth/popup-closed-by-user' ||
-        err.code === 'auth/cancelled-popup-request' ||
-        err.message?.includes('closed-by-user')
+        authErr.code === 'auth/popup-closed-by-user' ||
+        authErr.code === 'auth/cancelled-popup-request' ||
+        authErr.message?.includes('closed-by-user')
       ) {
         onError?.('Sign-in cancelled. Please select your Google account to proceed.');
-      } else if (err.code === 'auth/popup-blocked') {
+      } else if (authErr.code === 'auth/popup-blocked') {
         onError?.('Pop-up was blocked by your browser. Please allow pop-ups for this site.');
-      } else if (err.code === 'auth/unauthorized-domain') {
-        onError?.(err.message || 'This domain is not authorized in Firebase Authentication Console.');
-      } else if (err.code === 'auth/operation-not-allowed') {
+      } else if (authErr.code === 'auth/unauthorized-domain') {
+        onError?.(authErr.message || 'This domain is not authorized in Firebase Authentication Console.');
+      } else if (authErr.code === 'auth/operation-not-allowed') {
         onError?.('Google Sign-In provider is disabled in Firebase Console.');
-      } else if (err.code === 'auth/network-request-failed') {
+      } else if (authErr.code === 'auth/network-request-failed') {
         onError?.('Network connection failed. Please check your internet connection and try again.');
-      } else if (err.message && !err.message.includes('object Object')) {
-        onError?.(err.message);
+      } else if (authErr.message && !authErr.message.includes('object Object')) {
+        onError?.(authErr.message);
       } else {
         onError?.('Unable to sign in with Google. Please try again.');
       }
