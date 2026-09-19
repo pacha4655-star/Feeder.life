@@ -564,14 +564,14 @@ export default function LoginPage() {
         <section className="feeder-exact-left-panel" aria-label="Feeder platform overview">
           <div className="feeder-exact-composition-wrapper">
             <img
-              src="/images/feeder-login-left-composition.png"
-              alt="Feeder - A kinder world for every animal"
+              src="/images/feeder-login-left-artwork.jpg"
+              alt="Feeder — Connect. Care. Protect. Make a difference. A kinder world for every animal."
               className="feeder-exact-left-hero-image"
               loading="eager"
               // @ts-expect-error — fetchpriority is a valid HTML attribute for LCP
               fetchpriority="high"
               width={1024}
-              height={935}
+              height={1024}
             />
           </div>
         </section>

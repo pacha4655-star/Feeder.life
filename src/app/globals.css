@@ -3412,8 +3412,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(16px, 2.5vw, 40px) clamp(16px, 3vw, 48px);
-  background: #ffffff;
+  padding: clamp(12px, 2vw, 32px) clamp(12px, 2.5vw, 40px);
+  background: #e8f5ea;
   box-sizing: border-box;
   overflow: hidden;
   min-width: 0;
@@ -3421,7 +3421,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 
 .feeder-exact-composition-wrapper {
   width: 100%;
-  max-width: min(680px, 90%);
+  max-width: min(720px, 92%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3431,13 +3431,14 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 .feeder-exact-left-hero-image {
   width: 100%;
   height: auto;
-  aspect-ratio: 1024 / 935;
-  /* Three-stop clamp:
-     floor: 240px  (never smaller — short 768px-height laptops)
-     ideal: 56vh   (tracks viewport height naturally)
-     ceiling: 720px (caps on 4K so it doesn't dominate the column) */
-  max-height: clamp(240px, 56vh, 720px);
+  aspect-ratio: 1 / 1;
+  /* Three-stop clamp — slightly larger than previous artwork:
+     floor: 260px  (never smaller — short 768px-height laptops)
+     ideal: 60vh   (tracks viewport height naturally)
+     ceiling: 760px (caps on 4K) */
+  max-height: clamp(260px, 60vh, 760px);
   object-fit: contain;
+  object-position: center;
   display: block;
   user-select: none;
   -webkit-user-drag: none;
@@ -3825,9 +3826,11 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
     font-size: 11px !important;
   }
   .feeder-exact-left-hero-image {
-    max-height: clamp(200px, 44vh, 340px);
+    max-height: clamp(220px, 46vh, 360px);
+    aspect-ratio: 1 / 1;
   }
   .feeder-exact-left-panel {
+    background: #e8f5ea;
     padding: 4px clamp(10px, 2vw, 20px);
   }
   .feeder-exact-right-panel {
@@ -3855,7 +3858,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 /* ── MID LAPTOPS (height 770–870px): 1366×800, 1536×864, 1600×900 ──────── */
 @media (min-width: 768px) and (min-height: 770px) and (max-height: 870px) {
   .feeder-exact-left-hero-image {
-    max-height: clamp(300px, 50vh, 460px);
+    max-height: clamp(320px, 52vh, 480px);
   }
   .feeder-exact-left-panel {
     padding: clamp(8px, 1.5vh, 20px) clamp(12px, 2vw, 32px);
@@ -3875,27 +3878,27 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 /* ── STANDARD LAPTOPS (height 871–1079px): 1680×1050, 1920×1080 ────────── */
 @media (min-width: 768px) and (min-height: 871px) and (max-height: 1079px) {
   .feeder-exact-left-hero-image {
-    max-height: clamp(420px, 58vh, 620px);
+    max-height: clamp(440px, 60vh, 650px);
   }
 }
 
 /* ── LARGE SCREENS (height ≥ 1080px): 1920×1200, 2560×1440, 3840×2160 ─── */
 @media (min-width: 768px) and (min-height: 1080px) {
   .feeder-exact-left-hero-image {
-    max-height: clamp(540px, 60vh, 780px);
+    max-height: clamp(560px, 62vh, 820px);
   }
   .feeder-exact-composition-wrapper {
-    max-width: min(760px, 90%);
+    max-width: min(800px, 92%);
   }
 }
 
 /* ── 4K ULTRA-WIDE (≥ 2560px wide) ─────────────────────────────────────── */
 @media (min-width: 2560px) {
   .feeder-exact-left-hero-image {
-    max-height: clamp(640px, 58vh, 900px);
+    max-height: clamp(660px, 60vh, 940px);
   }
   .feeder-exact-composition-wrapper {
-    max-width: min(860px, 90%);
+    max-width: min(900px, 92%);
   }
   .feeder-auth-welcome-title {
     font-size: clamp(20px, 1.8vh, 26px);
