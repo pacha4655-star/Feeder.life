@@ -12,18 +12,21 @@ async function runVerification() {
   }
 
   const viewports = [
-    // Laptops
-    { name: 'laptop_1920x1080', width: 1920, height: 1080, type: 'laptop' },
+    // Laptops & Desktops
+    { name: 'desktop_1920x1080', width: 1920, height: 1080, type: 'laptop' },
+    { name: 'laptop_1600x900', width: 1600, height: 900, type: 'laptop' },
+    { name: 'laptop_1536x864', width: 1536, height: 864, type: 'laptop' },
     { name: 'laptop_1440x900', width: 1440, height: 900, type: 'laptop' },
     { name: 'laptop_1366x768', width: 1366, height: 768, type: 'laptop' },
     { name: 'laptop_1280x800', width: 1280, height: 800, type: 'laptop' },
+    { name: 'laptop_1200x800', width: 1200, height: 800, type: 'laptop' },
+    { name: 'laptop_1100x800', width: 1100, height: 800, type: 'laptop' },
     // Tablets
     { name: 'tablet_ipad_pro_1024x1366', width: 1024, height: 1366, type: 'tablet' },
+    { name: 'tablet_900x1100', width: 900, height: 1100, type: 'tablet' },
     { name: 'tablet_ipad_air_834x1194', width: 834, height: 1194, type: 'tablet' },
     { name: 'tablet_ipad_10th_820x1180', width: 820, height: 1180, type: 'tablet' },
     { name: 'tablet_ipad_768x1024', width: 768, height: 1024, type: 'tablet' },
-    { name: 'tablet_intermediate_800x1200', width: 800, height: 1200, type: 'tablet' },
-    { name: 'tablet_intermediate_900x1100', width: 900, height: 1100, type: 'tablet' },
     // Mobile
     { name: 'mobile_iphone_15_pro_393x852', width: 393, height: 852, type: 'mobile' },
     { name: 'mobile_iphone_15_promax_430x932', width: 430, height: 932, type: 'mobile' },

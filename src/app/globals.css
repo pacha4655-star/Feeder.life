@@ -3419,7 +3419,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 
 .feeder-exact-composition-wrapper {
   width: 100%;
-  max-width: 620px;
+  max-width: 680px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3429,8 +3429,8 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   max-width: 100%;
   width: auto;
   height: auto;
-  aspect-ratio: 776 / 1024;
-  max-height: min(78vh, 560px);
+  aspect-ratio: 1024 / 935;
+  max-height: min(80vh, 590px);
   object-fit: contain;
   display: block;
   user-select: none;
