@@ -1,12 +1,22 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import {
+  LifeBuoy,
+  PawPrint,
+  Utensils,
+  Scale,
+  Compass,
+  Users,
+  type LucideIcon,
+} from 'lucide-react';
 
 interface FeatureItem {
   id: string;
   label: string;
-  iconSrc: string;
+  line1: string;
+  line2?: string;
+  icon: LucideIcon;
   alt: string;
 }
 
@@ -14,37 +24,47 @@ const FEATURE_ITEMS: FeatureItem[] = [
   {
     id: 'find-help',
     label: 'Find Help',
-    iconSrc: '/assets/feeder-login/find-help.png',
+    line1: 'Find Help',
+    icon: LifeBuoy,
     alt: 'Find Help',
   },
   {
     id: 'adopt',
     label: 'Adopt',
-    iconSrc: '/assets/feeder-login/adopt.png',
+    line1: 'Adopt',
+    icon: PawPrint,
     alt: 'Adopt',
   },
   {
     id: 'support-feeding',
     label: 'Support Feeding',
-    iconSrc: '/assets/feeder-login/support-feeding.png',
+    line1: 'Support',
+    line2: 'Feeding',
+    icon: Utensils,
     alt: 'Support Feeding',
   },
   {
     id: 'know-your-rights',
     label: 'Know Your Rights',
-    iconSrc: '/assets/feeder-login/know-your-rights.png',
+    line1: 'Know Your',
+    line2: 'Rights',
+    icon: Scale,
     alt: 'Know Your Rights',
   },
   {
     id: 'learn-explore',
     label: 'Learn & Explore',
-    iconSrc: '/assets/feeder-login/learn-explore.png',
+    line1: 'Learn &',
+    line2: 'Explore',
+    icon: Compass,
     alt: 'Learn & Explore',
   },
   {
     id: 'join-community',
     label: 'Join a Community',
-    iconSrc: '/assets/feeder-login/join-community.png',
+    line1: 'Join a',
+    line2: 'Community',
+    icon: Users,
     alt: 'Join a Community',
   },
 ];
@@ -56,27 +76,26 @@ interface FeatureActionGridProps {
 export default function FeatureActionGrid({ onItemClick }: FeatureActionGridProps) {
   return (
     <nav className="feeder-feature-grid" aria-label="Quick features">
-      {FEATURE_ITEMS.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => onItemClick?.(item.id)}
-          className="feeder-feature-item-btn"
-          aria-label={item.label}
-        >
-          <div className="feeder-feature-icon-wrapper">
-            <Image
-              src={item.iconSrc}
-              alt=""
-              width={48}
-              height={48}
-              className="feeder-feature-icon-img"
-              priority
-            />
-          </div>
-          <span className="feeder-feature-item-label">{item.label}</span>
-        </button>
-      ))}
+      {FEATURE_ITEMS.map((item) => {
+        const IconComponent = item.icon;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onItemClick?.(item.id)}
+            className="feeder-feature-item-btn"
+            aria-label={item.label}
+          >
+            <div className="feeder-feature-icon-wrapper" aria-hidden="true">
+              <IconComponent className="feeder-feature-icon-svg" />
+            </div>
+            <span className="feeder-feature-item-label">
+              <span>{item.line1}</span>
+              {item.line2 && <span>{item.line2}</span>}
+            </span>
+          </button>
+        );
+      })}
     </nav>
   );
 }
