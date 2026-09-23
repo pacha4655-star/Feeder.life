@@ -3992,6 +3992,12 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
     box-sizing: border-box;
   }
 
+  @media (min-width: 640px) and (max-width: 1023px) {
+    .feeder-mobile-login-root {
+      max-width: 520px;
+    }
+  }
+
   /* ── Hero Section (Full-Width Continuous Nature Artwork) ─ */
   .feeder-mobile-hero-section {
     position: relative;
