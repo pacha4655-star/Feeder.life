@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
+import MobileLogin from '@/components/auth/MobileLogin';
 import LanguageFooter from '@/components/common/LanguageFooter';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
@@ -283,276 +284,31 @@ export default function LoginPage() {
       </header>
 
       {/* ============================================================
-          1. MOBILE LOGIN EXPERIENCE (< 769px) - FULL RESPONSIVE COMPOSITION
+          1. MOBILE LOGIN EXPERIENCE (< 768px) - FULL RESPONSIVE COMPOSITION
           ============================================================ */}
-      <div className="feeder-mobile-nature-container">
-        {/* Animal Landscape Hero Section */}
-        <div className="feeder-mobile-hero-wrap">
-          <img
-            src="/images/feeder-mobile-animals-hero.jpg"
-            alt="Feeder - A kinder world for every animal"
-            className="feeder-mobile-hero-img"
-            loading="eager"
-          />
-        </div>
-
-        {/* White Rounded Login Panel (Overlays the bottom of the animal hero) */}
-        <div className="feeder-mobile-auth-panel">
-          {/* Six Feature Icons Row */}
-          <div className="feeder-mobile-features-row">
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <PawPrint size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Find Help</span>
-            </div>
-
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <Heart size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Adopt</span>
-            </div>
-
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <Utensils size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Support Feeding</span>
-            </div>
-
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <Scale size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Know Your Rights</span>
-            </div>
-
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <Leaf size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Learn &amp; Explore</span>
-            </div>
-
-            <div className="feeder-mobile-feature-item">
-              <div className="feeder-mobile-feature-icon-wrap">
-                <Users size={18} />
-              </div>
-              <span className="feeder-mobile-feature-label">Join a Community</span>
-            </div>
-          </div>
-
-          {/* Global Error Banner */}
-          {error && !showEmailForm && (
-            <div className="feeder-exact-alert-error my-2" role="alert">
-              <AlertCircle size={15} className="shrink-0" />
-              <span>{error}</span>
-              <button
-                type="button"
-                onClick={() => setError('')}
-                className="ml-auto text-slate-400 hover:text-slate-600"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-
-          {/* Action Buttons / Inline Email Credentials Form */}
-          {!showEmailForm ? (
-            <div className="feeder-mobile-actions-stack">
-              <button
-                type="button"
-                className="feeder-mobile-btn-email"
-                onClick={() => {
-                  setError('');
-                  setShowEmailForm(true);
-                }}
-              >
-                <Mail size={16} className="shrink-0" />
-                <span>Continue with Email</span>
-                <ArrowRight size={16} className="shrink-0 ml-auto" />
-              </button>
-
-              <button
-                type="button"
-                className="feeder-mobile-btn-google"
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                <svg className="feeder-mobile-svg-icon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
-              <button
-                type="button"
-                className="feeder-mobile-btn-apple"
-                onClick={() => setError('Apple Sign-In is configured for iOS Safari / App. Please use Google or Email to continue.')}
-              >
-                <svg className="feeder-mobile-svg-icon fill-current text-black" width="18" height="18" viewBox="0 0 170 170" aria-hidden="true">
-                  <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.04-7.58-7.71-11.65-14.01-6.1-9.47-10.9-19.8-14.41-30.98-3.51-11.19-5.27-21.75-5.27-31.69 0-14.79 3.82-26.79 11.45-36.02 7.63-9.23 17.06-13.91 28.3-14.04 4.8 0 10.05 1.25 15.77 3.75 5.72 2.5 9.53 3.81 11.43 3.93 1.48-.13 5.48-1.5 12.01-4.12 6.53-2.62 12.07-3.75 16.63-3.39 12.85.99 22.95 5.56 30.3 13.72-11.19 6.81-16.69 16.28-16.5 28.43.19 9.55 3.87 17.58 11.03 24.08 7.16 6.5 15.65 10.15 25.47 10.95-2.22 6.77-5.18 14.16-8.87 22.18zm-29.47-111.4c0 6.77-2.52 13.23-7.55 19.38-6.16 7.42-13.67 11.83-22.53 11.23-.13-.99-.19-1.98-.19-2.97 0-6.52 2.76-13.23 8.27-20.12 2.75-3.45 6.13-6.27 10.14-8.48 4.01-2.2 7.97-3.42 11.86-3.66.12 1.55.19 3.09.19 4.62z"/>
-                </svg>
-                <span>Continue with Apple</span>
-              </button>
-
-              <div className="feeder-exact-divider">
-                <div className="feeder-exact-divider-line" />
-                <span className="feeder-exact-divider-text">OR</span>
-                <div className="feeder-exact-divider-line" />
-              </div>
-
-              <Link href="/signup" className="feeder-mobile-btn-create">
-                Create an Account
-              </Link>
-
-              <div className="feeder-mobile-login-switch">
-                <span>Already have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError('');
-                    setShowEmailForm(true);
-                  }}
-                  className="feeder-mobile-login-link"
-                >
-                  Log In
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* Inline Email Login Form */
-            <form onSubmit={handleLogin} className="feeder-exact-credentials-form mt-1" noValidate>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[13px] font-bold text-[#0f4c16]">Log In with Email</span>
-                <button
-                  type="button"
-                  onClick={() => setShowEmailForm(false)}
-                  className="text-[12px] font-semibold text-[#1b5e20] hover:underline"
-                >
-                  ← Back to options
-                </button>
-              </div>
-
-              {error && (
-                <div className="feeder-exact-alert-error mb-2" role="alert">
-                  <AlertCircle size={15} className="shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="feeder-mobile-identifier">
-                  {t('login.emailOrUsername')}
-                </label>
-                <div className="feeder-exact-input-wrap">
-                  <Mail size={16} className="feeder-exact-input-icon" />
-                  <input
-                    id="feeder-mobile-identifier"
-                    type="text"
-                    className="feeder-exact-input"
-                    placeholder={t('login.emailPlaceholder')}
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="feeder-exact-form-group">
-                <div className="feeder-exact-label-row">
-                  <label className="feeder-exact-label" htmlFor="feeder-mobile-password">
-                    {t('login.password')}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResetEmail(identifier.trim());
-                      setResetError('');
-                      setResetSuccess(false);
-                      setShowForgotModal(true);
-                    }}
-                    className="feeder-exact-forgot-btn"
-                  >
-                    {t('login.forgotPassword')}
-                  </button>
-                </div>
-                <div className="feeder-exact-input-wrap">
-                  <Lock size={16} className="feeder-exact-input-icon" />
-                  <input
-                    id="feeder-mobile-password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="feeder-exact-input feeder-exact-password-input"
-                    placeholder={t('login.passwordPlaceholder')}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="feeder-exact-eye-btn"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="feeder-exact-btn-continue"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>{t('login.loggingIn')}</span>
-                  </>
-                ) : (
-                  <span>{t('login.logIn')}</span>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* Bottom Group: Pagination Dots & feeder.life Footer */}
-          <div className="feeder-mobile-bottom-group">
-            <div className="feeder-mobile-dots-row">
-              <span className="feeder-mobile-dot active" />
-              <span className="feeder-mobile-dot" />
-              <span className="feeder-mobile-dot" />
-            </div>
-
-            <div className="feeder-mobile-footer-wrap">
-              <div className="feeder-mobile-footer-brand">
-                <Leaf size={14} className="feeder-mobile-footer-leaf" />
-                <span>feeder.life</span>
-              </div>
-              <p className="feeder-mobile-footer-tagline">
-                For animals. For people. For a better tomorrow.
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="feeder-mobile-viewport-wrapper">
+        <MobileLogin
+          identifier={identifier}
+          setIdentifier={setIdentifier}
+          password={password}
+          setPassword={setPassword}
+          showPassword={showPassword}
+          setShowPassword={setShowPassword}
+          isLoading={isLoading}
+          error={error}
+          setError={setError}
+          showEmailForm={showEmailForm}
+          setShowEmailForm={setShowEmailForm}
+          handleLogin={handleLogin}
+          handleGoogleSignIn={handleGoogleSignIn}
+          onForgotPasswordClick={() => {
+            setResetEmail(identifier.trim());
+            setResetError('');
+            setResetSuccess(false);
+            setShowForgotModal(true);
+          }}
+          t={t}
+        />
       </div>
 
       {/* ============================================================
@@ -568,8 +324,7 @@ export default function LoginPage() {
               alt="Feeder — Connect. Care. Protect. Make a difference. A kinder world for every animal."
               className="feeder-exact-left-hero-image"
               loading="eager"
-              // @ts-expect-error — fetchpriority is a valid HTML attribute for LCP
-              fetchpriority="high"
+              fetchPriority="high"
               width={1024}
               height={1024}
             />

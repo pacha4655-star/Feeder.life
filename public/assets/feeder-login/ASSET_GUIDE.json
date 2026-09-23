@@ -1,0 +1,16 @@
+{
+  "purpose": "Production-oriented visual assets extracted from the supplied Feeder mobile login reference. This is an asset pack, not a poster.",
+  "recommended_usage": {
+    "hero-background.webp": "Top visual background behind real HTML logo/text; object-fit: cover.",
+    "hero-animals-mountains.webp": "Hero visual asset for the animal section.",
+    "bottom-leaves-background.webp": "Lower decorative background behind real HTML footer.",
+    "feeder-logo.png": "Transparent Feeder logo.",
+    "feature-icons": "Six separate circular feature icon assets. Keep labels as real HTML text for responsive alignment.",
+    "action-icon-references": "Reference crops for Email, Google, Apple, Arrow and Globe. Replace with official SVGs if available."
+  },
+  "important": [
+    "The uploaded source is a flattened mockup, so the extracted assets are reference-derived.",
+    "For production, original Feeder SVG/logo and official Google/Apple icon assets should replace the reference crops where available.",
+    "Do not use the full uploaded screenshot as the login UI background."
+  ]
+}

@@ -54,6 +54,7 @@ export function middleware(request: NextRequest) {
   // 1. Allow internal Next.js assets, public images, icons, and static metadata
   if (
     pathname.startsWith('/_next') ||
+    pathname.startsWith('/assets') ||
     pathname.startsWith('/images') ||
     pathname.startsWith('/avatars') ||
     pathname.startsWith('/screenshots') ||
@@ -109,6 +110,8 @@ export function middleware(request: NextRequest) {
 
   return NextResponse.next();
 }
+
+export const proxy = middleware;
 
 export const config = {
   matcher: [
