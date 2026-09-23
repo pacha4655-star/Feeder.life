@@ -36,7 +36,7 @@ export default function ConnectionsClient({
   discover: initialDiscover,
 }: ConnectionsClientProps) {
   const [activeTab, setActiveTab] = useState<'following' | 'followers' | 'discover'>(
-    initialFollowing.length > 0 ? 'following' : 'discover'
+    initialTab || (initialFollowing.length > 0 ? 'following' : 'discover')
   );
   const [followingList, setFollowingList] = useState<GuardianItem[]>(initialFollowing);
   const [followersList, setFollowersList] = useState<GuardianItem[]>(initialFollowers);
@@ -307,7 +307,13 @@ export default function ConnectionsClient({
                     >
                       {guardian.fullName}
                     </Link>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{guardian.username}</div>
+                    <Link
+                      href={`/profile/${guardian.username}`}
+                      style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none' }}
+                      className="hover:underline"
+                    >
+                      @{guardian.username}
+                    </Link>
                   </div>
                 </div>
 

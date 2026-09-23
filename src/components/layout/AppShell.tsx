@@ -65,7 +65,7 @@ export default function AppShell({
         />
 
         {/* Center Content Column */}
-        <main className="app-center-feed">{children}</main>
+        <main className={`app-center-feed ${!showRightSidebar ? 'app-center-feed-wide' : ''}`}>{children}</main>
 
         {/* Right Contextual Sidebar */}
         {showRightSidebar && <RightSidebar />}

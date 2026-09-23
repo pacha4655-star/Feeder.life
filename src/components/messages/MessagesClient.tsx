@@ -650,39 +650,45 @@ export default function MessagesClient({
                     <ArrowLeft size={20} />
                   </button>
                 )}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <img
-                    src={activeConversation.otherParticipant?.avatarUrl || '/avatars/default.png'}
-                    alt={activeConversation.otherParticipant?.fullName || ''}
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
-                  {isOtherUserOnline && (
-                    <span
-                      title="Online Now"
-                      style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: '11px',
-                        height: '11px',
-                        borderRadius: '50%',
-                        background: '#10b981',
-                        border: '2px solid white',
-                      }}
+                <Link
+                  href={activeConversation.otherParticipant?.username ? `/profile/${activeConversation.otherParticipant.username}` : '#'}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}
+                  className="hover:opacity-90"
+                >
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <img
+                      src={activeConversation.otherParticipant?.avatarUrl || '/avatars/default.png'}
+                      alt={activeConversation.otherParticipant?.fullName || ''}
+                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }}
                     />
-                  )}
-                </div>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>{activeConversation.otherParticipant?.fullName || 'Guardian'}</span>
                     {isOtherUserOnline && (
-                      <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>&bull; Online</span>
+                      <span
+                        title="Online Now"
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          width: '11px',
+                          height: '11px',
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          border: '2px solid white',
+                        }}
+                      />
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    @{activeConversation.otherParticipant?.username || 'member'}
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{activeConversation.otherParticipant?.fullName || 'Guardian'}</span>
+                      {isOtherUserOnline && (
+                        <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>&bull; Online</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      @{activeConversation.otherParticipant?.username || 'member'}
+                    </div>
                   </div>
-                </div>
+                </Link>
               </div>
 
               {activeConversation.otherParticipant && (

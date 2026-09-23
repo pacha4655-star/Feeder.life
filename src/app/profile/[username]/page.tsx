@@ -15,14 +15,25 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
 
   const supabase = getSupabaseServerClient();
 
-  const { data: userRows, error } = await supabase
+  const cleanUsername = decodeURIComponent(username).replace(/^@/, '').trim();
+
+  let { data: userRows } = await supabase
     .from('users')
     .select('*')
-    .ilike('username', username)
+    .ilike('username', cleanUsername)
     .limit(1);
 
-  const supaUser = userRows && userRows[0];
-  if (error || !supaUser) {
+  let supaUser = userRows && userRows[0];
+  if (!supaUser) {
+    const { data: idRows } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', cleanUsername)
+      .limit(1);
+    supaUser = idRows && idRows[0];
+  }
+
+  if (!supaUser) {
     notFound();
   }
 

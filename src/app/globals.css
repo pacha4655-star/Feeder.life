@@ -766,6 +766,10 @@ a {
   min-width: 0;
 }
 
+.app-center-feed.app-center-feed-wide {
+  max-width: 1040px;
+}
+
 /* Right Contextual Sidebar */
 .app-right-sidebar {
   position: sticky;
@@ -5928,15 +5932,18 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   padding: 0;
   overflow: hidden;
   position: sticky;
-  top: 76px;
-  max-height: calc(100vh - 90px);
+  top: calc(var(--topbar-height, 58px) + 12px);
+  max-height: calc(100vh - var(--topbar-height, 58px) - 24px);
   display: flex;
   flex-direction: column;
 }
 
 .feeder-settings-nav-scroll-area {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 8px 10px 16px 10px;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 10px 24px 10px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -6735,6 +6742,13 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   .feeder-settings-nav-pane {
     position: static;
     max-height: none;
+    overflow: visible;
+  }
+
+  .feeder-settings-nav-scroll-area {
+    overflow-y: visible;
+    max-height: none;
+    padding-bottom: 32px;
   }
 
   /* On mobile: show either nav list or drilled content view */

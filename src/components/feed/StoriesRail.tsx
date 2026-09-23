@@ -48,11 +48,6 @@ export default function StoriesRail({ user, onOpenCreateStory }: StoriesRailProp
       <div
         ref={railRef}
         className="stories-rail-scroll"
-        onWheel={(e) => {
-          if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && railRef.current) {
-            railRef.current.scrollLeft += e.deltaY;
-          }
-        }}
       >
         {/* 1. Create Story Card */}
         <div

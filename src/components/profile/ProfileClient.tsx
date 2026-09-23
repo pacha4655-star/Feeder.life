@@ -878,14 +878,40 @@ export default function ProfileClient({
 
             {/* Real Follower / Following Counts */}
             <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '13px' }}>
-              <div>
+              <Link
+                href="/connections?tab=followers"
+                style={{
+                  display: 'flex',
+                  gap: '4px',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                }}
+                className="hover:underline"
+                title="View Followers"
+              >
                 <strong style={{ color: 'var(--text-main)' }}>{followerCount}</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>Followers</span>
-              </div>
-              <div>
+              </Link>
+              <Link
+                href="/connections?tab=following"
+                style={{
+                  display: 'flex',
+                  gap: '4px',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                  borderRadius: '4px',
+                }}
+                className="hover:underline"
+                title="View Following"
+              >
                 <strong style={{ color: 'var(--text-main)' }}>{followingCount}</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>Following</span>
-              </div>
+              </Link>
             </div>
 
             {profileUser.bio && (

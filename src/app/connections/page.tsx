@@ -6,7 +6,9 @@ import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ConnectionsPage() {
+export default async function ConnectionsPage(props: { searchParams?: Promise<{ tab?: string }> }) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const tabParam = searchParams?.tab as 'following' | 'followers' | 'discover' | undefined;
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
@@ -14,9 +16,11 @@ export default async function ConnectionsPage() {
   const supabase = getSupabaseServerClient();
   const currentUserId = user.id;
 
-
   // Get set of followed users by current user
   let followedSet = new Set<string>();
+  // Get set of followers of current user
+  let followersSet = new Set<string>();
+
   if (user) {
     try {
       const { data: followRows } = await supabase
@@ -25,6 +29,13 @@ export default async function ConnectionsPage() {
         .eq('data_type', 'follow')
         .eq('user_id', user.id);
       followedSet = new Set((followRows || []).map((r: any) => r.target_id));
+
+      const { data: followerRows } = await supabase
+        .from('platform_data')
+        .select('user_id')
+        .eq('data_type', 'follow')
+        .eq('target_id', user.id);
+      followersSet = new Set((followerRows || []).map((r: any) => r.user_id));
     } catch {}
   }
 
@@ -34,7 +45,7 @@ export default async function ConnectionsPage() {
     .select('*')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .limit(100);
 
   const mapUserToGuardian = (u: any): GuardianItem => ({
     id: u.id,
@@ -53,13 +64,16 @@ export default async function ConnectionsPage() {
 
   const allGuardians = (allUsers || []).map(mapUserToGuardian);
   const following = allGuardians.filter((g) => followedSet.has(g.id));
-  const followers = allGuardians.filter((g) => g.id !== currentUserId && Math.random() < 0.2); // Or from platform_data
+  const followers = allGuardians.filter((g) => followersSet.has(g.id));
   const discover = allGuardians.filter((g) => g.id !== currentUserId);
+
+  const initialTab = tabParam || (following.length > 0 ? 'following' : 'discover');
 
   return (
     <AppShell user={user} activeTab="connections" showRightSidebar={true}>
       <ConnectionsClient
         user={user}
+        initialTab={initialTab}
         following={following}
         followers={followers}
         discover={discover}
