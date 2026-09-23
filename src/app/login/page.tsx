@@ -12,7 +12,6 @@ import {
 import { auth } from '@/lib/firebase/config';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import MobileLogin from '@/components/auth/MobileLogin';
-import LanguageFooter from '@/components/common/LanguageFooter';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import {
@@ -24,14 +23,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader2,
+  Globe,
   X,
-  PawPrint,
-  Heart,
-  Utensils,
-  Scale,
-  Leaf,
-  Users,
-  ArrowRight,
 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -47,10 +40,9 @@ export default function LoginPage() {
   // Mobile state: toggle between direct options and email/password form
   const [showEmailForm, setShowEmailForm] = useState(false);
 
-  // Language selector state
+  // Desktop language selector dropdown state
   const [showLangMenu, setShowLangMenu] = useState(false);
 
-  // Forgot password modal state
   // Forgot password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -95,7 +87,7 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, targetEmail, password);
 
       // 2. Obtain cryptographically verified Firebase ID token
-      const idToken = await userCredential.user.getIdToken(); // cached token — fresh from signIn, no force-refresh needed
+      const idToken = await userCredential.user.getIdToken();
 
       // 3. Synchronize user profile into Supabase & issue secure session cookie
       const res = await fetch('/api/auth/sync', {
@@ -151,7 +143,7 @@ export default function LoginPage() {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       const userCredential = await signInWithPopup(auth, provider);
-      const idToken = await userCredential.user.getIdToken(); // cached token — fresh from signIn, no force-refresh needed
+      const idToken = await userCredential.user.getIdToken();
 
       const res = await fetch('/api/auth/sync', {
         method: 'POST',
@@ -197,7 +189,6 @@ export default function LoginPage() {
     try {
       let targetEmail = cleanInput;
 
-      // If user entered a username without @, securely look up their registered email address
       if (!targetEmail.includes('@')) {
         try {
           const lookupRes = await fetch(`/api/auth/lookup?username=${encodeURIComponent(targetEmail)}`);
@@ -210,7 +201,6 @@ export default function LoginPage() {
         }
       }
 
-      // Call real Firebase sendPasswordResetEmail with canonical continue URL
       if (targetEmail.includes('@') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
         await sendPasswordResetEmail(auth, targetEmail, {
           url: 'https://feeder.life/login',
@@ -225,7 +215,6 @@ export default function LoginPage() {
       console.error('[Password Reset Error]:', err);
       const authError = err as { code?: string; message?: string };
       if (authError.code === 'auth/user-not-found') {
-        // Privacy-preserving non-enumeration
         setResolvedEmailDisplay(cleanInput);
         setResetSuccess(true);
         setResendCooldown(30);
@@ -244,47 +233,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="feeder-exact-login-page" dir={dir}>
-
-      
+    <div className="feeder-page-root" dir={dir}>
       {/* ============================================================
-          DESKTOP TOP RIGHT LANGUAGE SELECTOR (>= 769px)
-          ============================================================ */}
-      <header className="feeder-exact-top-bar feeder-desktop-top-bar" aria-label="Language selection">
-        <div className="feeder-language-selector-wrap">
-          <button
-            type="button"
-            className="feeder-language-btn"
-            onClick={() => setShowLangMenu(!showLangMenu)}
-            aria-expanded={showLangMenu}
-            aria-label={t('login.selectLanguage')}
-          >
-            <span>{locale === 'en' ? 'English' : (language.nativeName || 'English')}</span>
-            <ChevronDown size={13} className="feeder-chevron-icon" />
-          </button>
-
-          {showLangMenu && (
-            <div className="feeder-language-dropdown">
-              {SUPPORTED_LANGUAGES.slice(0, 10).map((lang) => (
-                <button
-                  key={lang.code}
-                  type="button"
-                  className={`feeder-language-option ${locale === lang.code ? 'active' : ''}`}
-                  onClick={() => {
-                    setLocale(lang.code);
-                    setShowLangMenu(false);
-                  }}
-                >
-                  {lang.nativeName}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* ============================================================
-          1. MOBILE LOGIN EXPERIENCE (< 768px) - FULL RESPONSIVE COMPOSITION
+          1. MOBILE VIEWPORT EXPERIENCE (< 1024px)
           ============================================================ */}
       <div className="feeder-mobile-viewport-wrapper">
         <MobileLogin
@@ -312,179 +263,210 @@ export default function LoginPage() {
       </div>
 
       {/* ============================================================
-          2. DESKTOP LOGIN EXPERIENCE (>= 769px) - FULL SPLIT LAYOUT
+          2. DESKTOP VIEWPORT EXPERIENCE (>= 1024px) - REAL RESPONSIVE UI
           ============================================================ */}
-      <div className="feeder-exact-split-layout">
-        
-        {/* LEFT SECTION (≈ 58%): Visual Composition */}
-        <section className="feeder-exact-left-panel" aria-label="Feeder platform overview">
-          <div className="feeder-exact-composition-wrapper">
-            <img
-              src="/images/feeder-login-left-artwork.jpg"
-              alt="Feeder — Connect. Care. Protect. Make a difference. A kinder world for every animal."
-              className="feeder-exact-left-hero-image"
-              loading="eager"
-              fetchPriority="high"
-              width={1024}
-              height={1024}
-            />
-          </div>
-        </section>
-
-        {/* VERTICAL DIVIDER */}
-        <div className="feeder-exact-vertical-divider" aria-hidden="true" />
-
-        {/* RIGHT SECTION (≈ 42%): Generic Feeder Authentication Panel */}
-        <section className="feeder-exact-right-panel" aria-label="Account login">
-          <div className="feeder-exact-auth-container">
-            
-            {/* Feeder Paw + Heart Icon & Welcome Header */}
-            <div className="feeder-auth-welcome-header">
-              <div className="feeder-login-brand-icon-wrap">
+      <main className="login-shell">
+        <div className="login-shell-inner">
+          <section className="login-main">
+            {/* LEFT HERO PANEL */}
+            <section className="hero-panel" aria-label="Feeder Overview">
+              <div className="hero-visual">
                 <img
-                  src="/images/feeder-icon.svg"
-                  alt="Feeder Logo"
-                  className="feeder-login-paw-icon"
+                  src="/images/feeder-login-left-artwork.jpg"
+                  alt="Feeder — Connect. Care. Protect. Make a difference. A kinder world for every animal."
+                  className="hero-artwork-img"
+                  loading="eager"
+                  fetchPriority="high"
+                  width={1024}
+                  height={1024}
                 />
               </div>
-              <h2 className="feeder-auth-welcome-title">
-                {t('login.welcomeTitle')}
-              </h2>
-              <p className="feeder-auth-welcome-subtitle">
-                {t('login.welcomeSubtitle')}
-              </p>
-            </div>
+            </section>
 
-            {/* Error Message */}
-            {error && (
-              <div className="feeder-exact-alert-error" role="alert">
-                <AlertCircle size={16} className="shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Google Login: Continue with Google */}
-            <GoogleSignInButton
-              onError={(msg) => setError(msg)}
-              className="feeder-exact-google-btn"
-              buttonText={t('login.continueWithGoogle')}
-            />
-
-            {/* Divider: ────── or ────── */}
-            <div className="feeder-exact-divider">
-              <div className="feeder-exact-divider-line" />
-              <span className="feeder-exact-divider-text">{t('login.or')}</span>
-              <div className="feeder-exact-divider-line" />
-            </div>
-
-            {/* Direct Email & Password Credentials Form */}
-            <form onSubmit={handleLogin} className="feeder-exact-credentials-form" noValidate>
-              <div className="feeder-exact-form-group">
-                <label className="feeder-exact-label" htmlFor="feeder-desktop-login-identifier">
-                  {t('login.emailOrUsername')}
-                </label>
-                <div className="feeder-exact-input-wrap">
-                  <Mail size={16} className="feeder-exact-input-icon" />
-                  <input
-                    id="feeder-desktop-login-identifier"
-                    type="text"
-                    className="feeder-exact-input"
-                    placeholder={t('login.emailPlaceholder')}
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="feeder-exact-form-group">
-                <div className="feeder-exact-label-row">
-                  <label className="feeder-exact-label" htmlFor="feeder-desktop-login-password">
-                    {t('login.password')}
-                  </label>
+            {/* RIGHT AUTH PANEL */}
+            <section className="auth-panel" aria-label="Account Login">
+              {/* TOP RIGHT LANGUAGE SELECTOR */}
+              <header className="auth-header">
+                <div className="auth-lang-picker">
                   <button
                     type="button"
-                    onClick={() => {
-                      setResetEmail(identifier.trim());
-                      setResetError('');
-                      setResetSuccess(false);
-                      setShowForgotModal(true);
-                    }}
-                    className="feeder-exact-forgot-btn"
+                    className="auth-lang-btn"
+                    onClick={() => setShowLangMenu(!showLangMenu)}
+                    aria-expanded={showLangMenu}
+                    aria-label={t('login.selectLanguage')}
                   >
-                    {t('login.forgotPassword')}
+                    <Globe size={15} className="auth-lang-globe" />
+                    <span>{locale === 'en' ? 'English (US)' : (language.nativeName || 'English')}</span>
+                    <ChevronDown size={14} className="auth-lang-chevron" />
                   </button>
+
+                  {showLangMenu && (
+                    <div className="auth-lang-dropdown">
+                      {SUPPORTED_LANGUAGES.slice(0, 12).map((lang) => (
+                        <button
+                          key={lang.code}
+                          type="button"
+                          className={`auth-lang-option ${locale === lang.code ? 'active' : ''}`}
+                          onClick={() => {
+                            setLocale(lang.code);
+                            setShowLangMenu(false);
+                          }}
+                        >
+                          {lang.nativeName}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="feeder-exact-input-wrap">
-                  <Lock size={16} className="feeder-exact-input-icon" />
-                  <input
-                    id="feeder-desktop-login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    className="feeder-exact-input feeder-exact-password-input"
-                    placeholder={t('login.passwordPlaceholder')}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="current-password"
-                    required
+              </header>
+
+              {/* AUTH CARD */}
+              <div className="auth-card-container">
+                <div className="auth-card">
+                  <h1 className="auth-title">
+                    {t('login.welcomeTitle') || 'Welcome to Feeder'}
+                  </h1>
+                  <p className="auth-subtitle">
+                    {t('login.welcomeSubtitle') || 'Connect. Care. Protect. Make a difference.'}
+                  </p>
+
+                  {/* Error Notification */}
+                  {error && (
+                    <div className="auth-alert-error" role="alert">
+                      <AlertCircle size={16} className="shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  {/* Google Login Action */}
+                  <GoogleSignInButton
+                    onError={(msg) => setError(msg)}
+                    className="auth-btn-google"
+                    buttonText={t('login.continueWithGoogle') || 'Continue with Google'}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="feeder-exact-eye-btn"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
+
+                  {/* OR Divider */}
+                  <div className="auth-divider" aria-hidden="true">
+                    <div className="auth-divider-line" />
+                    <span className="auth-divider-text">{t('login.or') || 'OR'}</span>
+                    <div className="auth-divider-line" />
+                  </div>
+
+                  {/* Credentials Form */}
+                  <form onSubmit={handleLogin} className="auth-credentials-form" noValidate>
+                    <div className="auth-form-group">
+                      <label className="auth-label" htmlFor="desktop-login-identifier">
+                        {t('login.emailOrUsername') || 'Email or Username'}
+                      </label>
+                      <div className="auth-input-wrap">
+                        <Mail size={17} className="auth-input-icon" />
+                        <input
+                          id="desktop-login-identifier"
+                          type="text"
+                          className="auth-input"
+                          placeholder={t('login.emailPlaceholder') || 'Enter email or username'}
+                          value={identifier}
+                          onChange={(e) => setIdentifier(e.target.value)}
+                          autoComplete="username"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="auth-form-group">
+                      <div className="auth-label-row">
+                        <label className="auth-label" htmlFor="desktop-login-password">
+                          {t('login.password') || 'Password'}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResetEmail(identifier.trim());
+                            setResetError('');
+                            setResetSuccess(false);
+                            setShowForgotModal(true);
+                          }}
+                          className="auth-forgot-link"
+                        >
+                          {t('login.forgotPassword') || 'Forgot password?'}
+                        </button>
+                      </div>
+                      <div className="auth-input-wrap">
+                        <Lock size={17} className="auth-input-icon" />
+                        <input
+                          id="desktop-login-password"
+                          type={showPassword ? 'text' : 'password'}
+                          className="auth-input auth-password-input"
+                          placeholder={t('login.passwordPlaceholder') || 'Enter password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          autoComplete="current-password"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="auth-eye-btn"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="auth-btn-login"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          <span>{t('login.loggingIn') || 'Logging In...'}</span>
+                        </>
+                      ) : (
+                        <span>{t('login.logIn') || 'Log In'}</span>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Create Account Button */}
+                  <Link href="/signup" className="auth-btn-create-account">
+                    {t('login.createNewAccount') || 'Create an Account'}
+                  </Link>
+                </div>
+
+                {/* Bottom Switch text */}
+                <div className="auth-footer-switch">
+                  <span>New to Feeder? </span>
+                  <Link href="/signup" className="auth-footer-switch-link">
+                    Create an account
+                  </Link>
                 </div>
               </div>
+            </section>
+          </section>
 
-              <button
-                type="submit"
-                className="feeder-exact-btn-continue"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    <span>{t('login.loggingIn')}</span>
-                  </>
-                ) : (
-                  <span>{t('login.logIn')}</span>
-                )}
-              </button>
-            </form>
-
-            {/* Create new account CTA */}
-            <div className="feeder-exact-signup-wrap">
-              <Link href="/signup" className="feeder-exact-btn-create-account">
-                {t('login.createNewAccount')}
-              </Link>
+          {/* DESKTOP FOOTER */}
+          <footer className="login-footer" aria-label="Site footer">
+            <div className="login-footer-copyright">
+              Feeder.life © 2026. Empowering Compassion for Animals Worldwide.
             </div>
-
-            {/* Subtle Forgot Password link at bottom */}
-            <div className="feeder-exact-forgot-bottom-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  setResetEmail(identifier.trim());
-                  setResetError('');
-                  setResetSuccess(false);
-                  setShowForgotModal(true);
-                }}
-                className="feeder-exact-forgot-bottom-link"
-              >
-                {t('login.forgotPassword')}
-              </button>
-            </div>
-
-          </div>
-        </section>
-
-      </div>
-
-      {/* Global Multilingual Footer (Desktop) */}
-      <LanguageFooter />
+            <nav className="login-footer-nav" aria-label="Footer links">
+              <Link href="/communities" className="login-footer-link">Communities</Link>
+              <Link href="/animals" className="login-footer-link">Animals</Link>
+              <Link href="/feeding" className="login-footer-link">Feeding</Link>
+              <Link href="/sos" className="login-footer-link">SOS Rescue</Link>
+              <Link href="/nearby" className="login-footer-link">Nearby</Link>
+              <Link href="/ask-feeder" className="login-footer-link">Ask Feeder AI</Link>
+              <a href="#about" onClick={(e) => { e.preventDefault(); alert("Feeder.life is a social animal welfare network connecting community feeders, volunteers, and rescuers worldwide."); }} className="login-footer-link">About</a>
+              <a href="#privacy" onClick={(e) => { e.preventDefault(); alert("Feeder.life Privacy Policy: Your data and location coordinates are protected and used strictly for animal rescue and community feeding coordination."); }} className="login-footer-link">Privacy</a>
+              <a href="#terms" onClick={(e) => { e.preventDefault(); alert("Feeder.life Terms of Service: By using Feeder.life, you agree to uphold ethical animal welfare practices and respectful community conduct."); }} className="login-footer-link">Terms</a>
+              <a href="#help" onClick={(e) => { e.preventDefault(); alert("Feeder Support: Email help@feeder.life for volunteer assistance, verified shelter badges, or platform queries."); }} className="login-footer-link">Help &amp; Support</a>
+            </nav>
+          </footer>
+        </div>
+      </main>
 
       {/* ============================================================
           FORGOT PASSWORD MODAL
@@ -543,7 +525,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(false)}
-                    className="feeder-exact-btn-continue w-full"
+                    className="auth-btn-login w-full"
                   >
                     {t('forgotPassword.backToSignIn')}
                   </button>
@@ -552,22 +534,22 @@ export default function LoginPage() {
             ) : (
               <form onSubmit={handlePasswordReset} className="feeder-modal-form">
                 {resetError && (
-                  <div className="feeder-exact-alert-error mb-3" role="alert">
+                  <div className="auth-alert-error mb-3" role="alert">
                     <AlertCircle size={15} className="shrink-0" />
                     <span>{resetError}</span>
                   </div>
                 )}
 
-                <div className="feeder-exact-form-group">
-                  <label className="feeder-exact-label" htmlFor="exact-reset-email">
+                <div className="auth-form-group">
+                  <label className="auth-label" htmlFor="exact-reset-email">
                     {t('forgotPassword.emailLabel')}
                   </label>
-                  <div className="feeder-exact-input-wrap">
-                    <Mail size={16} className="feeder-exact-input-icon" />
+                  <div className="auth-input-wrap">
+                    <Mail size={16} className="auth-input-icon" />
                     <input
                       id="exact-reset-email"
                       type="text"
-                      className="feeder-exact-input"
+                      className="auth-input"
                       placeholder={t('forgotPassword.emailPlaceholder')}
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
@@ -587,9 +569,9 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="submit"
-                    className="feeder-exact-btn-continue"
+                    className="auth-btn-login"
                     disabled={resetLoading}
-                    style={{ height: '40px', fontSize: '13.5px' }}
+                    style={{ height: '42px', fontSize: '13.5px', marginTop: 0 }}
                   >
                     {resetLoading ? (
                       <>
