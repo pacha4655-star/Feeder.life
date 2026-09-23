@@ -186,6 +186,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
   // Active section state
   const validInitial = (initialSection as SectionKey) || 'personal';
   const [activeSection, setActiveSection] = useState<SectionKey>(validInitial);
+  const [mobileDrilldown, setMobileDrilldown] = useState<boolean>(!!initialSection);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Form & Settings state
@@ -371,6 +372,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
   // Section switcher with URL update
   const navigateToSection = (key: SectionKey) => {
     setActiveSection(key);
+    setMobileDrilldown(true);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', `/settings/${key}`);
     }
@@ -774,7 +776,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
       <div className="feeder-settings-main-grid">
         {/* Left Side: Category Navigation (Desktop / Tablet Sidebar, Mobile Category List) */}
         <aside
-          className={`feeder-settings-nav-pane card ${activeSection ? 'hide-on-mobile-when-active' : ''}`}
+          className={`feeder-settings-nav-pane card ${mobileDrilldown ? 'hide-on-mobile-when-active' : ''}`}
           aria-label="Settings Categories"
         >
           {/* Search Settings Input */}
@@ -914,7 +916,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
 
         {/* Right Side: Selected Settings Content View */}
         <main
-          className={`feeder-settings-content-pane card ${!activeSection ? 'hide-on-mobile-when-list' : ''}`}
+          className={`feeder-settings-content-pane card ${!mobileDrilldown ? 'hide-on-mobile-when-list' : ''}`}
           aria-labelledby="settings-content-heading"
         >
           {/* Mobile Back Button Bar */}
@@ -922,14 +924,16 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
             <button
               type="button"
               onClick={() => {
-                setActiveSection('personal');
-                window.history.pushState({}, '', '/settings');
+                setMobileDrilldown(false);
+                if (typeof window !== 'undefined') {
+                  window.history.pushState({}, '', '/settings');
+                }
               }}
               className="feeder-settings-mobile-back-btn"
-              aria-label="Back to all settings categories"
+              aria-label="Back to Settings"
             >
               <ArrowLeft size={18} />
-              <span>Back to Settings</span>
+              <span>Settings</span>
             </button>
           </div>
 

@@ -33,6 +33,7 @@ import {
   ExternalLink,
   MessageSquare,
   Heart,
+  HelpCircle,
 } from 'lucide-react';
 import { formatTime } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
@@ -693,7 +694,16 @@ export default function TopNavigation({
                         className="sidebar-nav-item"
                       >
                         <Settings size={18} color="var(--text-muted)" />
-                        <span>Settings & Privacy</span>
+                        <span>Settings</span>
+                      </Link>
+
+                      <Link
+                        href="/help"
+                        onClick={() => setShowUserMenu(false)}
+                        className="sidebar-nav-item"
+                      >
+                        <HelpCircle size={18} color="var(--text-muted)" />
+                        <span>Help & Support</span>
                       </Link>
 
                       {(user.role === 'PLATFORM_ADMIN' || user.role === 'PLATFORM_MODERATOR') && (
@@ -713,8 +723,9 @@ export default function TopNavigation({
                       <Link href="/login" className="btn-secondary" style={{ padding: '8px', textAlign: 'center', fontSize: '13px' }} onClick={() => setShowUserMenu(false)}>
                         Sign In
                       </Link>
-                      <Link href="/signup" className="btn-primary" style={{ padding: '8px', textAlign: 'center', fontSize: '13px' }} onClick={() => setShowUserMenu(false)}>
-                        Sign Up
+                      <Link href="/help" className="sidebar-nav-item" style={{ fontSize: '13px', marginTop: '4px' }} onClick={() => setShowUserMenu(false)}>
+                        <HelpCircle size={16} color="var(--text-muted)" />
+                        <span>Help & Support</span>
                       </Link>
                     </div>
                   )}

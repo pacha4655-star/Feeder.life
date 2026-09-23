@@ -539,10 +539,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
                 type="button"
                 onClick={() => navigateToSection('overview')}
                 className="feeder-help-mobile-back-btn"
-                aria-label="Back to Help Hub"
+                aria-label="Back to Help & Support"
               >
                 <ArrowLeft size={17} />
-                <span>Back to Support Hub</span>
+                <span>Help & Support</span>
               </button>
             </div>
           )}
