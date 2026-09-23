@@ -222,7 +222,7 @@ export default function TopNavigation({
             }}
           >
             <Plus size={18} strokeWidth={2.5} />
-            <span>Create</span>
+            <span className="topbar-create-label">Create</span>
           </button>
 
               {showCreateMenu && (
