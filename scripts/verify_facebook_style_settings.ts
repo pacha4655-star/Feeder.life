@@ -186,6 +186,130 @@ async function runSettingsVerification() {
   const apiPutData = await apiPutRes.json();
   console.log(`- PUT /api/users/settings status: ${apiPutRes.status}, success: ${apiPutData.success}`);
 
+  // Test 5: Independent Dual Panel Scrolling Verification on Desktop & Mobile
+  console.log('\n5. Testing Independent Dual Scrolling on Desktop Viewports...');
+  const desktopViewports = [
+    { name: 'Laptop (1280x720)', width: 1280, height: 720 },
+    { name: 'Desktop (1366x768)', width: 1366, height: 768 },
+    { name: 'Desktop (1440x900)', width: 1440, height: 900 },
+    { name: 'Desktop (1920x1080)', width: 1920, height: 1080 },
+  ];
+
+  for (const dvp of desktopViewports) {
+    await page.setViewportSize({ width: dvp.width, height: dvp.height });
+    await page.goto('http://localhost:3000/settings', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(600);
+
+    const dualScrollResult = await page.evaluate(() => {
+      const leftNavScroll = document.querySelector('.feeder-settings-nav-scroll-area') as HTMLElement | null;
+      const rightContentPane = document.querySelector('.feeder-settings-content-pane') as HTMLElement | null;
+
+      if (!leftNavScroll || !rightContentPane) {
+        return { success: false, reason: 'Panels not found' };
+      }
+
+      const leftStyles = window.getComputedStyle(leftNavScroll);
+      const rightStyles = window.getComputedStyle(rightContentPane);
+
+      const leftOverscroll = leftStyles.overscrollBehavior || leftStyles.overscrollBehaviorY;
+      const rightOverscroll = rightStyles.overscrollBehavior || rightStyles.overscrollBehaviorY;
+
+      // Test Left scroll independence
+      leftNavScroll.scrollTop = 250;
+      const leftScrolled = leftNavScroll.scrollTop;
+      const rightWhenLeftScrolled = rightContentPane.scrollTop;
+      const winWhenLeftScrolled = window.scrollY;
+
+      // Reset
+      leftNavScroll.scrollTop = 0;
+
+      // Test Right scroll independence
+      rightContentPane.scrollTop = 300;
+      const rightScrolled = rightContentPane.scrollTop;
+      const leftWhenRightScrolled = leftNavScroll.scrollTop;
+      const winWhenRightScrolled = window.scrollY;
+
+      // Reset
+      rightContentPane.scrollTop = 0;
+
+      return {
+        success: true,
+        leftOverscroll,
+        rightOverscroll,
+        leftScrolled,
+        rightWhenLeftScrolled,
+        winWhenLeftScrolled,
+        rightScrolled,
+        leftWhenRightScrolled,
+        winWhenRightScrolled,
+        leftScrollable: leftNavScroll.scrollHeight > leftNavScroll.clientHeight,
+        rightScrollable: rightContentPane.scrollHeight > rightContentPane.clientHeight,
+      };
+    });
+
+    const isRightValid = (!dualScrollResult.rightScrollable && dualScrollResult.rightScrolled === 0) || (dualScrollResult.rightScrollable && dualScrollResult.rightScrolled > 0);
+
+    if (
+      dualScrollResult.success &&
+      dualScrollResult.leftScrolled > 0 &&
+      dualScrollResult.rightWhenLeftScrolled === 0 &&
+      dualScrollResult.winWhenLeftScrolled === 0 &&
+      isRightValid &&
+      dualScrollResult.leftWhenRightScrolled === 0 &&
+      dualScrollResult.winWhenRightScrolled === 0
+    ) {
+      console.log(`✓ Pass: Independent dual scrolling verified on ${dvp.name}`);
+      console.log(`    Left Scroll: moved ${dualScrollResult.leftScrolled}px (Right: 0px, Window: 0px)`);
+      console.log(`    Right Scroll: moved ${dualScrollResult.rightScrolled}px (Left: 0px, Window: 0px, Scrollable: ${dualScrollResult.rightScrollable})`);
+      console.log(`    Overscroll Containment: Left=${dualScrollResult.leftOverscroll}, Right=${dualScrollResult.rightOverscroll}`);
+    } else {
+      console.error(`FAILED: Independent dual scrolling on ${dvp.name}:`, dualScrollResult);
+      process.exit(1);
+    }
+  }
+
+  console.log('\n6. Testing Natural Single Page Scrolling on Mobile Viewports...');
+  const mobileViewports = [
+    { name: 'Mobile (360x640)', width: 360, height: 640 },
+    { name: 'Mobile (390x844)', width: 390, height: 844 },
+    { name: 'Mobile (412x915)', width: 412, height: 915 },
+    { name: 'Tablet (820x1180)', width: 820, height: 1180 },
+  ];
+
+  for (const mvp of mobileViewports) {
+    await page.setViewportSize({ width: mvp.width, height: mvp.height });
+    await page.goto('http://localhost:3000/settings/personal', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(600);
+
+    const mobileScrollResult = await page.evaluate(() => {
+      const doc = document.documentElement;
+      const body = document.body;
+      const scrollHeight = Math.max(doc.scrollHeight, body.scrollHeight);
+      const clientHeight = doc.clientHeight;
+      const scrollWidth = Math.max(doc.scrollWidth, body.scrollWidth);
+      const clientWidth = doc.clientWidth;
+
+      window.scrollTo(0, scrollHeight);
+      const finalScrollY = window.scrollY;
+
+      return {
+        scrollHeight,
+        clientHeight,
+        finalScrollY,
+        hasHorizontalOverflow: scrollWidth > clientWidth + 2,
+        isScrollable: scrollHeight > clientHeight,
+      };
+    });
+
+    const passed = !mobileScrollResult.isScrollable || mobileScrollResult.finalScrollY > 0;
+    if (passed && !mobileScrollResult.hasHorizontalOverflow) {
+      console.log(`✓ Pass: Mobile natural scrolling on ${mvp.name} (Height: ${mobileScrollResult.scrollHeight}px, Scrolled: ${mobileScrollResult.finalScrollY}px, Horiz: NO)`);
+    } else {
+      console.error(`FAILED: Mobile natural scrolling on ${mvp.name}:`, mobileScrollResult);
+      process.exit(1);
+    }
+  }
+
   await browser.close();
   console.log('\n======================================================');
   console.log(' ALL SETTINGS QA & VERIFICATION CHECKS PASSED PERFECTLY!');

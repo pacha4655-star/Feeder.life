@@ -648,7 +648,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
   }
 
   return (
-    <div className="feeder-settings-wrapper" style={{ maxWidth: '1040px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div className="feeder-settings-wrapper">
       {/* Settings Top Header Bar */}
       <div
         className="card feeder-settings-header-card"

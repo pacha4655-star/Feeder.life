@@ -5914,35 +5914,70 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 
 .feeder-settings-wrapper {
   width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--topbar-height, 60px) - 20px);
+  max-height: calc(100vh - var(--topbar-height, 60px) - 20px);
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.feeder-settings-header-card {
+  flex-shrink: 0;
 }
 
 .feeder-settings-main-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
-/* Navigation Pane (Left) */
+/* Navigation Pane (Left) - Independent Vertical Scroll */
 .feeder-settings-nav-pane {
   padding: 0;
   overflow: hidden;
-  position: sticky;
-  top: calc(var(--topbar-height, 58px) + 12px);
-  max-height: calc(100vh - var(--topbar-height, 58px) - 24px);
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  position: static;
 }
 
 .feeder-settings-nav-scroll-area {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 8px 10px 24px 10px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  scrollbar-width: thin;
+}
+
+.feeder-settings-nav-scroll-area::-webkit-scrollbar,
+.feeder-settings-content-pane::-webkit-scrollbar {
+  width: 6px;
+}
+
+.feeder-settings-nav-scroll-area::-webkit-scrollbar-thumb,
+.feeder-settings-content-pane::-webkit-scrollbar-thumb {
+  background-color: var(--border-subtle);
+  border-radius: 4px;
+}
+
+.feeder-settings-nav-scroll-area::-webkit-scrollbar-thumb:hover,
+.feeder-settings-content-pane::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-subtle);
 }
 
 .feeder-settings-nav-group-title {
@@ -6068,11 +6103,20 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   flex-shrink: 0;
 }
 
-/* Content Pane (Right) */
+/* Content Pane (Right) - Independent Vertical Scroll */
 .feeder-settings-content-pane {
   padding: 24px;
-  min-height: 520px;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-md);
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
 }
 
 .feeder-settings-mobile-back-bar {
@@ -6721,15 +6765,15 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   }
 }
 
+/* Mobile & Small Screen (< 860px) */
 @media (max-width: 860px) {
-  .feeder-settings-main-grid {
-    grid-template-columns: 210px minmax(0, 1fr);
-    gap: 10px;
+  .feeder-settings-wrapper {
+    height: auto;
+    max-height: none;
+    min-height: auto;
+    padding-bottom: 48px;
   }
-}
 
-/* Mobile Screens (<= 768px) */
-@media (max-width: 768px) {
   .feeder-settings-header-card {
     padding: 14px 16px;
   }
@@ -6740,10 +6784,13 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   .feeder-settings-main-grid {
     grid-template-columns: 1fr;
     gap: 0;
+    height: auto;
+    min-height: auto;
   }
 
   .feeder-settings-nav-pane {
     position: static;
+    height: auto;
     max-height: none;
     overflow: visible;
   }
@@ -6751,16 +6798,17 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   .feeder-settings-nav-scroll-area {
     overflow-y: visible;
     max-height: none;
+    height: auto;
     padding-bottom: 32px;
   }
 
   /* On mobile: show either nav list or drilled content view */
   .feeder-settings-nav-pane.hide-on-mobile-when-active {
-    display: none;
+    display: none !important;
   }
 
   .feeder-settings-content-pane.hide-on-mobile-when-list {
-    display: none;
+    display: none !important;
   }
 
   .feeder-settings-mobile-back-bar {
@@ -6768,6 +6816,9 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   }
 
   .feeder-settings-content-pane {
+    height: auto;
+    max-height: none;
+    overflow: visible;
     padding: 16px;
   }
 
