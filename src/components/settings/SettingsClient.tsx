@@ -965,23 +965,9 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
                         <span>Generate Random Avatar</span>
                       </button>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        Or enter a direct image URL below
+                        Tap to generate a fresh guardian avatar
                       </span>
                     </div>
-                  </div>
-
-                  <div className="feeder-settings-input-group">
-                    <label className="feeder-settings-label" htmlFor="avatarUrlInput">
-                      Avatar Image URL
-                    </label>
-                    <input
-                      id="avatarUrlInput"
-                      type="url"
-                      value={avatarUrl}
-                      onChange={(e) => setAvatarUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/..."
-                      className="feeder-settings-input"
-                    />
                   </div>
                 </div>
 
