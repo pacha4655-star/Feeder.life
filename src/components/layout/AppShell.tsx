@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import TopNavigation from './TopNavigation';
 import LeftSidebar from './LeftSidebar';
 import RightSidebar from './RightSidebar';
 import MobileNavigation from './MobileNavigation';
-import PostComposerModal from '../feed/PostComposerModal';
-import StoryModal from '../feed/StoryModal';
-import SOSModal from '../sos/SOSModal';
-import FeedingLogModal from '../feeding/FeedingLogModal';
-import GlobalChatbot from '../chatbot/GlobalChatbot';
 import type { UserSession } from '@/lib/auth/session';
+
+const PostComposerModal = dynamic(() => import('../feed/PostComposerModal'), { ssr: false });
+const StoryModal = dynamic(() => import('../feed/StoryModal'), { ssr: false });
+const SOSModal = dynamic(() => import('../sos/SOSModal'), { ssr: false });
+const FeedingLogModal = dynamic(() => import('../feeding/FeedingLogModal'), { ssr: false });
+const GlobalChatbot = dynamic(() => import('../chatbot/GlobalChatbot'), { ssr: false });
 
 interface AppShellProps {
   user: UserSession | null;

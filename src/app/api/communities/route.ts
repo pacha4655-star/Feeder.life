@@ -14,7 +14,11 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
 
     const supabase = getSupabaseServerClient();
-    let query = supabase.from('communities').select('*').order('created_at', { ascending: false });
+    let query = supabase
+      .from('communities')
+      .select('id, name, slug, description, community_type, city, cover_url, avatar_url, is_private, rules, created_by, members, stats')
+      .order('created_at', { ascending: false })
+      .limit(60);
 
     if (category && category !== 'ALL') {
       query = query.eq('community_type', category.toLowerCase());

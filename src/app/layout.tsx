@@ -37,8 +37,23 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+import { Outfit, Plus_Jakarta_Sans } from 'next/font/google';
 import FirebaseAnalytics from '@/components/common/FirebaseAnalytics';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-outfit',
+  display: 'swap',
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-jakarta',
+  display: 'swap',
+});
 
 export default function RootLayout({
   children,
@@ -46,8 +61,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>
+    <html lang="en" className={`${outfit.variable} ${plusJakartaSans.variable}`} suppressHydrationWarning>
+      <body className={`${outfit.className}`} suppressHydrationWarning>
         <FirebaseAnalytics />
         <LanguageProvider>
           {children}

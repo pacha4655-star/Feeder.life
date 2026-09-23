@@ -48,6 +48,19 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  compress: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react'],
+  },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'api.dicebear.com' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '**.googleusercontent.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+    ],
+  },
   async headers() {
     return [
       {

@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import FeedList from './FeedList';
-import PostComposerModal from './PostComposerModal';
-import StoryModal from './StoryModal';
 import type { UserSession } from '@/lib/auth/session';
+
+const PostComposerModal = dynamic(() => import('./PostComposerModal'), { ssr: false });
+const StoryModal = dynamic(() => import('./StoryModal'), { ssr: false });
 
 interface FeedListWrapperProps {
   user: UserSession | null;

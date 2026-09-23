@@ -42,10 +42,10 @@ export default async function ConnectionsPage(props: { searchParams?: Promise<{ 
   // 1. Fetch all users from Supabase users table
   const { data: allUsers } = await supabase
     .from('users')
-    .select('*')
+    .select('id, username, display_name, avatar_url, role, city, profile_data')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(50);
 
   const mapUserToGuardian = (u: any): GuardianItem => ({
     id: u.id,

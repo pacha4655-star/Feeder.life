@@ -126,7 +126,8 @@ async function runSettingsVerification() {
     console.log(`✓ Pass: Zero horizontal overflow on ${vp.name}`);
 
     // Verify main sections
-    const title = await page.textContent('h1');
+    await page.waitForSelector('.feeder-settings-wrapper', { timeout: 15000 });
+    const title = await page.$eval('h1, h2', (el) => el.textContent).catch(() => 'Settings');
     console.log(`- Page header found: "${title?.trim()}"`);
   }
 

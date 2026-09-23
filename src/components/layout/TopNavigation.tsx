@@ -124,11 +124,26 @@ export default function TopNavigation({
   useEffect(() => {
     loadNotifications();
     loadUnreadMessages();
+
     const interval = setInterval(() => {
-      loadNotifications();
-      loadUnreadMessages();
-    }, 20000); // 20s polling
-    return () => clearInterval(interval);
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        loadNotifications();
+        loadUnreadMessages();
+      }
+    }, 25000); // 25s polling when active
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadNotifications();
+        loadUnreadMessages();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user]);
 
   const handleMarkNotificationsRead = async () => {

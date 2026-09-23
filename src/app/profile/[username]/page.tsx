@@ -19,7 +19,7 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
 
   let { data: userRows } = await supabase
     .from('users')
-    .select('*')
+    .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
     .ilike('username', cleanUsername)
     .limit(1);
 
@@ -27,7 +27,7 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
   if (!supaUser) {
     const { data: idRows } = await supabase
       .from('users')
-      .select('*')
+      .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
       .eq('id', cleanUsername)
       .limit(1);
     supaUser = idRows && idRows[0];
@@ -57,13 +57,14 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
     created_at: supaUser.created_at,
   };
 
-  // User posts from Supabase
+  // User posts from Supabase (Limit to initial 20 for fast page render)
   const { data: postRows } = await supabase
     .from('social_posts')
-    .select('*, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role)')
+    .select('id, user_id, post_type, title, content, media, tags, location_name, likes_count, comments_count, created_at, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role)')
     .eq('user_id', supaUser.id)
     .eq('is_deleted', false)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   const posts = (postRows || []).map((p: any) => ({
     id: p.id,
@@ -84,14 +85,15 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
     user_reaction: null,
   }));
 
-  // User feeding logs
+  // User feeding logs (Limit to initial 20)
   const { data: feedingRows } = await supabase
     .from('social_posts')
-    .select('*')
+    .select('id, user_id, created_at, content, data')
     .eq('user_id', supaUser.id)
     .eq('post_type', 'feeding')
     .eq('is_deleted', false)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(20);
 
   const feedingLogs = (feedingRows || []).map((f: any) => ({
     id: f.id,

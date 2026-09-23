@@ -38,7 +38,7 @@ export class StoryService {
 
       const { data: rawStories, error } = await supabase
         .from('social_posts')
-        .select('*')
+        .select('id, user_id, media, content, created_at, expires_at, reactions, stats')
         .eq('record_type', 'story')
         .eq('is_active', true)
         .eq('is_deleted', false)
@@ -56,7 +56,7 @@ export class StoryService {
       if (userIds.length > 0) {
         const { data: usersData } = await supabase
           .from('users')
-          .select('*')
+          .select('id, username, display_name, avatar_url')
           .in('id', userIds);
 
         if (usersData) {

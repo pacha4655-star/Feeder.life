@@ -141,28 +141,28 @@ export class FeedRankingService {
       );
 
       // 2. Fetch users in parallel
-      const usersMap = new Map<string, DbUser>();
+      const usersMap = new Map<string, any>();
       if (userIds.length > 0) {
         const { data: usersData } = await supabase
           .from('users')
-          .select('*')
+          .select('id, username, display_name, avatar_url, role, is_verified, profile_data')
           .in('id', userIds);
 
         if (usersData) {
-          usersData.forEach((u) => usersMap.set(u.id, u as DbUser));
+          usersData.forEach((u) => usersMap.set(u.id, u));
         }
       }
 
       // 3. Fetch communities in parallel
-      const commsMap = new Map<string, DbCommunity>();
+      const commsMap = new Map<string, any>();
       if (communityIds.length > 0) {
         const { data: commsData } = await supabase
           .from('communities')
-          .select('*')
+          .select('id, name, slug, avatar_url, is_verified')
           .in('id', communityIds);
 
         if (commsData) {
-          commsData.forEach((c) => commsMap.set(c.id, c as DbCommunity));
+          commsData.forEach((c) => commsMap.set(c.id, c));
         }
       }
 

@@ -26,6 +26,10 @@ export default function FeederAvatar({
       <img
         src={src}
         alt={alt}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
         onError={() => setImageError(true)}
         className={className}
         style={{
