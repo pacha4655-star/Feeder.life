@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/login',
   '/signup',
   '/reset-password',
+  '/help',
   '/api/auth/login',
   '/api/auth/signup',
   '/api/auth/sync',
