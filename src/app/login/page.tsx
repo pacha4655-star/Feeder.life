@@ -272,13 +272,13 @@ export default function LoginPage() {
             <section className="hero-panel" aria-label="Feeder Overview">
               <div className="hero-visual">
                 <img
-                  src="/images/feeder-login-left-artwork.jpg"
+                  src="/images/feeder-login-left-artwork.png"
                   alt="Feeder — Connect. Care. Protect. Make a difference. A kinder world for every animal."
                   className="hero-artwork-img"
                   loading="eager"
                   fetchPriority="high"
                   width={1024}
-                  height={1024}
+                  height={935}
                 />
               </div>
             </section>
