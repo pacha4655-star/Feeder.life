@@ -354,7 +354,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
       {/* Main Grid Layout */}
       <div className="feeder-help-main-grid">
         {/* Left Side: Navigation Sidebar */}
-        <aside className="feeder-help-nav-pane card" aria-label="Help & Support Navigation">
+        <aside
+          className={`feeder-help-nav-pane card ${activeSection !== 'overview' ? 'hide-on-mobile-when-active' : ''}`}
+          aria-label="Help & Support Navigation"
+        >
           <div className="feeder-help-nav-scroll-area">
             {/* 1. Primary Hub */}
             <div className="feeder-help-nav-group">
@@ -525,7 +528,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
         </aside>
 
         {/* Right Side: Content Area */}
-        <main className="feeder-help-content-pane card" aria-labelledby="help-content-title">
+        <main
+          className={`feeder-help-content-pane card ${activeSection === 'overview' ? 'hide-on-mobile-when-list' : ''}`}
+          aria-labelledby="help-content-title"
+        >
           {/* Mobile Back Button */}
           {activeSection !== 'overview' && (
             <div className="feeder-help-mobile-back-bar">
