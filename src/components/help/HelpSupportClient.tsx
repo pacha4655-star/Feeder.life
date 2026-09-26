@@ -191,12 +191,44 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
     }
   }, [activeSection, user]);
 
+  // Listen to browser back/forward buttons (popstate) for mobile navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const parts = path.split('/').filter(Boolean);
+        if (parts[0] === 'help') {
+          if (parts[1]) {
+            setActiveSection(parts[1] as HelpSectionKey);
+          } else {
+            setActiveSection('overview');
+          }
+          setSelectedRequest(null);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Section switcher
   const navigateToSection = (key: HelpSectionKey) => {
     setActiveSection(key);
     setSelectedRequest(null);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', key === 'overview' ? '/help' : `/help/${key}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Mobile back button handler
+  const handleMobileBack = () => {
+    setActiveSection('overview');
+    setSelectedRequest(null);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/help');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -353,9 +385,9 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
 
       {/* Main Grid Layout */}
       <div className="feeder-help-main-grid">
-        {/* Left Side: Navigation Sidebar */}
+        {/* Left Side: Navigation Sidebar (Desktop sticky navigation) */}
         <aside
-          className={`feeder-help-nav-pane card ${activeSection !== 'overview' ? 'hide-on-mobile-when-active' : ''}`}
+          className="feeder-help-nav-pane card"
           aria-label="Help & Support Navigation"
         >
           <div className="feeder-help-nav-scroll-area">
@@ -529,7 +561,7 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
 
         {/* Right Side: Content Area */}
         <main
-          className={`feeder-help-content-pane card ${activeSection === 'overview' ? 'hide-on-mobile-when-list' : ''}`}
+          className="feeder-help-content-pane card"
           aria-labelledby="help-content-title"
         >
           {/* Mobile Back Button */}
@@ -537,7 +569,7 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
             <div className="feeder-help-mobile-back-bar">
               <button
                 type="button"
-                onClick={() => navigateToSection('overview')}
+                onClick={handleMobileBack}
                 className="feeder-help-mobile-back-btn"
                 aria-label="Back to Help & Support"
               >

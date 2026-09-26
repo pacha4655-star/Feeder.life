@@ -355,6 +355,28 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
     }
   }, []);
 
+  // Listen to browser back/forward buttons (popstate) for mobile navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const parts = path.split('/').filter(Boolean);
+        if (parts[0] === 'settings') {
+          if (parts[1]) {
+            const section = parts[1] as SectionKey;
+            setActiveSection(section);
+            setMobileDrilldown(true);
+          } else {
+            setMobileDrilldown(false);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Update theme function
   const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setTheme(newTheme);
@@ -375,6 +397,16 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
     setMobileDrilldown(true);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', `/settings/${key}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Mobile Back Button handler
+  const handleMobileBack = () => {
+    setMobileDrilldown(false);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/settings');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -923,12 +955,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
           <div className="feeder-settings-mobile-back-bar">
             <button
               type="button"
-              onClick={() => {
-                setMobileDrilldown(false);
-                if (typeof window !== 'undefined') {
-                  window.history.pushState({}, '', '/settings');
-                }
-              }}
+              onClick={handleMobileBack}
               className="feeder-settings-mobile-back-btn"
               aria-label="Back to Settings"
             >

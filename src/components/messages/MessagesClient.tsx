@@ -454,11 +454,14 @@ export default function MessagesClient({
       style={{
         maxWidth: '1080px',
         margin: '0 auto',
-        height: isMobile ? 'calc(100dvh - 120px)' : 'calc(100dvh - 84px)',
+        height: isMobile
+          ? 'calc(100dvh - var(--topbar-height, 56px) - 76px - env(safe-area-inset-bottom, 0px))'
+          : 'calc(100dvh - var(--topbar-height, 60px) - 24px)',
         display: isMobile ? 'flex' : 'grid',
         gridTemplateColumns: isMobile ? undefined : '320px 1fr',
         gap: '12px',
-        paddingBottom: isMobile ? '70px' : '16px',
+        boxSizing: 'border-box',
+        paddingBottom: 0,
         width: '100%',
       }}
     >
