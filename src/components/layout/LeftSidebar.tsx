@@ -135,7 +135,7 @@ export default function LeftSidebar({
       )}
 
       {/* 2. Primary Navigation List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <nav aria-label="Main Navigation" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {primaryNavItems.map((item) => {
           const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -144,37 +144,32 @@ export default function LeftSidebar({
               key={item.href}
               href={item.href}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                fontSize: '14.5px',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--brand-primary)' : 'var(--text-primary)',
-                background: isActive ? 'var(--brand-primary-light)' : 'transparent',
-                textDecoration: 'none',
-                transition: 'background 0.15s ease',
-              }}
             >
-              {Icon && (
-                <Icon
-                  size={20}
-                  color={isActive ? 'var(--brand-primary)' : item.color}
-                  fill={isActive && item.href === '/' ? 'currentColor' : 'none'}
-                />
-              )}
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <div
+                className="sidebar-icon-wrap"
+                style={{
+                  background: isActive ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                  color: isActive ? '#ffffff' : (item.color || 'var(--brand-primary)'),
+                }}
+              >
+                {Icon && (
+                  <Icon
+                    size={20}
+                    color="currentColor"
+                    fill={isActive && item.href === '/' ? 'currentColor' : 'none'}
+                  />
+                )}
+              </div>
+              <span style={{ flex: 1, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
             </Link>
           );
         })}
-      </div>
+      </nav>
 
-      <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '12px 6px' }} />
+      <div className="sidebar-divider" />
 
       {/* 3. Secondary Navigation List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <nav aria-label="Secondary Navigation" style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
         {secondaryNavItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -183,26 +178,21 @@ export default function LeftSidebar({
               key={item.href}
               href={item.href}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                padding: '10px 14px',
-                borderRadius: '10px',
-                fontSize: '14.5px',
-                fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--brand-primary)' : 'var(--text-primary)',
-                background: isActive ? 'var(--brand-primary-light)' : 'transparent',
-                textDecoration: 'none',
-                transition: 'background 0.15s ease',
-              }}
             >
-              <Icon size={20} color={isActive ? 'var(--brand-primary)' : item.color} />
-              <span style={{ flex: 1 }}>{item.label}</span>
+              <div
+                className="sidebar-icon-wrap"
+                style={{
+                  background: isActive ? 'var(--brand-primary)' : 'var(--bg-secondary)',
+                  color: isActive ? '#ffffff' : 'var(--text-muted)',
+                }}
+              >
+                <Icon size={20} color="currentColor" />
+              </div>
+              <span style={{ flex: 1, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
             </Link>
           );
         })}
-      </div>
+      </nav>
 
       {/* 4. Bottom Promo Card: Together for a kinder tomorrow */}
       <div
