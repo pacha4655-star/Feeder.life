@@ -321,13 +321,12 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
   });
 
   return (
-    <div className="feeder-help-wrapper" style={{ maxWidth: '1040px', margin: '0 auto', paddingBottom: '60px' }}>
+    <div className="feeder-help-wrapper">
       {/* Help Top Header Banner */}
       <div
         className="card feeder-help-header-card"
         style={{
-          padding: '24px',
-          marginBottom: '16px',
+          padding: '20px 24px',
           borderRadius: 'var(--radius-md)',
           background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.08) 0%, rgba(56, 142, 60, 0.03) 100%)',
           border: '1px solid var(--border-subtle)',
