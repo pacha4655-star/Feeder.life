@@ -4,6 +4,13 @@ import AppShell from '@/components/layout/AppShell';
 import ReelsClient from '@/components/reels/ReelsClient';
 import { FeedRankingService } from '@/lib/services/feed-ranking';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Animal Reels & Stories | Feeder.life',
+  description: 'Watch inspiring community animal rescues, feeding moments, and shelter updates.',
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function ReelsPage() {

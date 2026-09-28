@@ -6,6 +6,7 @@ Allow: /sos
 Allow: /nearby
 Allow: /feeding
 Allow: /ask-feeder
+Allow: /help
 Allow: /login
 Allow: /signup
 
@@ -13,7 +14,10 @@ Allow: /signup
 Disallow: /api/
 Disallow: /settings
 Disallow: /messages
+Disallow: /notifications
+Disallow: /saved
 Disallow: /admin
 Disallow: /onboarding
 
 Sitemap: https://feeder.life/sitemap.xml
+

@@ -4,6 +4,14 @@ import AppShell from '@/components/layout/AppShell';
 import NotificationsClient, { NotificationItem } from '@/components/notifications/NotificationsClient';
 import { redirect } from 'next/navigation';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Notifications | Feeder.life',
+  description: 'Alerts, updates, community interactions, and SOS responses.',
+  robots: { index: false, follow: false },
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function NotificationsPage() {

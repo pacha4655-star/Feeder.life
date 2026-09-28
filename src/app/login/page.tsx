@@ -462,7 +462,7 @@ export default function LoginPage() {
               <a href="#about" onClick={(e) => { e.preventDefault(); alert("Feeder.life is a social animal welfare network connecting community feeders, volunteers, and rescuers worldwide."); }} className="login-footer-link">About</a>
               <a href="#privacy" onClick={(e) => { e.preventDefault(); alert("Feeder.life Privacy Policy: Your data and location coordinates are protected and used strictly for animal rescue and community feeding coordination."); }} className="login-footer-link">Privacy</a>
               <a href="#terms" onClick={(e) => { e.preventDefault(); alert("Feeder.life Terms of Service: By using Feeder.life, you agree to uphold ethical animal welfare practices and respectful community conduct."); }} className="login-footer-link">Terms</a>
-              <a href="#help" onClick={(e) => { e.preventDefault(); alert("Feeder Support: Email help@feeder.life for volunteer assistance, verified shelter badges, or platform queries."); }} className="login-footer-link">Help &amp; Support</a>
+              <Link href="/help" className="login-footer-link">Help &amp; Support</Link>
             </nav>
           </footer>
         </div>

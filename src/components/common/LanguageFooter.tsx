@@ -132,14 +132,14 @@ export default function LanguageFooter({ className = '', hideLinks = false }: La
                 </a>
               </li>
               <li>
-                <a href="#guidelines" onClick={(e) => { e.preventDefault(); alert("Feeder.life Community Guidelines: Treat all animals and fellow volunteers with compassion, verify rescue reports, and prioritize humane animal welfare."); }} className="feeder-footer-nav-link">
+                <Link href="/help/guidelines" className="feeder-footer-nav-link">
                   {t('footer.guidelines')}
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#welfare" onClick={(e) => { e.preventDefault(); alert("Animal Welfare Standards: Ensure clean food and fresh water, promote ABC (Animal Birth Control) vaccination, and respond promptly to emergency SOS alerts."); }} className="feeder-footer-nav-link">
+                <Link href="/help/safety" className="feeder-footer-nav-link">
                   {t('footer.animalWelfare')}
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="#privacy" onClick={(e) => { e.preventDefault(); alert("Feeder.life Privacy Policy: Your data and location coordinates are protected and used strictly for animal rescue and community feeding coordination."); }} className="feeder-footer-nav-link">
@@ -152,9 +152,9 @@ export default function LanguageFooter({ className = '', hideLinks = false }: La
                 </a>
               </li>
               <li>
-                <a href="#help" onClick={(e) => { e.preventDefault(); alert("Feeder Support: Email help@feeder.life for volunteer assistance, verified shelter badges, or platform queries."); }} className="feeder-footer-nav-link">
+                <Link href="/help" className="feeder-footer-nav-link">
                   {t('footer.help')}
-                </a>
+                </Link>
               </li>
             </ul>
           </nav>

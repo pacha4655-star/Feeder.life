@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getCurrentUser } from '@/lib/auth/session';
 import { isPlatformStaff } from '@/lib/security/rbac';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
@@ -6,6 +7,15 @@ import AdminClient from '@/components/admin/AdminClient';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Platform Administration | Feeder.life',
+  description: 'Feeder.life staff administration panel and platform moderation.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function AdminPage() {
   const user = await getCurrentUser();

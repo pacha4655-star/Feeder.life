@@ -5,6 +5,14 @@ import SavedPostsClient from '@/components/saved/SavedPostsClient';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { PostWithAuthor } from '@/lib/services/feed-ranking';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Saved Posts | Feeder.life',
+  description: 'Your bookmarked feeds, guides, and community posts.',
+  robots: { index: false, follow: false },
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function SavedPage() {

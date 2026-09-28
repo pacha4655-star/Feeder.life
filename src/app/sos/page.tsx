@@ -3,6 +3,13 @@ import { redirect } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import SOSClient from '@/components/sos/SOSClient';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Emergency Animal SOS | Feeder.life',
+  description: 'Live community SOS network for injured, distressed, and emergency animal rescue alerts.',
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function SOSPage() {

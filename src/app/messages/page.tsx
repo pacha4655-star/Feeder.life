@@ -5,6 +5,14 @@ import MessagesClient from '@/components/messages/MessagesClient';
 import { MessagingService, ConversationSummary } from '@/lib/services/messaging';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Messages | Feeder.life',
+  description: 'Direct messaging and volunteer coordination on Feeder.life.',
+  robots: { index: false, follow: false },
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function MessagesPage(props: {

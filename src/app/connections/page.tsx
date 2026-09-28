@@ -4,6 +4,13 @@ import AppShell from '@/components/layout/AppShell';
 import ConnectionsClient, { GuardianItem } from '@/components/connections/ConnectionsClient';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Feeder Network & Connections | Feeder.life',
+  description: 'Connect with community animal feeders, volunteers, and rescue advocates.',
+};
+
 export const dynamic = 'force-dynamic';
 
 export default async function ConnectionsPage(props: { searchParams?: Promise<{ tab?: string }> }) {
