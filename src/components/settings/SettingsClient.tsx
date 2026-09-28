@@ -369,6 +369,10 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
           } else {
             setMobileDrilldown(false);
           }
+          const scrollOwner = document.querySelector('.feeder-settings-wrapper');
+          if (scrollOwner) {
+            scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+          }
         }
       }
     };
@@ -397,6 +401,10 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
     setMobileDrilldown(true);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', `/settings/${key}`);
+      const scrollOwner = document.querySelector('.feeder-settings-wrapper');
+      if (scrollOwner) {
+        scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -406,6 +414,10 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
     setMobileDrilldown(false);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', '/settings');
+      const scrollOwner = document.querySelector('.feeder-settings-wrapper');
+      if (scrollOwner) {
+        scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -685,7 +697,7 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
     <div className="feeder-settings-wrapper">
       {/* Settings Top Header Bar */}
       <div
-        className="card feeder-settings-header-card"
+        className={`card feeder-settings-header-card ${mobileDrilldown ? 'hide-on-mobile-when-active' : ''}`}
         style={{
           padding: '18px 24px',
           marginBottom: '16px',

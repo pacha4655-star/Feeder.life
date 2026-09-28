@@ -204,6 +204,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
             setActiveSection('overview');
           }
           setSelectedRequest(null);
+          const scrollOwner = document.querySelector('.feeder-help-wrapper');
+          if (scrollOwner) {
+            scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+          }
         }
       }
     };
@@ -218,6 +222,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
     setSelectedRequest(null);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', key === 'overview' ? '/help' : `/help/${key}`);
+      const scrollOwner = document.querySelector('.feeder-help-wrapper');
+      if (scrollOwner) {
+        scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -228,6 +236,10 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
     setSelectedRequest(null);
     if (typeof window !== 'undefined') {
       window.history.pushState({}, '', '/help');
+      const scrollOwner = document.querySelector('.feeder-help-wrapper');
+      if (scrollOwner) {
+        scrollOwner.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -324,7 +336,7 @@ export default function HelpSupportClient({ user, initialSection, requestId }: H
     <div className="feeder-help-wrapper">
       {/* Help Top Header Banner */}
       <div
-        className="card feeder-help-header-card"
+        className={`card feeder-help-header-card ${activeSection !== 'overview' ? 'hide-on-mobile-when-active' : ''}`}
         style={{
           padding: '20px 24px',
           borderRadius: 'var(--radius-md)',

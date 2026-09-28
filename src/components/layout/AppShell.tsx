@@ -45,7 +45,7 @@ export default function AppShell({
   };
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout ${activeTab ? `app-layout-${activeTab.toLowerCase()}` : ''}`}>
       {/* 1. Sticky Top Navigation */}
       <TopNavigation
         user={user}
@@ -57,7 +57,7 @@ export default function AppShell({
       />
 
       {/* 2. Main 3-Column Layout Container */}
-      <div className="app-container">
+      <div className={`app-container ${activeTab ? `app-container-${activeTab.toLowerCase()}` : ''}`}>
         {/* Left Persistent Navigation */}
         <LeftSidebar
           user={user}
@@ -67,7 +67,7 @@ export default function AppShell({
         />
 
         {/* Center Content Column */}
-        <main className={`app-center-feed ${!showRightSidebar ? 'app-center-feed-wide' : ''}`}>{children}</main>
+        <main className={`app-center-feed ${!showRightSidebar ? 'app-center-feed-wide' : ''} ${activeTab ? `app-center-feed-${activeTab.toLowerCase()}` : ''}`}>{children}</main>
 
         {/* Right Contextual Sidebar */}
         {showRightSidebar && <RightSidebar />}
