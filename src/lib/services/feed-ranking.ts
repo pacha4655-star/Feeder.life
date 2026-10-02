@@ -145,7 +145,7 @@ export class FeedRankingService {
       if (userIds.length > 0) {
         const { data: usersData } = await supabase
           .from('users')
-          .select('id, username, display_name, avatar_url, role, is_verified, profile_data')
+          .select('id, username, display_name, avatar_url, is_verified, profile_data')
           .in('id', userIds);
 
         if (usersData) {

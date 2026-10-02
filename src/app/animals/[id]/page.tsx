@@ -39,7 +39,7 @@ export default async function AnimalPassportPage({ params }: Props) {
   const supabase = getSupabaseServerClient();
   const { data: animal, error } = await supabase
     .from('animals')
-    .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, role)')
+    .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, profile_data)')
     .eq('id', id)
     .maybeSingle();
 

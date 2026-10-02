@@ -93,7 +93,7 @@ export class SosService {
       const supabase = getSupabaseServerClient();
       const { data: rows, error } = await supabase
         .from('animals')
-        .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, role)')
+        .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, profile_data)')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
@@ -122,7 +122,7 @@ export class SosService {
             reporter_id: r.created_by,
             reporter_name: r.users?.display_name || 'Guardian',
             reporter_avatar: r.users?.avatar_url || '',
-            reporter_role: r.users?.role || 'USER',
+            reporter_role: r.users?.profile_data?.role || 'USER',
             emergency_type: sos.emergency_type || 'INJURED_ANIMAL',
             animal_type: r.species || 'Canine',
             urgency: sos.urgency || 'HIGH',
@@ -159,7 +159,7 @@ export class SosService {
       const supabase = getSupabaseServerClient();
       const { data: r, error } = await supabase
         .from('animals')
-        .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, role)')
+        .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, profile_data)')
         .eq('id', sosId)
         .maybeSingle();
 
@@ -185,7 +185,7 @@ export class SosService {
         reporter_id: r.created_by,
         reporter_name: r.users?.display_name || 'Guardian',
         reporter_avatar: r.users?.avatar_url || '',
-        reporter_role: r.users?.role || 'USER',
+        reporter_role: r.users?.profile_data?.role || 'USER',
         emergency_type: sos.emergency_type || 'INJURED_ANIMAL',
         animal_type: r.species || 'Canine',
         urgency: sos.urgency || 'HIGH',

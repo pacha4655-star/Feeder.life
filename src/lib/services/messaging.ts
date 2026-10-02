@@ -91,7 +91,7 @@ export class MessagingService {
       if (otherUserIds.length > 0) {
         const { data: uRows } = await supabase
           .from('users')
-          .select('id, display_name, username, avatar_url, role, is_active')
+          .select('id, display_name, username, avatar_url, profile_data, is_active')
           .in('id', otherUserIds);
 
         if (uRows) {
@@ -114,7 +114,7 @@ export class MessagingService {
               fullName: u.display_name || u.username || 'Guardian',
               username: u.username || 'member',
               avatarUrl: u.avatar_url || '',
-              role: u.role || 'USER',
+              role: u.profile_data?.role || 'USER',
               isActive: u.is_active !== false,
             }
           : null;
