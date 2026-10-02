@@ -129,14 +129,13 @@ export default function RightSidebar({}: RightSidebarProps) {
             Loading communities...
           </div>
         ) : suggestedCommunities.length === 0 ? (
-          <div style={{ padding: '14px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+          <div className="sidebar-empty-state">
+            <div className="sidebar-empty-state-text">
               No communities yet.
             </div>
             <Link
               href="/communities"
-              className="btn-secondary"
-              style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-block' }}
+              className="sidebar-empty-state-btn"
             >
               Explore or Create
             </Link>
@@ -225,14 +224,13 @@ export default function RightSidebar({}: RightSidebarProps) {
             Scanning neighborhood...
           </div>
         ) : !hasNearbyActivity ? (
-          <div style={{ padding: '14px 0', textAlign: 'center' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+          <div className="sidebar-empty-state">
+            <div className="sidebar-empty-state-text">
               No nearby activity yet.
             </div>
             <Link
               href="/nearby"
-              className="btn-secondary"
-              style={{ fontSize: '12px', padding: '5px 12px', display: 'inline-block' }}
+              className="sidebar-empty-state-btn"
             >
               Scan Radius
             </Link>

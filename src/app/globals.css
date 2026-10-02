@@ -8204,15 +8204,51 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   }
 }
 
+/* ========================================================
+   SIDEBAR EMPTY STATE STYLES (CENTER ALIGNED)
+   ======================================================== */
+.sidebar-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px 8px 10px 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
 
+.sidebar-empty-state-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
 
+.sidebar-empty-state-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-decoration: none;
+  background: var(--bg-secondary, #f0f2f5);
+  border: 1px solid var(--border-subtle, #e4e6eb);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  margin: 0 auto;
+}
 
-
-
-
-
-
-
-
-
-
+.sidebar-empty-state-btn:hover {
+  background: var(--bg-hover, #e4e6e9);
+  border-color: var(--border-focus, #2E7D32);
+  color: var(--brand-primary);
+}
