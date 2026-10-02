@@ -150,6 +150,8 @@ export default function LeftSidebar({
               key={item.href}
               href={item.href}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+              aria-label={item.label}
+              title={item.label}
             >
               <div
                 className="sidebar-icon-wrap"
@@ -161,8 +163,8 @@ export default function LeftSidebar({
                 {Icon && (
                   <Icon
                     size={20}
+                    strokeWidth={2}
                     color="currentColor"
-                    fill={isActive && item.href === '/' ? 'currentColor' : 'none'}
                   />
                 )}
               </div>
@@ -184,6 +186,8 @@ export default function LeftSidebar({
               key={item.href}
               href={item.href}
               className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+              aria-label={item.label}
+              title={item.label}
             >
               <div
                 className="sidebar-icon-wrap"
@@ -192,7 +196,7 @@ export default function LeftSidebar({
                   color: isActive ? '#ffffff' : 'var(--text-muted)',
                 }}
               >
-                <Icon size={20} color="currentColor" />
+                <Icon size={20} strokeWidth={2} color="currentColor" />
               </div>
               <span style={{ flex: 1, fontWeight: isActive ? 700 : 500 }}>{item.label}</span>
             </Link>

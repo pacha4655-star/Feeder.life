@@ -34,6 +34,7 @@ import {
   MessageSquare,
   Heart,
   HelpCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { formatTime } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
@@ -87,13 +88,18 @@ export default function TopNavigation({
   let currentActiveTab = propActiveTab;
   if (!currentActiveTab) {
     if (pathname === '/') currentActiveTab = 'home';
-    else if (pathname.startsWith('/reels')) currentActiveTab = 'reels';
     else if (pathname.startsWith('/communities')) currentActiveTab = 'communities';
+    else if (pathname.startsWith('/animals')) currentActiveTab = 'animals';
+    else if (pathname.startsWith('/adoption')) currentActiveTab = 'adoption';
+    else if (pathname.startsWith('/feeding')) currentActiveTab = 'feeding';
     else if (pathname.startsWith('/nearby')) currentActiveTab = 'nearby';
     else if (pathname.startsWith('/sos')) currentActiveTab = 'sos';
-    else if (pathname.startsWith('/feeding')) currentActiveTab = 'feeding';
-    else if (pathname.startsWith('/connections')) currentActiveTab = 'connections';
+    else if (pathname.startsWith('/lost-found')) currentActiveTab = 'lost-found';
+    else if (pathname.startsWith('/impact')) currentActiveTab = 'impact';
     else if (pathname.startsWith('/messages')) currentActiveTab = 'messages';
+    else if (pathname.startsWith('/notifications')) currentActiveTab = 'notifications';
+    else if (pathname.startsWith('/reels')) currentActiveTab = 'reels';
+    else if (pathname.startsWith('/connections')) currentActiveTab = 'connections';
   }
 
   // Fetch notifications and unread messages with live polling
@@ -175,14 +181,15 @@ export default function TopNavigation({
         />
       </div>
 
-      {/* Top Center: 5 Reference Navigation Tabs (Home, Communities, Nearby, SOS, Feeding) */}
-      <nav className="topbar-center">
+      {/* Top Center: 5 Primary Navigation Tabs (Home, Communities, Animals, Adoption, Feeding) */}
+      <nav className="topbar-center" aria-label="Primary Navigation">
         <Link
           href="/"
           className={`nav-tab-btn ${currentActiveTab === 'home' ? 'active' : ''}`}
           title="Home"
+          aria-label="Home Feed"
         >
-          <Home size={20} fill={currentActiveTab === 'home' ? 'currentColor' : 'none'} />
+          <Home size={22} strokeWidth={2} />
           <span className="nav-tab-label">Home</span>
         </Link>
 
@@ -190,35 +197,39 @@ export default function TopNavigation({
           href="/communities"
           className={`nav-tab-btn ${currentActiveTab === 'communities' ? 'active' : ''}`}
           title="Communities"
+          aria-label="Communities"
         >
-          <Users2 size={20} />
+          <Users2 size={22} strokeWidth={2} />
           <span className="nav-tab-label">Communities</span>
         </Link>
 
         <Link
-          href="/nearby"
-          className={`nav-tab-btn ${currentActiveTab === 'nearby' ? 'active' : ''}`}
-          title="Nearby"
+          href="/animals"
+          className={`nav-tab-btn ${currentActiveTab === 'animals' ? 'active' : ''}`}
+          title="Animals Registry"
+          aria-label="Animals Registry"
         >
-          <MapPin size={20} />
-          <span className="nav-tab-label">Nearby</span>
+          <ShieldCheck size={22} strokeWidth={2} />
+          <span className="nav-tab-label">Animals</span>
         </Link>
 
         <Link
-          href="/sos"
-          className={`nav-tab-btn ${currentActiveTab === 'sos' ? 'active' : ''}`}
-          title="SOS"
+          href="/adoption"
+          className={`nav-tab-btn ${currentActiveTab === 'adoption' ? 'active' : ''}`}
+          title="Adoption & Foster"
+          aria-label="Adoption & Foster"
         >
-          <AlertTriangle size={20} color={currentActiveTab === 'sos' ? 'var(--brand-sos)' : undefined} />
-          <span className="nav-tab-label">SOS</span>
+          <Heart size={22} strokeWidth={2} />
+          <span className="nav-tab-label">Adoption</span>
         </Link>
 
         <Link
           href="/feeding"
           className={`nav-tab-btn ${currentActiveTab === 'feeding' ? 'active' : ''}`}
           title="Feeding"
+          aria-label="Feeding Rosters & Logs"
         >
-          <Utensils size={20} />
+          <Utensils size={22} strokeWidth={2} />
           <span className="nav-tab-label">Feeding</span>
         </Link>
       </nav>
@@ -476,28 +487,38 @@ export default function TopNavigation({
             <Link
               href="/messages"
               className={`topbar-action-icon ${currentActiveTab === 'messages' ? 'active-icon' : ''}`}
-              title="Messages"
-              aria-label={`Direct Messages ${unreadMessagesCount > 0 ? `(${unreadMessagesCount} unread)` : ''}`}
-              style={{ position: 'relative' }}
+              title="Direct Messages"
+              aria-label={`Direct Messages${unreadMessagesCount > 0 ? ` (${unreadMessagesCount} unread)` : ''}`}
             >
-              <MessageCircle size={20} />
-              {unreadMessagesCount > 0 && <span className="action-badge-green">{unreadMessagesCount}</span>}
+              <MessageCircle size={21} strokeWidth={2} />
+              {unreadMessagesCount > 0 && (
+                <span className="action-badge-green" aria-hidden="true">
+                  {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                </span>
+              )}
             </Link>
 
             {/* Notifications Bell */}
             <div style={{ position: 'relative' }}>
               <button
+                type="button"
                 className={`topbar-action-icon ${showNotifMenu ? 'active-icon' : ''}`}
                 title="Notifications"
-                aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
+                aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={showNotifMenu}
                 onClick={() => {
                   setShowNotifMenu(!showNotifMenu);
                   setShowCreateMenu(false);
                   setShowUserMenu(false);
                 }}
               >
-                <Bell size={20} />
-                {unreadCount > 0 && <span className="action-badge-green">{unreadCount}</span>}
+                <Bell size={21} strokeWidth={2} />
+                {unreadCount > 0 && (
+                  <span className="action-badge-green" aria-hidden="true">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {showNotifMenu && (
@@ -593,6 +614,7 @@ export default function TopNavigation({
             {/* User Profile Avatar Dropdown */}
             <div style={{ position: 'relative' }}>
               <button
+                type="button"
                 className="user-avatar-btn"
                 onClick={() => {
                   setShowUserMenu(!showUserMenu);
@@ -600,6 +622,8 @@ export default function TopNavigation({
                   setShowNotifMenu(false);
                 }}
                 aria-label="User Account Menu"
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
               >
                 {user ? (
                   <FeederAvatar
@@ -622,7 +646,7 @@ export default function TopNavigation({
                       border: '1px solid var(--border-subtle)',
                     }}
                   >
-                    <User size={18} />
+                    <User size={20} strokeWidth={2} />
                   </div>
                 )}
               </button>
