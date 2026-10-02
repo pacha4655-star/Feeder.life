@@ -38,8 +38,8 @@
   --text-on-brand: #ffffff;
 
   /* Typography Scale */
-  --font-family-sans: var(--font-jakarta), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-family-heading: var(--font-outfit), 'Outfit', sans-serif;
+  --font-family-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-family-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --text-display: clamp(1.5rem, 2.5vw, 2rem);
   --text-h1: 1.375rem;
   --text-h2: 1.125rem;
@@ -117,18 +117,19 @@
 }
 
 body {
-  font-family: var(--font-jakarta), 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg-app);
   color: var(--text-main);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   overflow-x: clip;
 }
 
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: var(--font-outfit), 'Outfit', sans-serif;
-  letter-spacing: -0.02em;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  letter-spacing: -0.01em;
   font-weight: 700;
 }
 
@@ -477,7 +478,7 @@ a {
 }
 
 .brand-title-green {
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--brand-primary);
@@ -3169,7 +3170,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 }
 
 .feeder-split-headline {
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: clamp(28px, 3vw, 40px);
   font-weight: 800;
   color: var(--brand-primary);
@@ -3305,7 +3306,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 }
 
 .feeder-card-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 20px;
   font-weight: 800;
   color: var(--text-main);
@@ -3617,7 +3618,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 }
 
 .feeder-modal-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 19px;
   font-weight: 700;
   color: var(--text-main);
@@ -4075,7 +4076,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   }
 
   .auth-title {
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-size: clamp(22px, 2.2vw, 27px);
     font-weight: 800;
     color: #0f172a;
@@ -5508,7 +5509,7 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 }
 
 .feeder-lang-modal-title {
-  font-family: 'Outfit', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 17px;
   font-weight: 700;
   color: #0f172a;
