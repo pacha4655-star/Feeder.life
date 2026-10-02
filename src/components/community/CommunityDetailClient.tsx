@@ -248,7 +248,7 @@ export default function CommunityDetailClient({
               {membersList.map((m: any) => (
                 <Link
                   key={m.id}
-                  href={`/profile/${m.username}`}
+                  href={`/profile/${encodeURIComponent(m.username || m.id)}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -308,7 +308,7 @@ export default function CommunityDetailClient({
                   }}
                 >
                   <Link
-                    href={`/profile/${req.username}`}
+                    href={`/profile/${encodeURIComponent(req.username || req.id)}`}
                     style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}
                   >
                     <FeederAvatar src={req.avatar_url} alt={req.full_name} size={40} className="avatar-img" />

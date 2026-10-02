@@ -321,7 +321,7 @@ export default function ReelsClient({
                 }}
               >
                 <Link
-                  href={`/profile/${reel.author_username}`}
+                  href={`/profile/${encodeURIComponent(reel.author_username || reel.author_id)}`}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', marginBottom: '8px' }}
                 >
                   <img

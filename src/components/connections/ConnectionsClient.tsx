@@ -279,9 +279,9 @@ export default function ConnectionsClient({
             >
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <Link href={`/profile/${guardian.username}`}>
+                  <Link href={`/profile/${encodeURIComponent(guardian.username || guardian.id)}`}>
                     <img
-                      src={guardian.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${guardian.username}`}
+                      src={guardian.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${guardian.username || guardian.id}`}
                       alt={guardian.fullName}
                       style={{
                         width: '52px',
@@ -294,7 +294,7 @@ export default function ConnectionsClient({
                   </Link>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <Link
-                      href={`/profile/${guardian.username}`}
+                      href={`/profile/${encodeURIComponent(guardian.username || guardian.id)}`}
                       style={{
                         fontSize: '14.5px',
                         fontWeight: 700,
@@ -308,11 +308,11 @@ export default function ConnectionsClient({
                       {guardian.fullName}
                     </Link>
                     <Link
-                      href={`/profile/${guardian.username}`}
+                      href={`/profile/${encodeURIComponent(guardian.username || guardian.id)}`}
                       style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none' }}
                       className="hover:underline"
                     >
-                      @{guardian.username}
+                      @{guardian.username || 'guardian'}
                     </Link>
                   </div>
                 </div>
@@ -397,7 +397,7 @@ export default function ConnectionsClient({
               {/* Action */}
               {user && user.id === guardian.id ? (
                 <Link
-                  href={`/profile/${guardian.username}`}
+                  href={`/profile/${encodeURIComponent(guardian.username || guardian.id)}`}
                   className="btn-secondary"
                   style={{ width: '100%', textAlign: 'center', padding: '8px', fontSize: '12.5px' }}
                 >

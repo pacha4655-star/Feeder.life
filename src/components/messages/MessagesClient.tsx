@@ -654,7 +654,7 @@ export default function MessagesClient({
                   </button>
                 )}
                 <Link
-                  href={activeConversation.otherParticipant?.username ? `/profile/${activeConversation.otherParticipant.username}` : '#'}
+                  href={activeConversation.otherParticipant ? `/profile/${encodeURIComponent(activeConversation.otherParticipant.username || activeConversation.otherParticipant.id)}` : '#'}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: 'inherit' }}
                   className="hover:opacity-90"
                 >
@@ -696,7 +696,7 @@ export default function MessagesClient({
 
               {activeConversation.otherParticipant && (
                 <Link
-                  href={`/profile/${activeConversation.otherParticipant.username}`}
+                  href={`/profile/${encodeURIComponent(activeConversation.otherParticipant.username || activeConversation.otherParticipant.id)}`}
                   className="btn btn-secondary"
                   style={{ padding: '6px 14px', fontSize: '12px', textDecoration: 'none' }}
                 >

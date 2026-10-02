@@ -67,12 +67,13 @@ export class ProfileService {
     if (!cleanTarget) return null;
 
     let supaUser: any = null;
+    const userSelect = 'id, firebase_uid, email, username, display_name, avatar_url, bio, city, profile_data, created_at';
 
     // 1. If explicit 'me' or 'profile', resolve to current logged-in user
     if ((cleanTarget === 'me' || cleanTarget === 'profile') && currentUserId) {
       const { data: currentRows } = await supabase
         .from('users')
-        .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
+        .select(userSelect)
         .eq('id', currentUserId)
         .limit(1);
       supaUser = currentRows && currentRows[0];
@@ -82,7 +83,7 @@ export class ProfileService {
     if (!supaUser) {
       const { data: userRows } = await supabase
         .from('users')
-        .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
+        .select(userSelect)
         .ilike('username', cleanTarget)
         .limit(1);
       supaUser = userRows && userRows[0];
@@ -92,7 +93,7 @@ export class ProfileService {
     if (!supaUser) {
       const { data: idRows } = await supabase
         .from('users')
-        .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
+        .select(userSelect)
         .eq('id', cleanTarget)
         .limit(1);
       supaUser = idRows && idRows[0];
@@ -102,7 +103,7 @@ export class ProfileService {
     if (!supaUser) {
       const { data: uidRows } = await supabase
         .from('users')
-        .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
+        .select(userSelect)
         .eq('firebase_uid', cleanTarget)
         .limit(1);
       supaUser = uidRows && uidRows[0];
@@ -112,7 +113,7 @@ export class ProfileService {
     if (!supaUser && currentUserId && cleanTarget === currentUserId) {
       const { data: currentRows } = await supabase
         .from('users')
-        .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
+        .select(userSelect)
         .eq('id', currentUserId)
         .limit(1);
       supaUser = currentRows && currentRows[0];
@@ -136,7 +137,7 @@ export class ProfileService {
       username: supaUser.username || supaUser.id,
       full_name: supaUser.display_name || supaUser.username || 'Animal Guardian',
       avatar_url: supaUser.avatar_url,
-      role: supaUser.role || 'USER',
+      role: supaUser.profile_data?.role || 'USER',
       bio: supaUser.bio || '',
       city: supaUser.city || '',
       area_name: supaUser.profile_data?.area_name || '',
@@ -148,7 +149,7 @@ export class ProfileService {
       community_contributions_count:
         impactSummary.totalAdoptionsSupported + impactSummary.totalLostFoundReports,
       streak: impactSummary.streak,
-      cover_url: supaUser.profile_data?.cover_image_url || (supaUser as any).cover_url || null,
+      cover_url: supaUser.profile_data?.cover_image_url || null,
       badges: earnedBadges.length > 0 ? earnedBadges : ['Welfare Advocate'],
       created_at: supaUser.created_at,
     };
@@ -157,7 +158,7 @@ export class ProfileService {
     const { data: postRows } = await supabase
       .from('social_posts')
       .select(
-        'id, user_id, post_type, title, content, media, tags, location_name, likes_count, comments_count, created_at, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role)'
+        'id, user_id, record_type, content, data, media, reactions, comments, hashtags, stats, created_at, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, profile_data)'
       )
       .eq('user_id', supaUser.id)
       .eq('is_deleted', false)
@@ -170,41 +171,34 @@ export class ProfileService {
       author_name: p.users?.display_name || profileUser.full_name,
       author_username: p.users?.username || profileUser.username,
       author_avatar: p.users?.avatar_url || profileUser.avatar_url || '',
-      author_role: p.users?.role || 'COMMUNITY_MEMBER',
-      content_type: p.post_type || 'GENERAL',
-      title: p.title || '',
+      author_role: (p.users?.profile_data?.role as any) || profileUser.role,
+      content_type: p.data?.content_type || 'GENERAL',
+      title: p.data?.title || '',
       body: p.content || '',
       media_urls: Array.isArray(p.media)
         ? p.media.map((m: any) => (typeof m === 'string' ? m : m.url))
         : [],
-      tags: Array.isArray(p.tags) ? p.tags : [],
-      location_name: p.location_name || '',
-      reaction_count: p.likes_count || 0,
-      comment_count: p.comments_count || 0,
+      tags: Array.isArray(p.hashtags) ? p.hashtags : [],
+      location_name: p.data?.location_name || '',
+      reaction_count: p.stats?.likes_count || (p.reactions && Object.keys(p.reactions).length) || 0,
+      comment_count: p.comments?.count || p.stats?.comments_count || 0,
       created_at: p.created_at,
       user_reaction: null,
     }));
 
     // User feeding logs
-    const { data: feedingRows } = await supabase
-      .from('social_posts')
-      .select('id, user_id, created_at, content, data')
-      .eq('user_id', supaUser.id)
-      .eq('post_type', 'feeding')
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    const feedingLogs = (feedingRows || []).map((f: any) => ({
-      id: f.id,
-      user_id: f.user_id,
-      user_name: profileUser.full_name,
-      user_avatar: profileUser.avatar_url,
-      animal_type: 'Canine',
-      animal_count: 5,
-      food_type: 'Boiled Rice & Chicken',
-      fed_at: f.created_at,
-    }));
+    const feedingLogs = (postRows || [])
+      .filter((f: any) => f.data?.content_type === 'FEEDING_UPDATE' || f.data?.animal_type)
+      .map((f: any) => ({
+        id: f.id,
+        user_id: f.user_id,
+        user_name: profileUser.full_name,
+        user_avatar: profileUser.avatar_url,
+        animal_type: f.data?.animal_type || 'Street Animal',
+        animal_count: Number(f.data?.animal_count) || 1,
+        food_type: f.data?.food_type || 'Dry Food / Rice',
+        fed_at: f.created_at,
+      }));
 
     return {
       profileUser,
@@ -213,3 +207,4 @@ export class ProfileService {
     };
   }
 }
+
