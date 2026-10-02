@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { X, Utensils, MapPin, Camera } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
-import { OfflineFeedingQueue } from '@/lib/offline/feeding-queue';
 
 interface FeedingLogModalProps {
   user: UserSession | null;
@@ -59,23 +58,10 @@ export default function FeedingLogModal({
 
     const parsedCount = parseInt(animalCount || '1', 10);
 
-    // If device is offline, save directly to offline IndexedDB queue
+    // Online-only check
     if (typeof window !== 'undefined' && !navigator.onLine) {
-      try {
-        await OfflineFeedingQueue.saveLog({
-          food_type: `${foodType} (${animalType})`,
-          animals_count: parsedCount,
-          notes: `${quantityDesc ? `Quantity: ${quantityDesc}. ` : ''}${notes}`,
-          photo_url: photoUrl,
-          approx_location_name: approxLocation,
-        });
-        onFeedLogged();
-        onClose();
-      } catch (err: any) {
-        setError('Failed to store offline log: ' + err.message);
-      } finally {
-        setIsSubmitting(false);
-      }
+      setError("You're offline. Please reconnect to the internet and try again.");
+      setIsSubmitting(false);
       return;
     }
 
@@ -102,21 +88,8 @@ export default function FeedingLogModal({
       } else {
         setError(data.error || 'Failed to log feeding round');
       }
-    } catch (err: any) {
-      // If network fails during request, fallback to offline queue
-      try {
-        await OfflineFeedingQueue.saveLog({
-          food_type: `${foodType} (${animalType})`,
-          animals_count: parsedCount,
-          notes: `${quantityDesc ? `Quantity: ${quantityDesc}. ` : ''}${notes}`,
-          photo_url: photoUrl,
-          approx_location_name: approxLocation,
-        });
-        onFeedLogged();
-        onClose();
-      } catch {
-        setError(err.message || 'Error occurred while saving feeding log');
-      }
+    } catch {
+      setError("Unable to connect to server. Please check your internet connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
