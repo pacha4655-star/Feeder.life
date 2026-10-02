@@ -1,5 +1,6 @@
 import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { ImpactService } from '@/lib/services/impact';
 import AppShell from '@/components/layout/AppShell';
 import ProfileClient from '@/components/profile/ProfileClient';
 import { notFound, redirect } from 'next/navigation';
@@ -37,6 +38,13 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
     notFound();
   }
 
+  // Calculate real server-verified impact summary
+  const impactSummary = await ImpactService.getUserImpact(supaUser.id);
+
+  const earnedBadges = impactSummary.badges
+    .filter((b) => b.isEarned)
+    .map((b) => b.name);
+
   const profileUser = {
     id: supaUser.id,
     firebase_uid: supaUser.firebase_uid,
@@ -48,12 +56,13 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
     bio: supaUser.bio || '',
     city: supaUser.city || '',
     area_name: supaUser.profile_data?.area_name || '',
-    feeder_level: supaUser.profile_data?.feeder_level || 'Grassroots Feeder',
-    feeding_count: supaUser.profile_data?.feeding_count || 0,
-    sos_responses_count: supaUser.profile_data?.sos_count || 0,
-    community_contributions_count: supaUser.profile_data?.contributions_count || 0,
+    feeder_level: supaUser.profile_data?.feeder_level || (impactSummary.totalFeedingActivities > 20 ? 'Senior Feeder' : 'Grassroots Feeder'),
+    feeding_count: impactSummary.totalFeedingActivities,
+    sos_responses_count: impactSummary.totalSosResponses,
+    community_contributions_count: impactSummary.totalAdoptionsSupported + impactSummary.totalLostFoundReports,
+    streak: impactSummary.streak,
     cover_url: supaUser.profile_data?.cover_image_url || (supaUser as any).cover_url || null,
-    badges: ['Welfare Advocate'],
+    badges: earnedBadges.length > 0 ? earnedBadges : ['Welfare Advocate'],
     created_at: supaUser.created_at,
   };
 

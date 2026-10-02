@@ -22,6 +22,7 @@ import {
   X,
   AlertCircle,
   Image as ImageIcon,
+  Flame,
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 
@@ -921,7 +922,27 @@ export default function ProfileClient({
             )}
 
             {/* Badges Cluster */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
+              {profileUser.streak?.currentStreak > 0 && (
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    padding: '3px 12px',
+                    borderRadius: '9999px',
+                    background: 'linear-gradient(135deg, #fef3c7, #fed7aa)',
+                    border: '1px solid #f59e0b',
+                    color: '#b45309',
+                  }}
+                >
+                  <Flame size={13} className="text-amber-500 fill-amber-500 animate-pulse" />
+                  <span>{profileUser.streak.currentStreak} Day Streak</span>
+                </span>
+              )}
+
               {profileUser.badges?.map((b: string, i: number) => (
                 <span
                   key={i}
@@ -942,6 +963,20 @@ export default function ProfileClient({
                   <span>{b}</span>
                 </span>
               ))}
+
+              <Link
+                href="/impact"
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--brand-primary)',
+                  textDecoration: 'none',
+                  marginLeft: '4px',
+                }}
+                className="hover:underline"
+              >
+                View Welfare Impact &rarr;
+              </Link>
             </div>
 
             {/* Contribution Stats Strip (Zero fake data) */}
@@ -974,7 +1009,7 @@ export default function ProfileClient({
                 <div style={{ fontSize: '18px', fontWeight: 800, color: '#3b82f6' }}>
                   {profileUser.community_contributions_count || 0}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Community Contributions</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Welfare Contributions</div>
               </div>
             </div>
           </div>
