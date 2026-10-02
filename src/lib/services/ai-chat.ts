@@ -46,7 +46,7 @@ export class AiChatService {
     const model =
       process.env.GEMINI_MODEL ||
       process.env.AI_MODEL ||
-      'gemini-3.5-flash-lite';
+      'gemini-2.5-flash';
 
     return { apiKey, model };
   }
@@ -147,8 +147,8 @@ export class AiChatService {
     // 3. Execute Gemini Request with Model Fallback for 503 spikes
     const candidateModels = [
       model,
-      model !== 'gemini-3.5-flash-lite' ? 'gemini-3.5-flash-lite' : 'gemini-flash-lite-latest',
-      'gemini-3.6-flash',
+      model !== 'gemini-2.5-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash',
+      'gemini-1.5-flash',
     ];
 
     let res: Response | null = null;
@@ -398,8 +398,8 @@ export class AiChatService {
 
     const candidateModels = [
       model,
-      model !== 'gemini-3.5-flash-lite' ? 'gemini-3.5-flash-lite' : 'gemini-flash-lite-latest',
-      'gemini-3.6-flash',
+      model !== 'gemini-2.5-flash' ? 'gemini-2.5-flash' : 'gemini-2.0-flash',
+      'gemini-1.5-flash',
     ];
 
     let geminiRes: Response | null = null;

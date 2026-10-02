@@ -13,7 +13,7 @@ export default function PostComposerTrigger({}: PostComposerTriggerProps) {
   return (
     <GlobalContentSearch
       variant="home"
-      placeholder="Search people, communities, posts, photos, videos..."
+      placeholder="Search posts, photos, and videos..."
     />
   );
 }

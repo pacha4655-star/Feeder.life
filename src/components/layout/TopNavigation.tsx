@@ -177,7 +177,7 @@ export default function TopNavigation({
 
         <GlobalContentSearch
           variant="header"
-          placeholder="Search people, communities, posts, photos, videos..."
+          placeholder="Search people and communities..."
         />
       </div>
 

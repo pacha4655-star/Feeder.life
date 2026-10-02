@@ -149,17 +149,20 @@ export async function GET(request: NextRequest) {
     let news: any[] = [];
     let images: any[] = [];
 
+    const isHeaderMode = type === 'header';
+    const isContentMode = type === 'content';
     const fetchAll = type === 'all';
-    const fetchPeople = fetchAll || type === 'people';
-    const fetchCommunities = fetchAll || type === 'communities';
-    const fetchPosts = fetchAll || type === 'posts';
-    const fetchPhotos = fetchAll || type === 'photos';
-    const fetchVideos = fetchAll || type === 'videos';
-    const fetchNews = fetchAll || type === 'news';
-    const fetchImages = fetchAll || type === 'images';
 
-    const dbLimit = fetchAll ? 6 : 20;
-    const extLimit = fetchAll ? 6 : 20;
+    const fetchPeople = fetchAll || isHeaderMode || type === 'people';
+    const fetchCommunities = fetchAll || isHeaderMode || type === 'communities';
+    const fetchPosts = !isHeaderMode && (fetchAll || isContentMode || type === 'posts');
+    const fetchPhotos = !isHeaderMode && (fetchAll || isContentMode || type === 'photos');
+    const fetchVideos = !isHeaderMode && (fetchAll || isContentMode || type === 'videos');
+    const fetchNews = !isHeaderMode && !isContentMode && (fetchAll || type === 'news');
+    const fetchImages = !isHeaderMode && !isContentMode && (fetchAll || type === 'images');
+
+    const dbLimit = (fetchAll || isHeaderMode || isContentMode) ? 8 : 20;
+    const extLimit = (fetchAll || isHeaderMode || isContentMode) ? 6 : 20;
 
     // 1. Search Real Users (public profile fields only)
     if (fetchPeople) {

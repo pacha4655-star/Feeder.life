@@ -153,7 +153,7 @@ export default function AskFeederClient({ user }: AskFeederClientProps) {
     }
   };
 
-  // Send message
+  // Send message with progressive streaming support
   const handleSendMessage = async (textToSend?: string) => {
     const rawText = textToSend ?? inputQuery;
     const text = rawText.trim();
@@ -190,43 +190,83 @@ export default function AskFeederClient({ user }: AskFeederClientProps) {
         body: JSON.stringify({
           message: text,
           conversationId: currentConversationId,
+          stream: true,
         }),
       });
 
-      const data = await res.json();
-
       if (res.status === 429) {
         setErrorMessage("You've reached the current usage limit. Please try again later.");
+        setIsThinking(false);
         return;
       }
 
       if (res.status === 401) {
         setErrorMessage('Unauthorized. Please sign in to continue.');
+        setIsThinking(false);
         return;
       }
 
-      if (!res.ok || !data.success) {
-        setErrorMessage(data.error || 'Ask Feeder is temporarily unavailable. Please try again.');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        setErrorMessage(errData.error || 'Ask Feeder is temporarily unavailable. Please try again.');
+        setIsThinking(false);
         return;
       }
 
-      // Append assistant message
-      const assistantMsg: ChatMessage = {
-        id: data.messageId,
-        role: 'assistant',
-        content: data.content,
-        createdAt: data.createdAt,
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      // If this was a new conversation, set ID and refresh list
-      if (!currentConversationId && data.conversationId) {
-        setCurrentConversationId(data.conversationId);
+      const returnedConvId = res.headers.get('X-Conversation-Id');
+      if (returnedConvId && !currentConversationId) {
+        setCurrentConversationId(returnedConvId);
         loadConversations();
       }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('text/plain') && res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let accumulated = '';
+        const aiMsgId = `ai_msg_${Date.now()}`;
+
+        // Initialize empty assistant bubble immediately on first stream chunk
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: aiMsgId,
+            role: 'assistant',
+            content: '',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setIsThinking(false);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          accumulated += chunk;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === aiMsgId ? { ...m, content: accumulated } : m))
+          );
+        }
+      } else {
+        const data = await res.json();
+        if (data.success) {
+          if (!currentConversationId && data.conversationId) {
+            setCurrentConversationId(data.conversationId);
+            loadConversations();
+          }
+          const assistantMsg: ChatMessage = {
+            id: data.messageId || `ai_msg_${Date.now()}`,
+            role: 'assistant',
+            content: data.content,
+            createdAt: data.createdAt || new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        } else {
+          setErrorMessage(data.error || 'Ask Feeder is temporarily unavailable. Please try again.');
+        }
+      }
     } catch {
-      setErrorMessage('Something went wrong. Please try again.');
+      setErrorMessage('Something went wrong. Please check your network connection.');
     } finally {
       setIsThinking(false);
     }

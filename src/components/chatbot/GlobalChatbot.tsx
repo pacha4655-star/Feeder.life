@@ -183,7 +183,6 @@ export default function GlobalChatbot({ user }: GlobalChatbotProps) {
                 className="global-chatbot-fab-icon"
               />
             </div>
-            <span className="global-chatbot-fab-pulse" />
           </button>
         </div>
       )}
