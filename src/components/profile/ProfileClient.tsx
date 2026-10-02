@@ -963,20 +963,6 @@ export default function ProfileClient({
                   <span>{b}</span>
                 </span>
               ))}
-
-              <Link
-                href="/impact"
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color: 'var(--brand-primary)',
-                  textDecoration: 'none',
-                  marginLeft: '4px',
-                }}
-                className="hover:underline"
-              >
-                View Welfare Impact &rarr;
-              </Link>
             </div>
 
             {/* Contribution Stats Strip (Zero fake data) */}

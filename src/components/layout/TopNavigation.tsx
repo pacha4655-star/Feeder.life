@@ -95,7 +95,6 @@ export default function TopNavigation({
     else if (pathname.startsWith('/nearby')) currentActiveTab = 'nearby';
     else if (pathname.startsWith('/sos')) currentActiveTab = 'sos';
     else if (pathname.startsWith('/lost-found')) currentActiveTab = 'lost-found';
-    else if (pathname.startsWith('/impact')) currentActiveTab = 'impact';
     else if (pathname.startsWith('/messages')) currentActiveTab = 'messages';
     else if (pathname.startsWith('/notifications')) currentActiveTab = 'notifications';
     else if (pathname.startsWith('/reels')) currentActiveTab = 'reels';

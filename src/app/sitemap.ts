@@ -15,7 +15,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/animals',
     '/adoption',
     '/lost-found',
-    '/impact',
     '/login',
     '/signup',
   ];

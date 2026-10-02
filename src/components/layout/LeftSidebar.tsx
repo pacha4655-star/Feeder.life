@@ -17,7 +17,6 @@ import {
   Heart,
   Sparkles,
   ShieldCheck,
-  Flame,
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import FeederAvatar from '@/components/common/FeederAvatar';
@@ -39,7 +38,6 @@ export default function LeftSidebar({
 
   const primaryNavItems = [
     { label: 'Feed', href: '/', icon: Home, color: 'var(--brand-primary)' },
-    { label: 'Impact & Badges', href: '/impact', icon: Flame, color: '#F59E0B' },
     { label: 'Communities', href: '/communities', icon: Users2, color: 'var(--brand-primary)' },
     { label: 'Animals Registry', href: '/animals', icon: ShieldCheck, color: 'var(--brand-primary)' },
     { label: 'Lost & Found', href: '/lost-found', icon: Sparkles, color: '#D97706' },
