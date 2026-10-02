@@ -9,6 +9,10 @@ Allow: /ask-feeder
 Allow: /help
 Allow: /login
 Allow: /signup
+Allow: /lost-found
+Allow: /animals
+Allow: /adoption
+Allow: /impact
 
 # Disallow private user-specific paths
 Disallow: /api/
@@ -20,4 +24,3 @@ Disallow: /admin
 Disallow: /onboarding
 
 Sitemap: https://feeder.life/sitemap.xml
-
