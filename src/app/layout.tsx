@@ -29,16 +29,19 @@ export const metadata: Metadata = {
     ],
     apple: '/images/feeder-icon.png',
   },
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#059669',
 };
 
 import { Outfit, Plus_Jakarta_Sans } from 'next/font/google';
 import FirebaseAnalytics from '@/components/common/FirebaseAnalytics';
+import PWARegister from '@/components/common/PWARegister';
 import { LanguageProvider } from '@/lib/i18n/LanguageContext';
 
 const outfit = Outfit({
@@ -63,6 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} ${plusJakartaSans.variable}`} suppressHydrationWarning>
       <body className={`${outfit.className}`} suppressHydrationWarning>
+        <PWARegister />
         <FirebaseAnalytics />
         <LanguageProvider>
           {children}

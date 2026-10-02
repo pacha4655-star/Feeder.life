@@ -28,6 +28,7 @@ import FeederAvatar from '@/components/common/FeederAvatar';
 import { formatFullDate, formatTime } from '@/lib/utils/date';
 import AITriageSection from '@/components/sos/AITriageSection';
 import MedicalFundraisingSection from '@/components/sos/MedicalFundraisingSection';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeChannel';
 
 interface SOSCaseDetailProps {
   initialCase: SosCaseView;
@@ -70,6 +71,15 @@ export default function SOSCaseDetail({ initialCase, user }: SOSCaseDetailProps)
       }
     } catch {}
   };
+
+  // Safe Realtime subscription for SOS case updates
+  useRealtimeSubscription({
+    table: 'social_posts',
+    filter: `id=eq.${sosCase.id}`,
+    onPayload: () => {
+      fetchFreshCase();
+    },
+  });
 
   const isReporterOrStaff =
     user &&

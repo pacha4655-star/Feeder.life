@@ -22,6 +22,7 @@ import {
 import { formatFullDate } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
 import FeederAvatar from '@/components/common/FeederAvatar';
+import { OfflineFeedingQueue, OfflineFeedingLog } from '@/lib/offline/feeding-queue';
 
 interface FeedingClientProps {
   user: UserSession | null;
@@ -36,6 +37,10 @@ export default function FeedingClient({ user }: FeedingClientProps) {
   const [isLoadingLogs, setIsLoadingLogs] = useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
+  // Offline queue state
+  const [offlinePendingLogs, setOfflinePendingLogs] = useState<OfflineFeedingLog[]>([]);
+  const [isSyncingOffline, setIsSyncingOffline] = useState(false);
+
   // Rosters state
   const [spots, setSpots] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
@@ -46,6 +51,22 @@ export default function FeedingClient({ user }: FeedingClientProps) {
   // Complete Shift Modal state
   const [completingShift, setCompletingShift] = useState<{ shift: any; spot: any } | null>(null);
   const [isClaiming, setIsClaiming] = useState<string | null>(null);
+
+  const fetchOfflinePending = async () => {
+    const pending = await OfflineFeedingQueue.getPendingLogs();
+    setOfflinePendingLogs(pending);
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncingOffline(true);
+    try {
+      await OfflineFeedingQueue.syncAll();
+      await fetchOfflinePending();
+      await fetchLogs();
+    } finally {
+      setIsSyncingOffline(false);
+    }
+  };
 
   const fetchLogs = async () => {
     setIsLoadingLogs(true);
@@ -77,6 +98,13 @@ export default function FeedingClient({ user }: FeedingClientProps) {
 
   useEffect(() => {
     fetchLogs();
+    fetchOfflinePending();
+
+    const unsubscribe = OfflineFeedingQueue.subscribe(() => {
+      fetchOfflinePending();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -132,6 +160,59 @@ export default function FeedingClient({ user }: FeedingClientProps) {
 
   return (
     <div>
+      {/* Offline Pending Sync Banner */}
+      {offlinePendingLogs.length > 0 && (
+        <div
+          className="card"
+          style={{
+            padding: '14px 18px',
+            marginBottom: '16px',
+            borderRadius: '14px',
+            background: 'linear-gradient(90deg, #FEF3C7 0%, #FDE68A 100%)',
+            border: '1px solid #F59E0B',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '20px' }}>📡</span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#92400E' }}>
+                Offline Feeding Queue ({offlinePendingLogs.length} Pending)
+              </div>
+              <div style={{ fontSize: '12px', color: '#78350F' }}>
+                Feeding records were preserved locally while offline and will sync automatically upon reconnecting.
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleManualSync}
+            disabled={isSyncingOffline}
+            style={{
+              padding: '6px 14px',
+              fontSize: '12.5px',
+              background: '#D97706',
+              borderColor: '#D97706',
+            }}
+          >
+            {isSyncingOffline ? (
+              <>
+                <Loader2 size={14} className="spin" />
+                <span>Syncing...</span>
+              </>
+            ) : (
+              <span>Sync Now</span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* 1. Header & Stats Banner */}
       <div
         className="card"

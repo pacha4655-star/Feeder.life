@@ -40,6 +40,7 @@ export default function LeftSidebar({
     { label: 'Feed', href: '/', icon: Home, color: 'var(--brand-primary)' },
     { label: 'Communities', href: '/communities', icon: Users2, color: 'var(--brand-primary)' },
     { label: 'Animals Registry', href: '/animals', icon: ShieldCheck, color: 'var(--brand-primary)' },
+    { label: 'Lost & Found', href: '/lost-found', icon: Sparkles, color: '#D97706' },
     { label: 'Adoption & Foster', href: '/adoption', icon: Heart, color: '#DB2777' },
     { label: 'Nearby Map', href: '/nearby', icon: MapPin, color: 'var(--brand-primary)' },
     { label: 'SOS Emergencies', href: '/sos', icon: AlertTriangle, color: 'var(--brand-sos)' },

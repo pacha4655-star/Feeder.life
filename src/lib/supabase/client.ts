@@ -38,4 +38,5 @@ export const supabase = {
   },
 };
 
+export const getSupabaseBrowserClient = getSupabaseClient;
 export default getSupabaseClient;

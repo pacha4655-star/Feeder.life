@@ -1,0 +1,55 @@
+{
+  "name": "Feeder.life — Community Animal Welfare Network",
+  "short_name": "Feeder.life",
+  "description": "The modern social animal-welfare network connecting street animal feeders, rescuers, volunteers, and communities.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/images/feeder-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/feeder-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/feeder-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Emergency SOS",
+      "short_name": "SOS",
+      "description": "Report an urgent animal rescue emergency",
+      "url": "/sos",
+      "icons": [{ "src": "/images/feeder-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Log Feeding",
+      "short_name": "Feeding",
+      "description": "Record daily stray animal feeding",
+      "url": "/feeding",
+      "icons": [{ "src": "/images/feeder-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Lost & Found",
+      "short_name": "Lost & Found",
+      "description": "Report lost pets or sighted animals",
+      "url": "/lost-found",
+      "icons": [{ "src": "/images/feeder-icon.png", "sizes": "192x192" }]
+    }
+  ],
+  "categories": ["social", "lifestyle", "productivity", "utilities"]
+}

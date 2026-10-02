@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Utensils, MapPin, Camera } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import { OfflineFeedingQueue } from '@/lib/offline/feeding-queue';
 
 interface FeedingLogModalProps {
   user: UserSession | null;
@@ -56,13 +57,35 @@ export default function FeedingLogModal({
     setIsSubmitting(true);
     setError('');
 
+    const parsedCount = parseInt(animalCount || '1', 10);
+
+    // If device is offline, save directly to offline IndexedDB queue
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      try {
+        await OfflineFeedingQueue.saveLog({
+          food_type: `${foodType} (${animalType})`,
+          animals_count: parsedCount,
+          notes: `${quantityDesc ? `Quantity: ${quantityDesc}. ` : ''}${notes}`,
+          photo_url: photoUrl,
+          approx_location_name: approxLocation,
+        });
+        onFeedLogged();
+        onClose();
+      } catch (err: any) {
+        setError('Failed to store offline log: ' + err.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch('/api/feeding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           animalType,
-          animalCount: parseInt(animalCount || '1', 10),
+          animalCount: parsedCount,
           foodType,
           quantityDesc,
           approxLocationName: approxLocation,
@@ -80,7 +103,20 @@ export default function FeedingLogModal({
         setError(data.error || 'Failed to log feeding round');
       }
     } catch (err: any) {
-      setError(err.message || 'Error occurred while saving feeding log');
+      // If network fails during request, fallback to offline queue
+      try {
+        await OfflineFeedingQueue.saveLog({
+          food_type: `${foodType} (${animalType})`,
+          animals_count: parsedCount,
+          notes: `${quantityDesc ? `Quantity: ${quantityDesc}. ` : ''}${notes}`,
+          photo_url: photoUrl,
+          approx_location_name: approxLocation,
+        });
+        onFeedLogged();
+        onClose();
+      } catch {
+        setError(err.message || 'Error occurred while saving feeding log');
+      }
     } finally {
       setIsSubmitting(false);
     }
