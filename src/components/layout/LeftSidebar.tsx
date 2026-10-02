@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Heart,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import FeederAvatar from '@/components/common/FeederAvatar';
@@ -38,6 +39,8 @@ export default function LeftSidebar({
   const primaryNavItems = [
     { label: 'Feed', href: '/', icon: Home, color: 'var(--brand-primary)' },
     { label: 'Communities', href: '/communities', icon: Users2, color: 'var(--brand-primary)' },
+    { label: 'Animals Registry', href: '/animals', icon: ShieldCheck, color: 'var(--brand-primary)' },
+    { label: 'Adoption & Foster', href: '/adoption', icon: Heart, color: '#DB2777' },
     { label: 'Nearby Map', href: '/nearby', icon: MapPin, color: 'var(--brand-primary)' },
     { label: 'SOS Emergencies', href: '/sos', icon: AlertTriangle, color: 'var(--brand-sos)' },
     { label: 'Feeding', href: '/feeding', icon: Utensils, color: 'var(--brand-primary)' },

@@ -12,19 +12,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const species = searchParams.get('species');
     const status = searchParams.get('status');
-    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '20', 10)), 50);
+    const search = searchParams.get('search')?.trim().toLowerCase();
+    const adoptable = searchParams.get('adoptable');
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit') || '30', 10)), 100);
 
     const supabase = getSupabaseServerClient();
     let query = supabase
       .from('animals')
-      .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url)')
+      .select('*, users!animals_created_by_fkey(id, username, display_name, avatar_url, role)')
       .order('created_at', { ascending: false })
       .limit(limit);
 
     if (species && species !== 'ALL') {
       query = query.eq('species', species.toLowerCase());
     }
-    if (status && isValidAnimalStatus(status)) {
+    if (status && status !== 'ALL' && isValidAnimalStatus(status)) {
       query = query.eq('status', status as AnimalStatus);
     }
 
@@ -35,7 +37,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, animals: [] });
     }
 
-    return NextResponse.json({ success: true, animals: animals || [] });
+    let filtered = animals || [];
+
+    if (adoptable === 'true') {
+      filtered = filtered.filter(
+        (a: any) =>
+          a.status === 'active' ||
+          a.status === 'rescued' ||
+          a.status === 'fostered' ||
+          a.adoption_data?.is_adoptable === true ||
+          a.adoption_data?.status === 'AVAILABLE'
+      );
+    }
+
+    if (search) {
+      filtered = filtered.filter((a: any) => {
+        const name = (a.name || '').toLowerCase();
+        const breed = (a.breed || '').toLowerCase();
+        const desc = (a.description || '').toLowerCase();
+        const city = (a.city || '').toLowerCase();
+        const spec = (a.species || '').toLowerCase();
+        return (
+          name.includes(search) ||
+          breed.includes(search) ||
+          desc.includes(search) ||
+          city.includes(search) ||
+          spec.includes(search)
+        );
+      });
+    }
+
+    return NextResponse.json({ success: true, animals: filtered });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

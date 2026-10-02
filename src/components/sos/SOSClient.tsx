@@ -219,7 +219,16 @@ export default function SOSClient({ user }: SOSClientProps) {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <a
+                    href={`/sos/${c.id}`}
+                    className="btn-secondary"
+                    style={{ padding: '7px 12px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                  >
+                    <ArrowRight size={14} />
+                    <span>Case Hub</span>
+                  </a>
+
                   {user && user.id !== c.reporter_id && (
                     <a
                       href={`/messages?user=${c.reporter_id}`}
@@ -239,7 +248,7 @@ export default function SOSClient({ user }: SOSClientProps) {
                         style={{ padding: '7px 16px', fontSize: '13px' }}
                         disabled={c.is_user_responding}
                       >
-                        {c.is_user_responding ? '✓ You are responding' : '🙋 I Can Help / Respond'}
+                        {c.is_user_responding ? '✓ Responding' : '🙋 I Can Help'}
                       </button>
 
                       <button
