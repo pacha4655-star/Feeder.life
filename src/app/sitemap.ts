@@ -12,6 +12,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/feeding',
     '/ask-feeder',
     '/help',
+    '/animals',
+    '/adoption',
+    '/lost-found',
+    '/impact',
     '/login',
     '/signup',
   ];
