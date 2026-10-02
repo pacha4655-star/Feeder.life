@@ -318,7 +318,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       {/* 1. Post Header */}
       <div className="post-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
         <div className="post-author-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Link href={`/profile/${post.author_username}`}>
+          <Link href={`/profile/${encodeURIComponent(post.author_username || post.author_id)}`}>
             <FeederAvatar
               src={post.author_avatar}
               alt={post.author_name}
@@ -330,7 +330,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
             <div className="post-author-name" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
               <Link
-                href={`/profile/${post.author_username}`}
+                href={`/profile/${encodeURIComponent(post.author_username || post.author_id)}`}
                 style={{
                   fontWeight: 700,
                   fontSize: '15px',
@@ -728,12 +728,12 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           ) : (
             comments.map((c) => (
               <div key={c.id} className="comment-item">
-                <Link href={`/profile/${c.author_username}`}>
+                <Link href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`}>
                   <img src={c.author_avatar} alt="" className="avatar-img" style={{ width: '32px', height: '32px' }} />
                 </Link>
                 <div className="comment-bubble">
                   <div className="comment-author-name">
-                    <Link href={`/profile/${c.author_username}`} style={{ color: 'inherit' }}>
+                    <Link href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`} style={{ color: 'inherit' }}>
                       {c.author_name}
                     </Link>
                   </div>

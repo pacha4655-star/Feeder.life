@@ -400,7 +400,7 @@ export default function GlobalContentSearch({
                     {searchResults.people.map((p: any) => (
                       <Link
                         key={p.id}
-                        href={`/profile/${p.username}`}
+                        href={`/profile/${encodeURIComponent(p.username || p.id)}`}
                         onClick={() => setShowSearchDropdown(false)}
                         style={{
                           display: 'flex',

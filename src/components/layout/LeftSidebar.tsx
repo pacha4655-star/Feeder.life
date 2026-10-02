@@ -75,7 +75,7 @@ export default function LeftSidebar({
           }}
         >
           <Link
-            href={`/profile/${user.username}`}
+            href={user.username ? `/profile/${user.username}` : '/profile'}
             style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', minWidth: 0, textDecoration: 'none' }}
           >
             <FeederAvatar

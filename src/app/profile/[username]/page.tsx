@@ -1,6 +1,5 @@
 import { getCurrentUser } from '@/lib/auth/session';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-import { ImpactService } from '@/lib/services/impact';
+import { ProfileService } from '@/lib/services/profile';
 import AppShell from '@/components/layout/AppShell';
 import ProfileClient from '@/components/profile/ProfileClient';
 import { notFound, redirect } from 'next/navigation';
@@ -14,113 +13,21 @@ export default async function ProfilePage(props: { params: Promise<{ username: s
     redirect('/login');
   }
 
-  const supabase = getSupabaseServerClient();
+  const profileData = await ProfileService.getProfileData(
+    username,
+    currentUser.id
+  );
 
-  const cleanUsername = decodeURIComponent(username).replace(/^@/, '').trim();
-
-  let { data: userRows } = await supabase
-    .from('users')
-    .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
-    .ilike('username', cleanUsername)
-    .limit(1);
-
-  let supaUser = userRows && userRows[0];
-  if (!supaUser) {
-    const { data: idRows } = await supabase
-      .from('users')
-      .select('id, firebase_uid, email, username, display_name, avatar_url, role, bio, city, profile_data, created_at')
-      .eq('id', cleanUsername)
-      .limit(1);
-    supaUser = idRows && idRows[0];
-  }
-
-  if (!supaUser) {
+  if (!profileData) {
     notFound();
   }
-
-  // Calculate real server-verified impact summary
-  const impactSummary = await ImpactService.getUserImpact(supaUser.id);
-
-  const earnedBadges = impactSummary.badges
-    .filter((b) => b.isEarned)
-    .map((b) => b.name);
-
-  const profileUser = {
-    id: supaUser.id,
-    firebase_uid: supaUser.firebase_uid,
-    email: supaUser.email,
-    username: supaUser.username,
-    full_name: supaUser.display_name || supaUser.username,
-    avatar_url: supaUser.avatar_url,
-    role: supaUser.role || 'USER',
-    bio: supaUser.bio || '',
-    city: supaUser.city || '',
-    area_name: supaUser.profile_data?.area_name || '',
-    feeder_level: supaUser.profile_data?.feeder_level || (impactSummary.totalFeedingActivities > 20 ? 'Senior Feeder' : 'Grassroots Feeder'),
-    feeding_count: impactSummary.totalFeedingActivities,
-    sos_responses_count: impactSummary.totalSosResponses,
-    community_contributions_count: impactSummary.totalAdoptionsSupported + impactSummary.totalLostFoundReports,
-    streak: impactSummary.streak,
-    cover_url: supaUser.profile_data?.cover_image_url || (supaUser as any).cover_url || null,
-    badges: earnedBadges.length > 0 ? earnedBadges : ['Welfare Advocate'],
-    created_at: supaUser.created_at,
-  };
-
-  // User posts from Supabase (Limit to initial 20 for fast page render)
-  const { data: postRows } = await supabase
-    .from('social_posts')
-    .select('id, user_id, post_type, title, content, media, tags, location_name, likes_count, comments_count, created_at, users!social_posts_user_id_fkey(id, username, display_name, avatar_url, role)')
-    .eq('user_id', supaUser.id)
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  const posts = (postRows || []).map((p: any) => ({
-    id: p.id,
-    author_id: p.user_id,
-    author_name: p.users?.display_name || 'Member',
-    author_username: p.users?.username || 'member',
-    author_avatar: p.users?.avatar_url || '',
-    author_role: p.users?.role || 'COMMUNITY_MEMBER',
-    content_type: p.post_type || 'GENERAL',
-    title: p.title || '',
-    body: p.content || '',
-    media_urls: Array.isArray(p.media) ? p.media.map((m: any) => (typeof m === 'string' ? m : m.url)) : [],
-    tags: Array.isArray(p.tags) ? p.tags : [],
-    location_name: p.location_name || '',
-    reaction_count: p.likes_count || 0,
-    comment_count: p.comments_count || 0,
-    created_at: p.created_at,
-    user_reaction: null,
-  }));
-
-  // User feeding logs (Limit to initial 20)
-  const { data: feedingRows } = await supabase
-    .from('social_posts')
-    .select('id, user_id, created_at, content, data')
-    .eq('user_id', supaUser.id)
-    .eq('post_type', 'feeding')
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  const feedingLogs = (feedingRows || []).map((f: any) => ({
-    id: f.id,
-    user_id: f.user_id,
-    user_name: profileUser.full_name,
-    user_avatar: profileUser.avatar_url,
-    animal_type: 'Canine',
-    animal_count: 5,
-    food_type: 'Boiled Rice & Chicken',
-    fed_at: f.created_at,
-  }));
 
   return (
     <AppShell user={currentUser} activeTab="profile" showRightSidebar={true}>
       <ProfileClient
-        profileUser={profileUser}
-        posts={posts}
-        feedingLogs={feedingLogs}
+        profileUser={profileData.profileUser}
+        posts={profileData.posts}
+        feedingLogs={profileData.feedingLogs}
         currentUser={currentUser}
       />
     </AppShell>

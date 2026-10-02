@@ -668,7 +668,7 @@ export default function TopNavigation({
                   {user ? (
                     <>
                       <Link
-                        href={`/profile/${user.username}`}
+                        href={user.username ? `/profile/${user.username}` : '/profile'}
                         onClick={() => setShowUserMenu(false)}
                         className="sidebar-user-card"
                         style={{ padding: '8px', marginBottom: '8px' }}
@@ -679,14 +679,14 @@ export default function TopNavigation({
                           <div style={{ fontSize: '12px', color: 'var(--brand-primary)', fontWeight: 600 }}>
                             {user.feederLevel || 'Guardian'}
                           </div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{user.username}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{user.username || 'guardian'}</div>
                         </div>
                       </Link>
 
                       <div className="sidebar-divider" />
 
                       <Link
-                        href={`/profile/${user.username}?tab=feeding`}
+                        href={user.username ? `/profile/${user.username}?tab=feeding` : '/profile?tab=feeding'}
                         onClick={() => setShowUserMenu(false)}
                         className="sidebar-nav-item"
                       >
