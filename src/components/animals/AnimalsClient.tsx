@@ -132,69 +132,65 @@ export default function AnimalsClient({ user }: AnimalsClientProps) {
         </div>
 
         {/* Search & Quick Filters Bar */}
-        <div style={{ marginTop: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <form onSubmit={handleSearchSubmit} style={{ flex: 1, minWidth: '240px', display: 'flex', gap: '8px' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <Search
-                size={18}
-                color="var(--text-muted)"
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}
-              />
-              <input
-                type="text"
-                className="input"
-                placeholder="Search by animal name, breed, or area..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '38px', borderRadius: '10px' }}
-              />
-            </div>
-            <button type="submit" className="btn-secondary" style={{ padding: '0 16px', borderRadius: '10px' }}>
+        <form onSubmit={handleSearchSubmit} className="animal-registry-search-row">
+          <div className="animal-registry-input-wrap">
+            <Search
+              size={20}
+              className="animal-registry-search-icon"
+            />
+            <input
+              type="text"
+              className="animal-registry-input"
+              placeholder="Search by animal name, breed, or area..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search animals by name, breed, or area"
+            />
+          </div>
+
+          <div className="animal-registry-search-actions">
+            <button type="submit" className="animal-registry-search-btn">
               Search
             </button>
-          </form>
 
-          {/* Adoptable Pill Toggle */}
-          <button
-            type="button"
-            onClick={() => setAdoptableOnly(!adoptableOnly)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '10px',
-              border: adoptableOnly ? '1.5px solid #EC4899' : '1px solid var(--border-subtle)',
-              background: adoptableOnly ? '#FDF2F8' : 'var(--bg-card)',
-              color: adoptableOnly ? '#DB2777' : 'var(--text-primary)',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <Heart size={16} fill={adoptableOnly ? '#DB2777' : 'none'} color="#DB2777" />
-            <span>Adoptable Only</span>
-          </button>
-        </div>
+            {/* Adoptable Pill Toggle */}
+            <button
+              type="button"
+              onClick={() => setAdoptableOnly(!adoptableOnly)}
+              className="animal-registry-adoptable-btn"
+              style={{
+                border: adoptableOnly ? '1.5px solid #EC4899' : '1px solid var(--border-subtle)',
+                background: adoptableOnly ? '#FDF2F8' : 'var(--bg-card)',
+                color: adoptableOnly ? '#DB2777' : 'var(--text-primary)',
+              }}
+              aria-pressed={adoptableOnly}
+            >
+              <Heart size={18} fill={adoptableOnly ? '#DB2777' : 'none'} color="#DB2777" />
+              <span>Adoptable Only</span>
+            </button>
+          </div>
+        </form>
 
         {/* Species & Status Pills */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '14px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             {speciesOptions.map((sp) => (
               <button
                 key={sp.value}
+                type="button"
                 onClick={() => setSelectedSpecies(sp.value)}
                 style={{
-                  padding: '6px 12px',
+                  padding: '7px 14px',
                   borderRadius: '20px',
-                  fontSize: '12.5px',
+                  fontSize: '13px',
                   fontWeight: selectedSpecies === sp.value ? 700 : 500,
                   border: 'none',
                   background: selectedSpecies === sp.value ? 'var(--brand-primary)' : 'var(--bg-card)',
                   color: selectedSpecies === sp.value ? '#ffffff' : 'var(--text-secondary)',
                   boxShadow: selectedSpecies === sp.value ? '0 2px 6px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
                   cursor: 'pointer',
+                  minHeight: '36px',
+                  transition: 'all 0.15s ease',
                 }}
               >
                 {sp.label}
@@ -202,20 +198,21 @@ export default function AnimalsClient({ user }: AnimalsClientProps) {
             ))}
           </div>
 
-          <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)', margin: '0 4px' }} />
-
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
+            aria-label="Filter animals by status"
             style={{
-              padding: '6px 10px',
-              borderRadius: '10px',
+              height: '38px',
+              padding: '0 14px',
+              borderRadius: '12px',
               border: '1px solid var(--border-subtle)',
               background: 'var(--bg-card)',
               color: 'var(--text-primary)',
-              fontSize: '12.5px',
+              fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
+              outline: 'none',
             }}
           >
             {statusOptions.map((st) => (
