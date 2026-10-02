@@ -26,6 +26,8 @@ import type { UserSession } from '@/lib/auth/session';
 import type { SosCaseView, SosResponderInfo, SosUpdateItem } from '@/lib/services/sos';
 import FeederAvatar from '@/components/common/FeederAvatar';
 import { formatFullDate, formatTime } from '@/lib/utils/date';
+import AITriageSection from '@/components/sos/AITriageSection';
+import MedicalFundraisingSection from '@/components/sos/MedicalFundraisingSection';
 
 interface SOSCaseDetailProps {
   initialCase: SosCaseView;
@@ -380,6 +382,13 @@ export default function SOSCaseDetail({ initialCase, user }: SOSCaseDetailProps)
         </div>
       </div>
 
+      {/* AI Visual Injury Triage & First Aid Assistant */}
+      <AITriageSection
+        animalType={sosCase.animal_type}
+        description={sosCase.description}
+        imageUrl={sosCase.media_urls?.[0]}
+      />
+
       {/* 2. Status Stepper Tracker */}
       <div
         className="card"
@@ -599,7 +608,14 @@ export default function SOSCaseDetail({ initialCase, user }: SOSCaseDetailProps)
         </div>
       </div>
 
-      {/* 5. Resolution Card (if resolved) */}
+      {/* 5. Medical Emergency Treatment Fund & Ledger */}
+      <MedicalFundraisingSection
+        sosId={sosCase.id}
+        user={user}
+        isReporterOrStaff={!!isReporterOrStaff}
+      />
+
+      {/* 6. Resolution Card (if resolved) */}
       {sosCase.resolution && (
         <div
           className="card"

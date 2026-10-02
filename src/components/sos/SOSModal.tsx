@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import type { UserSession } from '@/lib/auth/session';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import VoiceSOSRecorder from '@/components/sos/VoiceSOSRecorder';
+import AITriageSection from '@/components/sos/AITriageSection';
 
 interface SOSModalProps {
   user: UserSession | null;
@@ -244,6 +246,24 @@ export default function SOSModal({ user, isOpen, onClose, onSosCreated }: SOSMod
               );
             })}
           </div>
+
+          {/* Voice to SOS Assistant */}
+          {step <= 2 && (
+            <VoiceSOSRecorder
+              onDataExtracted={(data) => {
+                if (data.animalType) setAnimalType(data.animalType);
+                if (data.emergencyType) setEmergencyType(data.emergencyType);
+                if (data.urgency) setUrgency(data.urgency);
+                if (data.transcript) {
+                  setDescription(data.transcript);
+                  setTitle(`[Emergency] ${data.emergencyType.replace(/_/g, ' ')} - ${data.animalType}`);
+                }
+                if (data.locationLandmark && !approxLocation) {
+                  setApproxLocation(data.locationLandmark);
+                }
+              }}
+            />
+          )}
 
           {/* STEP 1: Situation & Urgency */}
           {step === 1 && (
@@ -546,6 +566,20 @@ export default function SOSModal({ user, isOpen, onClose, onSosCreated }: SOSMod
                 <div style={{ marginTop: '12px', fontSize: '11.5px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-subtle)', paddingTop: '8px' }}>
                   Reporter: {user.fullName} (@{user.username}) &bull; Contact: {contactPref}
                 </div>
+              </div>
+
+              {/* Optional AI Visual Injury Triage */}
+              <div style={{ marginTop: '16px' }}>
+                <AITriageSection
+                  animalType={animalType}
+                  description={description}
+                  imageUrl={mediaUrls[0]}
+                  onTriageCompleted={(result) => {
+                    if (result.urgency) {
+                      setUrgency(result.urgency);
+                    }
+                  }}
+                />
               </div>
             </div>
           )}
