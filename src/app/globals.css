@@ -8538,3 +8538,59 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
   border-color: var(--border-focus, #2E7D32);
   color: var(--brand-primary);
 }
+
+/* ========================================================
+   FACEBOOK-STYLE FOLLOWERS / FOLLOWING INTERACTION
+   ======================================================== */
+.profile-follow-stat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  color: var(--text-main);
+  min-height: 44px;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.profile-follow-stat-btn:hover {
+  background-color: var(--bg-secondary, #f0f2f5);
+  text-decoration: underline;
+  text-decoration-color: var(--text-muted);
+}
+
+.profile-follow-stat-btn:active {
+  transform: scale(0.98);
+}
+
+.profile-follow-stat-btn:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+.follow-user-row {
+  transition: background-color 0.15s ease;
+}
+
+.follow-user-row:hover {
+  background-color: var(--bg-secondary, #f0f2f5);
+}
+
+@media (max-width: 480px) {
+  .follow-modal-content {
+    max-height: 90vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    margin-top: auto !important;
+  }
+  .follow-modal-overlay {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+}
+

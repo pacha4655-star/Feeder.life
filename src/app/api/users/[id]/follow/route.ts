@@ -3,37 +3,48 @@ import { getCurrentUser } from '@/lib/auth/session';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { checkRateLimit, createRateLimitResponse } from '@/lib/security/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const { id: targetId } = await context.params;
-    if (!targetId || targetId === user.id) {
-      return NextResponse.json({ error: 'Invalid user target' }, { status: 400 });
-    }
-
-    const rateLimit = checkRateLimit('user_follow', user.id, { limit: 40, windowMs: 60 * 1000 });
-    if (!rateLimit.allowed) {
-      return createRateLimitResponse(rateLimit);
+    const { id: rawTarget } = await context.params;
+    if (!rawTarget) {
+      return NextResponse.json({ error: 'Target user required' }, { status: 400 });
     }
 
     const supabase = getSupabaseServerClient();
+    const cleanTarget = decodeURIComponent(rawTarget).replace(/^@/, '').trim();
 
-    // Check if target user exists
-    const { data: targetUser } = await supabase
+    // Check if target is UUID or username
+    let targetId = cleanTarget;
+    const { data: targetRows } = await supabase
       .from('users')
       .select('id, display_name, username')
-      .eq('id', targetId)
-      .maybeSingle();
+      .or(`id.eq.${cleanTarget},username.ilike.${cleanTarget}`)
+      .limit(1);
 
+    const targetUser = targetRows && targetRows[0];
     if (!targetUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    targetId = targetUser.id;
+
+    if (targetId === user.id) {
+      return NextResponse.json({ error: 'You cannot follow yourself' }, { status: 400 });
+    }
+
+    const rateLimit = checkRateLimit('user_follow', user.id, { limit: 60, windowMs: 60 * 1000 });
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit);
     }
 
     // Check existing follow in platform_data
@@ -64,38 +75,44 @@ export async function POST(
       });
       isFollowing = true;
 
-      // Notification
+      // Create notification
       await supabase.from('platform_data').insert({
         data_type: 'notification',
         user_id: targetId,
         target_id: user.id,
         status: 'unread',
         data: {
-          type: 'SYSTEM',
+          type: 'FOLLOW',
           title: 'New Guardian Follower',
           body: `${user.fullName} started following your animal welfare activity.`,
-          target_url: `/profile/${user.username}`,
+          target_url: `/profile/${encodeURIComponent(user.username || user.id)}`,
           sender_name: user.fullName,
           sender_avatar: user.avatarUrl,
         },
       });
     }
 
-    // Follower count for target
-    const { count: followerCount } = await supabase
-      .from('platform_data')
-      .select('*', { count: 'exact', head: true })
-      .eq('data_type', 'follow')
-      .eq('target_id', targetId);
+    // Compute updated counts
+    const [
+      { count: targetFollowerCount },
+      { count: targetFollowingCount },
+      { count: viewerFollowingCount }
+    ] = await Promise.all([
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('target_id', targetId),
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('user_id', targetId),
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('user_id', user.id),
+    ]);
 
     return NextResponse.json({
       success: true,
       following: isFollowing,
-      followerCount: followerCount || 0,
-      followingCount: 0,
+      targetUserId: targetId,
+      followerCount: targetFollowerCount || 0,
+      followingCount: targetFollowingCount || 0,
+      viewerFollowingCount: viewerFollowingCount || 0,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to update follow relationship' }, { status: 500 });
   }
 }
 
@@ -104,9 +121,21 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getCurrentUser();
-    const { id: targetId } = await context.params;
+    const user = await getCurrentUser(request);
+    const { id: rawTarget } = await context.params;
+    const cleanTarget = decodeURIComponent(rawTarget).replace(/^@/, '').trim();
     const supabase = getSupabaseServerClient();
+
+    let targetId = cleanTarget;
+    const { data: targetRows } = await supabase
+      .from('users')
+      .select('id')
+      .or(`id.eq.${cleanTarget},username.ilike.${cleanTarget}`)
+      .limit(1);
+
+    if (targetRows && targetRows.length > 0) {
+      targetId = targetRows[0].id;
+    }
 
     let isFollowing = false;
     if (user) {
@@ -120,24 +149,21 @@ export async function GET(
       isFollowing = !!rel;
     }
 
-    const { count: followerCount } = await supabase
-      .from('platform_data')
-      .select('*', { count: 'exact', head: true })
-      .eq('data_type', 'follow')
-      .eq('target_id', targetId);
-
-    const { count: followingCount } = await supabase
-      .from('platform_data')
-      .select('*', { count: 'exact', head: true })
-      .eq('data_type', 'follow')
-      .eq('user_id', targetId);
+    const [
+      { count: followerCount },
+      { count: followingCount }
+    ] = await Promise.all([
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('target_id', targetId),
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('user_id', targetId),
+    ]);
 
     return NextResponse.json({
+      success: true,
       following: isFollowing,
       followerCount: followerCount || 0,
       followingCount: followingCount || 0,
     });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Failed to fetch follow status' }, { status: 500 });
   }
 }

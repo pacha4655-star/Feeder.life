@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PostCard from '@/components/feed/PostCard';
 import FeederAvatar from '@/components/common/FeederAvatar';
+import FollowListModal from './FollowListModal';
 import {
   MapPin,
   Utensils,
@@ -43,13 +44,20 @@ export default function ProfileClient({
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<'posts' | 'feeding'>('posts');
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(!!profileUser.is_following);
   const [followerCount, setFollowerCount] = useState<number>(profileUser.followers_count || 0);
   const [followingCount, setFollowingCount] = useState<number>(profileUser.following_count || 0);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlockLoading, setIsBlockLoading] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showFollowModal, setShowFollowModal] = useState(false);
+  const [followModalTab, setFollowModalTab] = useState<'followers' | 'following'>('followers');
+
+  const openFollowModal = (tab: 'followers' | 'following') => {
+    setFollowModalTab(tab);
+    setShowFollowModal(true);
+  };
   const [reportReason, setReportReason] = useState('HARASSMENT');
   const [reportDetails, setReportDetails] = useState('');
   const [isReporting, setIsReporting] = useState(false);
@@ -877,42 +885,63 @@ export default function ProfileClient({
               </div>
             )}
 
-            {/* Real Follower / Following Counts */}
-            <div style={{ display: 'flex', gap: '16px', marginTop: '10px', fontSize: '13px' }}>
-              <Link
-                href="/connections?tab=followers"
+            {/* Real Follower / Following Counts - Interactive Controls */}
+            <div
+              className="profile-follow-stats-bar"
+              style={{
+                display: 'flex',
+                gap: '12px',
+                marginTop: '10px',
+                fontSize: '13px',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => openFollowModal('followers')}
+                aria-label={`View ${followerCount} followers`}
+                className="profile-follow-stat-btn"
                 style={{
-                  display: 'flex',
-                  gap: '4px',
+                  display: 'inline-flex',
+                  gap: '5px',
                   alignItems: 'center',
-                  textDecoration: 'none',
+                  background: 'none',
+                  border: 'none',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
-                  padding: '2px 4px',
-                  borderRadius: '4px',
+                  color: 'var(--text-main)',
+                  minHeight: '44px',
+                  transition: 'all 0.15s ease',
                 }}
-                className="hover:underline"
-                title="View Followers"
               >
-                <strong style={{ color: 'var(--text-main)' }}>{followerCount}</strong>{' '}
+                <strong style={{ color: 'var(--text-main)', fontWeight: 700 }}>{followerCount}</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>Followers</span>
-              </Link>
-              <Link
-                href="/connections?tab=following"
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openFollowModal('following')}
+                aria-label={`View ${followingCount} following`}
+                className="profile-follow-stat-btn"
                 style={{
-                  display: 'flex',
-                  gap: '4px',
+                  display: 'inline-flex',
+                  gap: '5px',
                   alignItems: 'center',
-                  textDecoration: 'none',
+                  background: 'none',
+                  border: 'none',
+                  padding: '6px 10px',
+                  borderRadius: '8px',
                   cursor: 'pointer',
-                  padding: '2px 4px',
-                  borderRadius: '4px',
+                  color: 'var(--text-main)',
+                  minHeight: '44px',
+                  transition: 'all 0.15s ease',
                 }}
-                className="hover:underline"
-                title="View Following"
               >
-                <strong style={{ color: 'var(--text-main)' }}>{followingCount}</strong>{' '}
+                <strong style={{ color: 'var(--text-main)', fontWeight: 700 }}>{followingCount}</strong>{' '}
                 <span style={{ color: 'var(--text-muted)' }}>Following</span>
-              </Link>
+              </button>
             </div>
 
             {profileUser.bio && (
@@ -1338,6 +1367,29 @@ export default function ProfileClient({
           </div>
         </div>
       )}
+
+      {/* Followers & Following List Modal */}
+      <FollowListModal
+        isOpen={showFollowModal}
+        onClose={() => setShowFollowModal(false)}
+        userId={profileUser.id}
+        username={currentUsername || profileUser.username}
+        initialTab={followModalTab}
+        followerCount={followerCount}
+        followingCount={followingCount}
+        currentUserId={currentUser?.id}
+        onFollowChange={(targetUserId, isNowFollowing) => {
+          if (isSelf) {
+            // When viewing own profile, following/unfollowing someone alters our following count
+            setFollowingCount((prev) => Math.max(0, isNowFollowing ? prev + 1 : prev - 1));
+          } else if (targetUserId === profileUser.id) {
+            // When viewing someone else's profile and toggling follow on them
+            setIsFollowing(isNowFollowing);
+            setFollowerCount((prev) => Math.max(0, isNowFollowing ? prev + 1 : prev - 1));
+          }
+        }}
+      />
     </div>
   );
 }
+

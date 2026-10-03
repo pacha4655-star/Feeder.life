@@ -17,6 +17,9 @@ export interface ProfileDataResult {
     feeding_count: number;
     sos_responses_count: number;
     community_contributions_count: number;
+    followers_count: number;
+    following_count: number;
+    is_following?: boolean;
     streak: any;
     cover_url: string | null;
     badges: string[];
@@ -123,8 +126,20 @@ export class ProfileService {
       return null;
     }
 
-    // Calculate real server-verified impact summary
-    const impactSummary = await ImpactService.getUserImpact(supaUser.id);
+    // Calculate real server-verified impact summary & follow counts in parallel
+    const [
+      impactSummary,
+      { count: followerCount },
+      { count: followingCount },
+      followRelData
+    ] = await Promise.all([
+      ImpactService.getUserImpact(supaUser.id),
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('target_id', supaUser.id),
+      supabase.from('platform_data').select('*', { count: 'exact', head: true }).eq('data_type', 'follow').eq('user_id', supaUser.id),
+      currentUserId && currentUserId !== supaUser.id
+        ? supabase.from('platform_data').select('id').eq('data_type', 'follow').eq('user_id', currentUserId).eq('target_id', supaUser.id).maybeSingle()
+        : Promise.resolve({ data: null })
+    ]);
 
     const earnedBadges = impactSummary.badges
       .filter((b) => b.isEarned)
@@ -148,6 +163,9 @@ export class ProfileService {
       sos_responses_count: impactSummary.totalSosResponses,
       community_contributions_count:
         impactSummary.totalAdoptionsSupported + impactSummary.totalLostFoundReports,
+      followers_count: followerCount || 0,
+      following_count: followingCount || 0,
+      is_following: !!followRelData?.data,
       streak: impactSummary.streak,
       cover_url: supaUser.profile_data?.cover_image_url || null,
       badges: earnedBadges.length > 0 ? earnedBadges : ['Welfare Advocate'],
