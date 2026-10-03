@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ShieldCheck, Flag, Users, Layers, Activity, Check, X, AlertTriangle, Sparkles, Clock, Eye, Heart, Bookmark, Share2, MessageCircle, ThumbsDown, ShieldAlert, Cpu } from 'lucide-react';
+import { ShieldCheck, Flag, Users, Layers, Activity, Check, X, AlertTriangle, Sparkles, Clock, Eye, Heart, Bookmark, Share2, MessageCircle, ThumbsDown, ShieldAlert, Cpu, FlaskConical, RotateCcw } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils/date';
 import type { UserSession } from '@/lib/auth/session';
 import type { RecommendationMetricsReport } from '@/lib/recommendation/metrics-service';
@@ -595,6 +595,212 @@ export default function AdminClient({
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   Total audit records verified: {recReport.telemetryHealth.totalEventsRecorded.toLocaleString()} events. Invalid/corrupt events discarded: {recReport.telemetryHealth.invalidEventsDiscarded}. Continuous dwell tracking and video completion milestone events are actively streaming and learning user topic affinities.
+                </div>
+              </div>
+
+              {/* FeederSense V1.1 A/B Experiment Planning & Hypotheses Framework */}
+              <div className="card" style={{ padding: '20px', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FlaskConical size={18} color="var(--brand-primary)" />
+                      FeederSense V1.1 A/B Experiment Planning Framework
+                    </h3>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Control: FeederSense V1.0 (100% Traffic) &bull; Candidate: FeederSense V1.1 (0% Traffic). Isolated experiment configuration with deterministic hash assignment.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="badge badge-neutral" style={{ fontSize: '11px', fontWeight: 700 }}>
+                      Traffic Split: 100% V1.0 / 0% V1.1
+                    </span>
+                    <button
+                      onClick={async () => {
+                        if (confirm('Execute Emergency Rollback? This will immediately lock 100% traffic to FeederSense V1.0 Control.')) {
+                          await fetch('/api/admin/recommendation-experiments', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'EMERGENCY_ROLLBACK' }),
+                          });
+                          alert('Emergency Rollback executed. All traffic locked to FeederSense V1.0 Control.');
+                        }
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        borderRadius: '6px',
+                        border: '1px solid #ef4444',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      <RotateCcw size={12} /> Emergency Rollback
+                    </button>
+                  </div>
+                </div>
+
+                {/* V1.1 Hypothesis Catalog */}
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    Registered V1.1 Candidate Hypotheses
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                    <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <strong>HYP-V11-001: Dwell & Completion Tuning</strong>
+                        <span className="badge badge-neutral" style={{ fontSize: '10px' }}>DRAFT</span>
+                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '11px', margin: '4px 0 8px 0' }}>
+                        Evaluates whether higher dwell sensitivity improves long-term caretaker session retention without harming adoption discoverability.
+                      </p>
+                      <div style={{ fontSize: '11px' }}>
+                        <div><strong>Affected:</strong> Watch/Dwell (16%) & Discovery (6%)</div>
+                        <div><strong>Primary Metric:</strong> Video Completion Rate</div>
+                        <div><strong>Guardrails:</strong> Not Interested Rate, Hide Rate, Ranking Latency</div>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <strong>HYP-V11-002: New Creator Exposure</strong>
+                        <span className="badge badge-success" style={{ fontSize: '10px' }}>READY FOR REVIEW</span>
+                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '11px', margin: '4px 0 8px 0' }}>
+                        Evaluates whether expanding exploratory candidate quotas for verified new caretakers improves creator retention.
+                      </p>
+                      <div style={{ fontSize: '11px' }}>
+                        <div><strong>Affected:</strong> Discovery (6%) & Author Affinity (12%)</div>
+                        <div><strong>Primary Metric:</strong> New Creator Follow Conversion</div>
+                        <div><strong>Guardrails:</strong> Overall CTR, Hide Rate, Report Rate</div>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <strong>HYP-V11-003: Emergency SOS Urgency</strong>
+                        <span className="badge badge-neutral" style={{ fontSize: '10px' }}>DRAFT</span>
+                      </div>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '11px', margin: '4px 0 8px 0' }}>
+                        Evaluates dynamic rescue campaign urgency escalation during active animal medical emergencies.
+                      </p>
+                      <div style={{ fontSize: '11px' }}>
+                        <div><strong>Affected:</strong> Save (10%) & Share/Send (8%)</div>
+                        <div><strong>Primary Metric:</strong> Rescue Response Conversion</div>
+                        <div><strong>Guardrails:</strong> User Session Dropoff, Hide Rate</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Control vs Experiment Metrics Comparison Table */}
+                <div>
+                  <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    Control (FeederSense V1.0) vs Experiment (V1.1 Candidate) Metrics
+                  </h4>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ width: '100%', fontSize: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>Category</th>
+                          <th>Control (V1.0 Baseline)</th>
+                          <th>Experiment (V1.1)</th>
+                          <th>Abs Diff</th>
+                          <th>Rel Diff</th>
+                          <th>Significance Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><strong>Meaningful View Rate</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.meaningfulViewRate || 0}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Average Dwell Time</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.avgDwellTimeSec}s</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0s</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Video Completion Rate</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.videoCompletionRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Like Engagement Rate</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.likeRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Save / Bookmark Rate</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.saveRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Follow Conversion Rate</strong></td>
+                          <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>PRIMARY</span></td>
+                          <td>{recReport.summary.followConversionRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Not Interested Rate</strong></td>
+                          <td><span className="badge badge-sos" style={{ fontSize: '10px' }}>GUARDRAIL</span></td>
+                          <td>{recReport.summary.notInterestedRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Hide Content Rate</strong></td>
+                          <td><span className="badge badge-sos" style={{ fontSize: '10px' }}>GUARDRAIL</span></td>
+                          <td>{recReport.summary.hideRate}%</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0.0%</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Ranking Latency (p95)</strong></td>
+                          <td><span className="badge badge-sos" style={{ fontSize: '10px' }}>GUARDRAIL</span></td>
+                          <td>{recReport.summary.rankingLatencyMs.p95}ms</td>
+                          <td style={{ color: 'var(--text-muted)' }}>—</td>
+                          <td>0ms</td>
+                          <td>0.0%</td>
+                          <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>INSUFFICIENT DATA</span></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </>
