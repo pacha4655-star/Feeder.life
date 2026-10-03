@@ -311,11 +311,11 @@ export default function AdminClient({
                 style={{
                   padding: '20px',
                   background:
-                    recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                    recReport.v11Readiness?.status === 'SUFFICIENT FOR HUMAN V1.1 REVIEW'
                       ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)'
                       : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.05) 100%)',
                   border:
-                    recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                    recReport.v11Readiness?.status === 'SUFFICIENT FOR HUMAN V1.1 REVIEW'
                       ? '1px solid rgba(16, 185, 129, 0.3)'
                       : '1px solid rgba(59, 130, 246, 0.25)',
                 }}
@@ -332,13 +332,13 @@ export default function AdminClient({
                           letterSpacing: '0.05em',
                           textTransform: 'uppercase',
                           background:
-                            recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                            recReport.v11Readiness?.status === 'SUFFICIENT FOR HUMAN V1.1 REVIEW'
                               ? '#10b981'
                               : 'var(--brand-primary)',
                           color: '#ffffff',
                         }}
                       >
-                        {recReport.v11Readiness?.status || 'OBSERVATION IN PROGRESS'}
+                        {recReport.v11Readiness?.status || 'DATA COLLECTION IN PROGRESS'}
                       </span>
                       <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
                         Window: {recReport.timeRange.toUpperCase()} ({recReport.startDate.split('T')[0]} to {recReport.endDate.split('T')[0]})
@@ -347,6 +347,11 @@ export default function AdminClient({
                     <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
                       {recReport.v11Readiness?.recommendationNote}
                     </p>
+                    {recReport.dataSufficiencyMessage && (
+                      <div style={{ fontSize: '11px', color: recReport.dataSufficiencyStatus === 'SUFFICIENT FOR HUMAN V1.1 REVIEW' ? '#10b981' : '#f59e0b', fontWeight: 700, marginTop: '6px' }}>
+                        &bull; {recReport.dataSufficiencyMessage}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>Algorithm Safety Lock</div>
@@ -450,8 +455,8 @@ export default function AdminClient({
                           <th>V1.0 Weight</th>
                           <th>Status</th>
                           <th>Observed Impression Share</th>
-                          <th>Engagement Lift</th>
-                          <th>Observation Telemetry Note</th>
+                          <th>Observational Correlation</th>
+                          <th>Causality Notice</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -461,8 +466,8 @@ export default function AdminClient({
                             <td><span style={{ fontWeight: 800, color: 'var(--brand-primary)' }}>{sig.weightPct}%</span></td>
                             <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>{sig.status}</span></td>
                             <td>{sig.observedImpressionShare}%</td>
-                            <td><strong style={{ color: '#10b981' }}>{sig.observedEngagementLift}</strong></td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{sig.observationNote}</td>
+                            <td><span style={{ color: 'var(--text-main)', fontSize: '11px' }}>{sig.observationalStatus}</span></td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '11px', fontStyle: 'italic' }}>{sig.causalityNotice}</td>
                           </tr>
                         ))}
                       </tbody>
