@@ -205,8 +205,16 @@ export class FeedRankingService {
         const recencyFactor = 1 / Math.pow(1 + hoursAgo / 12, 1.3);
 
         const reactionsObj = (row.reactions && typeof row.reactions === 'object' ? row.reactions : {}) as Record<string, any>;
-        const reactionCount = Object.values(reactionsObj).reduce((sum: number, val: any) => sum + (typeof val === 'number' ? val : 1), 0);
-        const commentCount = typeof row.comments?.count === 'number' ? row.comments.count : 0;
+        const reactionCount = typeof row.likes_count === 'number'
+          ? row.likes_count
+          : (typeof row.stats?.likes_count === 'number'
+              ? row.stats.likes_count
+              : Object.keys(reactionsObj).length);
+        const commentCount = typeof row.comments_count === 'number'
+          ? row.comments_count
+          : (typeof row.comments?.count === 'number'
+              ? row.comments.count
+              : (typeof row.stats?.comments_count === 'number' ? row.stats.comments_count : 0));
         const shareCount = typeof row.stats?.shares_count === 'number' ? row.stats.shares_count : 0;
 
         const engagement = reactionCount * 3 + commentCount * 5 + shareCount * 8;
@@ -218,7 +226,9 @@ export class FeedRankingService {
 
         const finalScore = (10 + engagement + proximityBonus) * recencyFactor * typeWeight;
 
-        const userReaction = userId && reactionsObj[userId] ? (reactionsObj[userId].type || 'paws') : null;
+        const userReaction = (userId && userId !== 'guest' && reactionsObj[userId])
+          ? (typeof reactionsObj[userId] === 'string' ? reactionsObj[userId] : (reactionsObj[userId].type || 'CARE'))
+          : null;
 
         scoredPosts.push({
           id: row.id,

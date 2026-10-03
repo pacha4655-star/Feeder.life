@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { formatShortDate, formatTime } from '@/lib/utils/date';
 import {
@@ -9,23 +9,22 @@ import {
   Share2,
   Bookmark,
   MoreHorizontal,
-  MapPin,
   Globe,
-  Users,
-  Lock,
   Send,
   Flag,
   ShieldOff,
-  Check,
   PawPrint,
-  ThumbsUp,
   Edit3,
   Trash2,
   Ban,
+  Loader2,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import type { PostWithAuthor } from '@/lib/services/feed-ranking';
 import type { UserSession } from '@/lib/auth/session';
 import FeederAvatar from '@/components/common/FeederAvatar';
+import { useRealtimeSubscription } from '@/lib/hooks/useRealtimeChannel';
 
 function PostMediaItem({
   url,
@@ -105,17 +104,16 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, currentUser, onPostUpdated }: PostCardProps) {
-  const [reactionCount, setReactionCount] = useState(post.reaction_count);
+  const [reactionCount, setReactionCount] = useState(post.reaction_count || 0);
   const [userReaction, setUserReaction] = useState<string | null>(post.user_reaction || null);
   const [isSaved, setIsSaved] = useState(post.is_saved || false);
-  const [showReactionsFlyout, setShowReactionsFlyout] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [commentCount, setCommentCount] = useState(post.comment_count);
+  const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [shareToast, setShareToast] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [postTitle, setPostTitle] = useState(post.title || '');
@@ -124,8 +122,309 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
 
-  const isAuthorOrStaff = !!(currentUser && (currentUser.id === post.author_id || currentUser.role === 'PLATFORM_ADMIN' || currentUser.role === 'PLATFORM_MODERATOR'));
+  // Like animation & debounce locks
+  const [showLikeAnimation, setShowLikeAnimation] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const isLikeMutatingRef = useRef(false);
+  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Comment delete confirmation state
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [isDeletingCommentId, setIsDeletingCommentId] = useState<string | null>(null);
+
+  const isLiked = !!userReaction;
+  const isAuthorOrStaff = !!(
+    currentUser &&
+    (currentUser.id === post.author_id ||
+      currentUser.role === 'PLATFORM_ADMIN' ||
+      currentUser.role === 'PLATFORM_MODERATOR')
+  );
   const isAuthor = currentUser?.id === post.author_id;
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  }, []);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  // Supabase Realtime: Sync likes & comment counts when another user updates this post
+  useRealtimeSubscription({
+    table: 'social_posts',
+    filter: `id=eq.${post.id}`,
+    onPayload: (payload) => {
+      if (payload.new && typeof payload.new === 'object') {
+        const row = payload.new;
+        if (typeof row.likes_count === 'number' && !isLikeMutatingRef.current) {
+          setReactionCount(row.likes_count);
+        }
+        if (typeof row.comments_count === 'number') {
+          setCommentCount(row.comments_count);
+        }
+      }
+    },
+    enabled: typeof window !== 'undefined',
+  });
+
+  // Supabase Realtime: Sync new comments live if comments are currently visible
+  useRealtimeSubscription({
+    table: 'social_posts',
+    filter: `parent_id=eq.${post.id}`,
+    onPayload: (payload) => {
+      if (payload.eventType === 'INSERT' && payload.new) {
+        const newRow = payload.new;
+        if (newRow.record_type === 'comment' && !newRow.is_deleted) {
+          setComments((prev) => {
+            if (prev.some((c) => c.id === newRow.id)) return prev;
+            const newComment = {
+              id: newRow.id,
+              post_id: newRow.parent_id,
+              author_id: newRow.user_id,
+              body: newRow.content,
+              created_at: newRow.created_at,
+              author_name: 'Animal Guardian',
+              author_username: 'guardian',
+              author_avatar: '',
+              author_role: 'USER',
+            };
+            return [...prev, newComment];
+          });
+        }
+      } else if (payload.eventType === 'UPDATE' && payload.new) {
+        const updatedRow = payload.new;
+        if (updatedRow.is_deleted) {
+          setComments((prev) => prev.filter((c) => c.id !== updatedRow.id));
+        }
+      }
+    },
+    enabled: showComments && typeof window !== 'undefined',
+  });
+
+  const handleToggleLike = async () => {
+    if (!currentUser) {
+      window.location.href = '/login';
+      return;
+    }
+
+    if (isLikeMutatingRef.current) return;
+    isLikeMutatingRef.current = true;
+
+    const wasLiked = isLiked;
+    const prevReaction = userReaction;
+    const prevCount = reactionCount;
+    const nextLiked = !wasLiked;
+    const nextCount = wasLiked ? Math.max(0, reactionCount - 1) : reactionCount + 1;
+    const nextReaction = wasLiked ? null : 'CARE';
+
+    // 1. Optimistic UI update
+    setUserReaction(nextReaction);
+    setReactionCount(nextCount);
+
+    if (nextLiked) {
+      // Trigger short Facebook-style floating reaction particles
+      setShowLikeAnimation(true);
+      if (animationTimerRef.current) clearTimeout(animationTimerRef.current);
+      animationTimerRef.current = setTimeout(() => {
+        setShowLikeAnimation(false);
+      }, 650);
+    } else {
+      setShowLikeAnimation(false);
+    }
+
+    // 2. Persist to database via API
+    try {
+      const res = await fetch(`/api/posts/${post.id}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reactionType: 'CARE',
+          action: nextLiked ? 'like' : 'unlike',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setReactionCount(data.reactionCount);
+        setUserReaction(data.userReaction);
+      } else {
+        // Rollback on backend error
+        setUserReaction(prevReaction);
+        setReactionCount(prevCount);
+        setShowLikeAnimation(false);
+        showToast(data.error || "Couldn't update your like. Please try again.");
+      }
+    } catch (err) {
+      // Rollback on network error
+      setUserReaction(prevReaction);
+      setReactionCount(prevCount);
+      setShowLikeAnimation(false);
+      showToast("Couldn't update your like. Please try again.");
+    } finally {
+      isLikeMutatingRef.current = false;
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (!currentUser) {
+      window.location.href = '/login';
+      return;
+    }
+    setShowMenu(false);
+    const prevSaved = isSaved;
+    setIsSaved(!prevSaved);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/save`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setIsSaved(data.isSaved);
+      } else {
+        setIsSaved(prevSaved);
+        showToast("Couldn't update saved post. Please try again.");
+      }
+    } catch {
+      setIsSaved(prevSaved);
+      showToast("Couldn't update saved post. Please try again.");
+    }
+  };
+
+  const handleToggleComments = async () => {
+    const nextState = !showComments;
+    setShowComments(nextState);
+    if (nextState && comments.length === 0) {
+      setIsLoadingComments(true);
+      try {
+        const res = await fetch(`/api/posts/${post.id}/comments`);
+        const data = await res.json();
+        if (data.success) {
+          setComments(data.comments || []);
+        }
+      } catch {
+        showToast("Couldn't load comments. Please try again.");
+      } finally {
+        setIsLoadingComments(false);
+      }
+    }
+  };
+
+  const handleAddComment = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanText = newCommentText.trim();
+    if (!cleanText || isSubmittingComment) return;
+
+    if (!currentUser) {
+      window.location.href = '/login';
+      return;
+    }
+
+    setIsSubmittingComment(true);
+    const textToSubmit = cleanText;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    // Optimistic comment insert
+    const optimisticComment = {
+      id: tempId,
+      post_id: post.id,
+      author_id: currentUser.id,
+      parent_id: null,
+      body: textToSubmit,
+      created_at: new Date().toISOString(),
+      author_name: currentUser.fullName || currentUser.username || 'Animal Guardian',
+      author_username: currentUser.username || 'guardian',
+      author_avatar: currentUser.avatarUrl || '',
+      author_role: currentUser.role || 'USER',
+    };
+
+    setComments((prev) => [...prev, optimisticComment]);
+    setCommentCount((prev) => prev + 1);
+    setNewCommentText('');
+
+    try {
+      const res = await fetch(`/api/posts/${post.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: textToSubmit }),
+      });
+      const data = await res.json();
+
+      if (data.success && data.comment) {
+        setComments((prev) => prev.map((c) => (c.id === tempId ? data.comment : c)));
+        if (typeof data.commentCount === 'number') {
+          setCommentCount(data.commentCount);
+        }
+      } else {
+        // Rollback optimistic comment
+        setComments((prev) => prev.filter((c) => c.id !== tempId));
+        setCommentCount((prev) => Math.max(0, prev - 1));
+        setNewCommentText(textToSubmit);
+        showToast(data.error || "Couldn't post your comment. Please try again.");
+      }
+    } catch {
+      setComments((prev) => prev.filter((c) => c.id !== tempId));
+      setCommentCount((prev) => Math.max(0, prev - 1));
+      setNewCommentText(textToSubmit);
+      showToast("Couldn't post your comment. Please try again.");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleKeyDownComment = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleAddComment();
+    }
+  };
+
+  const handleConfirmDeleteComment = async (commentId: string) => {
+    const target = comments.find((c) => c.id === commentId);
+    if (!target) return;
+
+    setIsDeletingCommentId(commentId);
+    setDeletingCommentId(null);
+
+    const prevComments = [...comments];
+    const prevCount = commentCount;
+
+    // Optimistic removal
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setCommentCount((prev) => Math.max(0, prev - 1));
+
+    try {
+      const res = await fetch(`/api/posts/${post.id}/comments`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentId }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        if (typeof data.commentCount === 'number') {
+          setCommentCount(data.commentCount);
+        }
+      } else {
+        // Rollback
+        setComments(prevComments);
+        setCommentCount(prevCount);
+        showToast(data.error || "Couldn't delete the comment. Please try again.");
+      }
+    } catch {
+      setComments(prevComments);
+      setCommentCount(prevCount);
+      showToast("Couldn't delete the comment. Please try again.");
+    } finally {
+      setIsDeletingCommentId(null);
+    }
+  };
 
   const handleSaveEdit = async () => {
     if (!postBody.trim()) return;
@@ -140,7 +439,11 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       if (data.success) {
         setIsEditing(false);
         onPostUpdated?.();
+      } else {
+        showToast(data.error || "Couldn't save edits. Please try again.");
       }
+    } catch {
+      showToast("Couldn't save edits. Please try again.");
     } finally {
       setIsSavingEdit(false);
     }
@@ -156,7 +459,11 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       if (data.success) {
         setIsDeleted(true);
         onPostUpdated?.();
+      } else {
+        showToast(data.error || "Couldn't delete post. Please try again.");
       }
+    } catch {
+      showToast("Couldn't delete post. Please try again.");
     } finally {
       setIsDeleting(false);
     }
@@ -173,98 +480,21 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       await fetch(`/api/users/${post.author_id}/block`, { method: 'POST' });
       setIsDeleted(true);
       alert(`@${post.author_username} has been blocked.`);
-    } catch {}
-  };
-
-  // Reaction mapping
-  const reactionConfig: Record<string, { emoji: string; label: string; color: string; btnClass: string }> = {
-    SUPPORT: { emoji: '❤️', label: 'Support', color: 'var(--brand-support)', btnClass: 'active-support' },
-    HELPFUL: { emoji: '🐾', label: 'Helpful', color: 'var(--brand-primary)', btnClass: 'active-helpful' },
-    THANK_YOU: { emoji: '🙏', label: 'Thank You', color: 'var(--brand-thanks)', btnClass: 'active-thanks' },
-    CARE: { emoji: '💚', label: 'Care', color: 'var(--brand-accent)', btnClass: 'active-care' },
-  };
-
-  const currentReactionInfo = userReaction ? reactionConfig[userReaction] : null;
-
-  const handleReact = async (type: string) => {
-    if (!currentUser) {
-      window.location.href = '/login';
-      return;
-    }
-    setShowReactionsFlyout(false);
-    try {
-      const res = await fetch(`/api/posts/${post.id}/react`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reactionType: type }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setReactionCount(data.reactionCount);
-        setUserReaction(data.userReaction);
-      }
-    } catch {}
-  };
-
-  const handleToggleSave = async () => {
-    if (!currentUser) {
-      window.location.href = '/login';
-      return;
-    }
-    setShowMenu(false);
-    try {
-      const res = await fetch(`/api/posts/${post.id}/save`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setIsSaved(data.isSaved);
-      }
-    } catch {}
-  };
-
-  const handleToggleComments = async () => {
-    const nextState = !showComments;
-    setShowComments(nextState);
-    if (nextState && comments.length === 0) {
-      setIsLoadingComments(true);
-      try {
-        const res = await fetch(`/api/posts/${post.id}/comments`);
-        const data = await res.json();
-        if (data.success) {
-          setComments(data.comments || []);
-        }
-      } finally {
-        setIsLoadingComments(false);
-      }
-    }
-  };
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCommentText.trim()) return;
-
-    setIsSubmittingComment(true);
-    try {
-      const res = await fetch(`/api/posts/${post.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: newCommentText.trim() }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setComments([...comments, data.comment]);
-        setCommentCount(commentCount + 1);
-        setNewCommentText('');
-      }
-    } finally {
-      setIsSubmittingComment(false);
+    } catch {
+      showToast("Couldn't block user. Please try again.");
     }
   };
 
   const handleShare = async () => {
     setShowMenu(false);
-    const postUrl = typeof window !== 'undefined' ? `${window.location.origin}/#${post.id}` : `https://feeder.life/#${post.id}`;
+    const postUrl =
+      typeof window !== 'undefined' ? `${window.location.origin}/#${post.id}` : `https://feeder.life/#${post.id}`;
     const shareTitle = post.title || `Post by ${post.author_name} on Feeder.life`;
-    const shareText = post.body ? (post.body.length > 120 ? post.body.substring(0, 117) + '...' : post.body) : 'Check out this post on Feeder.life';
+    const shareText = post.body
+      ? post.body.length > 120
+        ? post.body.substring(0, 117) + '...'
+        : post.body
+      : 'Check out this post on Feeder.life';
 
     if (navigator.share) {
       try {
@@ -316,7 +546,15 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   return (
     <article className="card feed-post-card" id={post.id}>
       {/* 1. Post Header */}
-      <div className="post-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+      <div
+        className="post-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '10px',
+        }}
+      >
         <div className="post-author-row" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Link href={`/profile/${encodeURIComponent(post.author_username || post.author_id)}`}>
             <FeederAvatar
@@ -328,7 +566,10 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           </Link>
 
           <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-            <div className="post-author-name" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <div
+              className="post-author-name"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}
+            >
               <Link
                 href={`/profile/${encodeURIComponent(post.author_username || post.author_id)}`}
                 style={{
@@ -350,21 +591,54 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
             <div
               className="post-meta-subline"
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: 'var(--text-muted)', flexWrap: 'wrap', minWidth: 0 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '12px',
+                color: 'var(--text-muted)',
+                flexWrap: 'wrap',
+                minWidth: 0,
+              }}
             >
-              <span style={{ color: '#2E7D32', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{post.author_feeder_level || 'Animal Guardian'}</span>
+              <span
+                style={{
+                  color: '#2E7D32',
+                  fontWeight: 600,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                }}
+              >
+                {post.author_feeder_level || 'Animal Guardian'}
+              </span>
               {post.location_name && (
                 <>
                   <span>•</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{post.location_name}</span>
+                  <span
+                    style={{
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {post.location_name}
+                  </span>
                 </>
               )}
               <span>•</span>
               <span style={{ whiteSpace: 'nowrap' }}>{formatShortDate(post.created_at)}</span>
               <span>•</span>
-              <span title="Public visibility" style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', whiteSpace: 'nowrap' }}>
+              <span
+                title="Public visibility"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', whiteSpace: 'nowrap' }}
+              >
                 <Globe size={12} color="var(--text-muted)" />
-                <span style={{ textTransform: 'capitalize' }}>{post.visibility ? post.visibility.toLowerCase() : 'Public'}</span>
+                <span style={{ textTransform: 'capitalize' }}>
+                  {post.visibility ? post.visibility.toLowerCase() : 'Public'}
+                </span>
               </span>
             </div>
           </div>
@@ -374,8 +648,9 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         <div style={{ position: 'relative' }}>
           <button
             className="topbar-action-icon"
-            style={{ width: '32px', height: '32px', background: 'transparent' }}
+            style={{ width: '36px', height: '36px', background: 'transparent' }}
             onClick={() => setShowMenu(!showMenu)}
+            aria-label="More options for this post"
           >
             <MoreHorizontal size={18} />
           </button>
@@ -385,7 +660,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
               className="card glass-panel"
               style={{
                 position: 'absolute',
-                top: '36px',
+                top: '40px',
                 right: 0,
                 width: '210px',
                 zIndex: 50,
@@ -440,11 +715,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
                 </button>
               )}
 
-              <button
-                className="sidebar-nav-item"
-                onClick={() => handleReport('SPAM')}
-                style={{ padding: '8px' }}
-              >
+              <button className="sidebar-nav-item" onClick={() => handleReport('SPAM')} style={{ padding: '8px' }}>
                 <Flag size={16} color="var(--brand-sos)" />
                 <span style={{ fontSize: '13px' }}>Report Post</span>
               </button>
@@ -463,7 +734,18 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       </div>
 
       {/* 2. Post Content */}
-      <div className="post-body" style={{ marginBottom: '10px', fontSize: '14.5px', color: 'var(--text-primary)', lineHeight: 1.5, overflowWrap: 'break-word', wordBreak: 'break-word', minWidth: 0 }}>
+      <div
+        className="post-body"
+        style={{
+          marginBottom: '10px',
+          fontSize: '14.5px',
+          color: 'var(--text-primary)',
+          lineHeight: 1.5,
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+          minWidth: 0,
+        }}
+      >
         {isEditing ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
             <input
@@ -504,7 +786,11 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           </div>
         ) : (
           <>
-            {post.title && <h3 className="post-title" style={{ fontSize: '15.5px', fontWeight: 700, marginBottom: '6px' }}>{post.title}</h3>}
+            {post.title && (
+              <h3 className="post-title" style={{ fontSize: '15.5px', fontWeight: 700, marginBottom: '6px' }}>
+                {post.title}
+              </h3>
+            )}
             <div>{post.body}</div>
           </>
         )}
@@ -528,7 +814,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         )}
       </div>
 
-      {/* 3. Post Media Layout (Real Images/Videos from Storage with Error Fallback) */}
+      {/* 3. Post Media Layout */}
       {post.media_urls && post.media_urls.length === 1 ? (
         <div className="post-media-box" style={{ borderRadius: '10px', overflow: 'hidden', margin: '10px 0' }}>
           <PostMediaItem url={post.media_urls[0]} style={{ maxHeight: '440px' }} />
@@ -627,17 +913,20 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {reactionCount > 0 && (
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px', zIndex: 3 }}>❤️</span>
-              <span style={{ fontSize: '14px', marginLeft: '-2px', zIndex: 2 }}>🐾</span>
+              <span style={{ fontSize: '14px', zIndex: 3 }}>💚</span>
+              <span style={{ fontSize: '14px', marginLeft: '-3px', zIndex: 2 }}>🐾</span>
             </div>
           )}
           <span style={{ fontWeight: 600, color: 'var(--text-muted)', marginLeft: '2px' }}>
-            {reactionCount} {reactionCount === 1 ? 'Reaction' : 'Reactions'}
+            {reactionCount} {reactionCount === 1 ? 'Like' : 'Likes'}
           </span>
         </div>
 
         <div style={{ display: 'flex', gap: '14px' }}>
-          <span style={{ cursor: 'pointer' }} onClick={handleToggleComments}>
+          <span
+            style={{ cursor: 'pointer', fontWeight: commentCount > 0 ? 600 : 400 }}
+            onClick={handleToggleComments}
+          >
             {commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}
           </span>
           <span>{post.share_count || 0} Shares</span>
@@ -646,19 +935,40 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
 
       {/* 5. Post Action Toolbar */}
       <div className="post-actions-toolbar">
-        {/* React Button */}
-        <button
-          className="post-toolbar-btn"
-          onClick={() => handleReact('CARE')}
-        >
-          <ThumbsUp size={18} color="var(--text-muted)" />
-          <span>Like</span>
-        </button>
+        {/* Like Button with Subtle Reaction Animation */}
+        <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
+          <button
+            className={`post-toolbar-btn ${isLiked ? 'liked active-like' : ''}`}
+            onClick={handleToggleLike}
+            aria-label={isLiked ? 'Unlike this post' : 'Like this post'}
+            style={{ width: '100%' }}
+          >
+            <Heart
+              size={19}
+              className={showLikeAnimation ? 'like-icon-animated' : ''}
+              color={isLiked ? 'var(--brand-primary, #10b981)' : 'var(--text-muted)'}
+              fill={isLiked ? 'currentColor' : 'none'}
+            />
+            <span>{isLiked ? 'Liked' : 'Like'}</span>
+          </button>
+
+          {/* Floating Reaction Particles on Like */}
+          {showLikeAnimation && (
+            <div className="like-reaction-particles-container" aria-hidden="true">
+              <span className="reaction-particle reaction-particle-1">💚</span>
+              <span className="reaction-particle reaction-particle-2">🐾</span>
+              <span className="reaction-particle reaction-particle-3">❤️</span>
+              <span className="reaction-particle reaction-particle-4">✨</span>
+              <span className="reaction-particle reaction-particle-5">🌿</span>
+            </div>
+          )}
+        </div>
 
         {/* Comment Button */}
         <button
           className="post-toolbar-btn"
           onClick={handleToggleComments}
+          aria-label="Comment on this post"
         >
           <MessageCircle size={18} color="var(--text-muted)" />
           <span>Comment</span>
@@ -668,6 +978,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         <button
           className="post-toolbar-btn"
           onClick={handleShare}
+          aria-label="Share this post"
         >
           <Share2 size={18} color="var(--text-muted)" />
           <span>Share</span>
@@ -677,74 +988,221 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         <button
           className="post-toolbar-btn"
           onClick={handleToggleSave}
+          aria-label={isSaved ? 'Remove from saved' : 'Save post'}
           style={{
             color: isSaved ? 'var(--brand-primary)' : undefined,
           }}
         >
-          <Bookmark size={18} color={isSaved ? 'var(--brand-primary)' : 'var(--text-muted)'} fill={isSaved ? 'currentColor' : 'none'} />
+          <Bookmark
+            size={18}
+            color={isSaved ? 'var(--brand-primary)' : 'var(--text-muted)'}
+            fill={isSaved ? 'currentColor' : 'none'}
+          />
           <span>{isSaved ? 'Saved' : 'Save'}</span>
         </button>
       </div>
 
-      {/* 6. Threaded Comment Section */}
+      {/* 6. Comment Section */}
       {showComments && (
         <div className="post-comments-container">
           {/* Add comment input */}
           {currentUser ? (
             <form onSubmit={handleAddComment} className="comment-input-row">
-              <img src={currentUser.avatarUrl} alt="" className="avatar-img" style={{ width: '32px', height: '32px' }} />
+              <FeederAvatar
+                src={currentUser.avatarUrl}
+                alt={currentUser.fullName}
+                size={34}
+                className="avatar-img"
+              />
               <input
                 type="text"
                 className="comment-input-field"
                 placeholder={`Write a comment as ${currentUser.fullName}...`}
                 value={newCommentText}
                 onChange={(e) => setNewCommentText(e.target.value)}
+                onKeyDown={handleKeyDownComment}
                 disabled={isSubmittingComment}
+                aria-label="Write a comment"
               />
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ padding: '0 14px', borderRadius: 'var(--radius-full)' }}
+                style={{
+                  padding: '0 16px',
+                  minHeight: '44px',
+                  borderRadius: 'var(--radius-full)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
                 disabled={isSubmittingComment || !newCommentText.trim()}
+                aria-label="Submit comment"
               >
-                <Send size={15} />
+                {isSubmittingComment ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
               </button>
             </form>
           ) : (
-            <div style={{ padding: '10px 14px', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', fontSize: '13px', textAlign: 'center' }}>
-              <Link href="/login" style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>Sign in</Link> to leave a comment.
+            <div
+              style={{
+                padding: '12px 14px',
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '13px',
+                textAlign: 'center',
+                marginBottom: '10px',
+              }}
+            >
+              <Link href="/login" style={{ color: 'var(--brand-primary)', fontWeight: 600 }}>
+                Sign in
+              </Link>{' '}
+              to leave a comment.
             </div>
           )}
 
           {/* Comments list */}
           {isLoadingComments ? (
-            <div style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: 'var(--text-muted)' }}>
+            <div
+              style={{
+                padding: '16px',
+                textAlign: 'center',
+                fontSize: '13px',
+                color: 'var(--text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              <Loader2 size={16} className="animate-spin" />
               Loading comments...
             </div>
           ) : comments.length === 0 ? (
-            <div style={{ padding: '8px 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+            <div style={{ padding: '10px 0', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
               No comments yet. Be the first animal ally to comment!
             </div>
           ) : (
-            comments.map((c) => (
-              <div key={c.id} className="comment-item">
-                <Link href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`}>
-                  <img src={c.author_avatar} alt="" className="avatar-img" style={{ width: '32px', height: '32px' }} />
-                </Link>
-                <div className="comment-bubble">
-                  <div className="comment-author-name">
-                    <Link href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`} style={{ color: 'inherit' }}>
-                      {c.author_name}
-                    </Link>
-                  </div>
-                  <div>{c.body}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {formatTime(c.created_at)}
+            comments.map((c) => {
+              const isCommentAuthorOrAdmin = !!(
+                currentUser &&
+                (currentUser.id === c.author_id ||
+                  currentUser.role === 'PLATFORM_ADMIN' ||
+                  currentUser.role === 'PLATFORM_MODERATOR')
+              );
+              const isDeletingThis = isDeletingCommentId === c.id;
+              const isConfirmingThis = deletingCommentId === c.id;
+
+              return (
+                <div
+                  key={c.id}
+                  className="comment-item"
+                  style={{ opacity: isDeletingThis ? 0.4 : 1, transition: 'opacity 0.2s' }}
+                >
+                  <Link href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`}>
+                    <FeederAvatar
+                      src={c.author_avatar}
+                      alt={c.author_name}
+                      size={34}
+                      className="avatar-img"
+                    />
+                  </Link>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="comment-bubble">
+                      <div className="comment-author-name">
+                        <Link
+                          href={`/profile/${encodeURIComponent(c.author_username || c.author_id)}`}
+                          style={{ color: 'inherit', textDecoration: 'none' }}
+                        >
+                          {c.author_name}
+                        </Link>
+                      </div>
+                      <div style={{ color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>{c.body}</div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        fontSize: '11.5px',
+                        color: 'var(--text-muted)',
+                        marginTop: '4px',
+                        paddingLeft: '6px',
+                      }}
+                    >
+                      <span>{formatTime(c.created_at)}</span>
+
+                      {/* Comment Delete Option */}
+                      {isCommentAuthorOrAdmin && !isDeletingThis && (
+                        <>
+                          <span>•</span>
+                          {!isConfirmingThis ? (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCommentId(c.id)}
+                              className="comment-delete-text-btn"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                fontSize: '11.5px',
+                                padding: 0,
+                                fontWeight: 500,
+                              }}
+                              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = '#ef4444')}
+                              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = 'var(--text-muted)')}
+                              aria-label="Delete comment"
+                            >
+                              Delete
+                            </button>
+                          ) : (
+                            <div className="comment-delete-confirm-box">
+                              <span>Delete comment?</span>
+                              <button
+                                type="button"
+                                className="comment-delete-confirm-btn"
+                                onClick={() => handleConfirmDeleteComment(c.id)}
+                              >
+                                Delete
+                              </button>
+                              <button
+                                type="button"
+                                className="comment-delete-cancel-btn"
+                                onClick={() => setDeletingCommentId(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {isDeletingThis && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#ef4444' }}>
+                          <Loader2 size={12} className="animate-spin" /> Deleting...
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
+        </div>
+      )}
+
+      {/* Share Toast */}
+      {shareToast && (
+        <div className="post-error-toast" style={{ background: '#059669' }}>
+          <Sparkles size={16} /> Link copied to clipboard!
+        </div>
+      )}
+
+      {/* Error Toast */}
+      {toastMessage && (
+        <div className="post-error-toast">
+          <AlertCircle size={16} color="#f87171" /> {toastMessage}
         </div>
       )}
     </article>

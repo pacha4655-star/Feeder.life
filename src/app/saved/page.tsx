@@ -60,10 +60,12 @@ export default async function SavedPage() {
           tags: Array.isArray(row.tags) ? row.tags : [],
           location_name: row.location_name || '',
           visibility: row.visibility || 'PUBLIC',
-          reaction_count: row.likes_count || 0,
-          comment_count: row.comments_count || 0,
-          share_count: 0,
-          user_reaction: null,
+          reaction_count: row.likes_count ?? row.stats?.likes_count ?? (row.reactions && Object.keys(row.reactions).length) ?? 0,
+          comment_count: row.comments_count ?? row.stats?.comments_count ?? row.comments?.count ?? 0,
+          share_count: row.stats?.shares_count || 0,
+          user_reaction: user && row.reactions && row.reactions[user.id]
+            ? (typeof row.reactions[user.id] === 'string' ? row.reactions[user.id] : (row.reactions[user.id].type || 'CARE'))
+            : null,
           is_saved: true,
           created_at: row.created_at,
         }));

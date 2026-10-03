@@ -23,6 +23,11 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
     }
 
+    const currentUser = await getCurrentUser();
+    const userReaction = currentUser && post.reactions && post.reactions[currentUser.id]
+      ? (typeof post.reactions[currentUser.id] === 'string' ? post.reactions[currentUser.id] : (post.reactions[currentUser.id].type || 'CARE'))
+      : null;
+
     const formattedPost = {
       id: post.id,
       author_id: post.user_id,
@@ -36,8 +41,9 @@ export async function GET(
       location_name: post.location_name || '',
       media_urls: Array.isArray(post.media) ? post.media.map((m: any) => (typeof m === 'string' ? m : m.url)) : [],
       tags: Array.isArray(post.tags) ? post.tags : [],
-      reaction_count: post.likes_count || 0,
-      comment_count: post.comments_count || 0,
+      reaction_count: post.likes_count ?? post.stats?.likes_count ?? (post.reactions && Object.keys(post.reactions).length) ?? 0,
+      comment_count: post.comments_count ?? post.stats?.comments_count ?? post.comments?.count ?? 0,
+      user_reaction: userReaction,
       created_at: post.created_at,
     };
 

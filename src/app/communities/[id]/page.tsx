@@ -140,10 +140,12 @@ export default async function CommunityPage(props: { params: Promise<{ id: strin
           location_name: p.data?.location_name || '',
           media_urls: Array.isArray(p.media) ? p.media.map((m: any) => (typeof m === 'string' ? m : m.url)) : [],
           tags: Array.isArray(p.data?.tags) ? p.data.tags : [],
-          reaction_count: p.stats?.likes_count || 0,
-          comment_count: p.stats?.comments_count || p.comments?.count || 0,
+          reaction_count: p.likes_count ?? p.stats?.likes_count ?? (p.reactions && Object.keys(p.reactions).length) ?? 0,
+          comment_count: p.comments_count ?? p.stats?.comments_count ?? p.comments?.count ?? 0,
           created_at: p.created_at,
-          user_reaction: null,
+          user_reaction: user && p.reactions && p.reactions[user.id]
+            ? (typeof p.reactions[user.id] === 'string' ? p.reactions[user.id] : (p.reactions[user.id].type || 'CARE'))
+            : null,
         };
       });
     }

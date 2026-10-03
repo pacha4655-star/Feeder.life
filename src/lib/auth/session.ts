@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { getSupabaseServerClient } from '../supabase/server';
 import type { DbUser } from '@/types/database';
@@ -63,9 +64,29 @@ export function verifySessionToken(token: string): { id: string; uid?: string; e
  * Returns null if no valid session cookie exists.
  * ZERO fake or hardcoded fallbacks.
  */
-export async function getCurrentUser(): Promise<UserSession | null> {
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('feeder_session')?.value;
+export async function getCurrentUser(request?: NextRequest): Promise<UserSession | null> {
+  let sessionToken: string | undefined;
+
+  if (request) {
+    sessionToken = request.cookies.get('feeder_session')?.value;
+    if (!sessionToken) {
+      const cookieHeader = request.headers.get('cookie') || '';
+      const match = cookieHeader.match(/feeder_session=([^;]+)/);
+      if (match) {
+        sessionToken = match[1];
+      }
+    }
+  }
+
+  if (!sessionToken) {
+    try {
+      const cookieStore = await cookies();
+      sessionToken = cookieStore.get('feeder_session')?.value;
+    } catch {
+      return null;
+    }
+  }
+
   if (!sessionToken) {
     return null;
   }

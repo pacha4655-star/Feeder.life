@@ -180,10 +180,12 @@ export class ProfileService {
         : [],
       tags: Array.isArray(p.hashtags) ? p.hashtags : [],
       location_name: p.data?.location_name || '',
-      reaction_count: p.stats?.likes_count || (p.reactions && Object.keys(p.reactions).length) || 0,
-      comment_count: p.comments?.count || p.stats?.comments_count || 0,
+      reaction_count: p.likes_count ?? p.stats?.likes_count ?? (p.reactions && Object.keys(p.reactions).length) ?? 0,
+      comment_count: p.comments_count ?? p.comments?.count ?? p.stats?.comments_count ?? 0,
       created_at: p.created_at,
-      user_reaction: null,
+      user_reaction: currentUserId && p.reactions && p.reactions[currentUserId]
+        ? (typeof p.reactions[currentUserId] === 'string' ? p.reactions[currentUserId] : (p.reactions[currentUserId].type || 'CARE'))
+        : null,
     }));
 
     // User feeding logs
