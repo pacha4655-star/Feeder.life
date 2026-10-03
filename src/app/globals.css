@@ -6781,17 +6781,29 @@ img:not([style*="width"]):not(.avatar-img):not(.post-media-img):not(.feeder-mobi
 }
 
 .feeder-settings-badge-pill {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  align-self: center;
+  box-sizing: border-box;
+  font-size: 11.5px;
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 10px;
+  line-height: 1;
+  padding: 5px 10px;
+  border-radius: 12px;
   background: var(--brand-primary);
   color: #ffffff;
+  letter-spacing: 0.01em;
 }
 
 .feeder-settings-chevron {
   color: var(--text-subtle);
   flex-shrink: 0;
+  align-self: center;
 }
 
 /* Content Pane (Right) - Independent Vertical Scroll */

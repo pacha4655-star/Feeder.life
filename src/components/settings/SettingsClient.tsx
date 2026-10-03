@@ -886,12 +886,10 @@ export default function SettingsClient({ user, initialSection }: SettingsClientP
                           <IconComponent size={18} />
                         </div>
                         <div className="feeder-settings-nav-row-text">
-                          <div className="feeder-settings-nav-row-title-wrap">
-                            <span className="feeder-settings-nav-row-title">{item.label}</span>
-                            {item.badge && <span className="feeder-settings-badge-pill">{item.badge}</span>}
-                          </div>
+                          <span className="feeder-settings-nav-row-title">{item.label}</span>
                           <span className="feeder-settings-nav-row-desc">{item.description}</span>
                         </div>
+                        {item.badge && <span className="feeder-settings-badge-pill">{item.badge}</span>}
                         <ChevronRight size={16} className="feeder-settings-chevron" />
                       </button>
                     );
