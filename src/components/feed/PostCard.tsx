@@ -20,6 +20,9 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
+  EyeOff,
+  Sliders,
+  Info,
 } from 'lucide-react';
 import type { PostWithAuthor } from '@/lib/services/feed-ranking';
 import type { UserSession } from '@/lib/auth/session';
@@ -132,6 +135,56 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
   // Comment delete confirmation state
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [isDeletingCommentId, setIsDeletingCommentId] = useState<string | null>(null);
+
+  // Recommendation & User Control States
+  const [isNotInterested, setIsNotInterested] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
+  const [showDebugScore, setShowDebugScore] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
+  const dwellRecordedRef = useRef(false);
+
+  // Telemetry: Record meaningful dwell time (>2s) via IntersectionObserver
+  useEffect(() => {
+    if (typeof window === 'undefined' || !cardRef.current || dwellRecordedRef.current) return;
+
+    let dwellTimer: NodeJS.Timeout | null = null;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          if (!dwellTimer && !dwellRecordedRef.current) {
+            dwellTimer = setTimeout(() => {
+              dwellRecordedRef.current = true;
+              fetch('/api/feed/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  eventType: 'view',
+                  postId: post.id,
+                  authorId: post.author_id,
+                  durationMs: 2500,
+                  topics: post.tags,
+                }),
+              }).catch(() => {});
+            }, 2000);
+          }
+        } else {
+          if (dwellTimer) {
+            clearTimeout(dwellTimer);
+            dwellTimer = null;
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(cardRef.current);
+    return () => {
+      if (dwellTimer) clearTimeout(dwellTimer);
+      observer.disconnect();
+    };
+  }, [post.id, post.author_id, post.tags]);
 
   const isLiked = !!userReaction;
   const isAuthorOrStaff = !!(
@@ -539,12 +592,77 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
     } catch {}
   };
 
-  if (isDeleted) {
+  const handleNotInterested = async () => {
+    setShowMenu(false);
+    setIsNotInterested(true);
+    try {
+      await fetch('/api/feed/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'not_interested',
+          postId: post.id,
+          authorId: post.author_id,
+          topics: post.tags,
+        }),
+      });
+    } catch {}
+  };
+
+  const handleHidePost = async () => {
+    setShowMenu(false);
+    setIsHidden(true);
+    try {
+      await fetch('/api/feed/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'hide',
+          postId: post.id,
+          authorId: post.author_id,
+          topics: post.tags,
+        }),
+      });
+    } catch {}
+  };
+
+  if (isDeleted || isHidden) {
     return null;
   }
 
+  if (isNotInterested) {
+    return (
+      <article
+        className="card feed-post-card"
+        style={{
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'var(--bg-secondary)',
+          border: '1px dashed var(--border-subtle)',
+          borderRadius: 'var(--radius-md)',
+          margin: '12px 0',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: 'var(--text-muted)' }}>
+          <EyeOff size={18} color="var(--brand-primary)" />
+          <span>You selected <strong>Not Interested</strong>. We will show fewer posts like this in your feed.</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsNotInterested(false)}
+          className="btn btn-secondary"
+          style={{ padding: '4px 12px', fontSize: '12px', minHeight: '32px' }}
+        >
+          Undo
+        </button>
+      </article>
+    );
+  }
+
   return (
-    <article className="card feed-post-card" id={post.id}>
+    <article ref={cardRef as any} className="card feed-post-card" id={post.id}>
       {/* 1. Post Header */}
       <div
         className="post-header"
@@ -704,6 +822,20 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
                 </>
               )}
 
+              {!isAuthor && (
+                <>
+                  <button className="sidebar-nav-item" onClick={handleNotInterested} style={{ padding: '8px' }}>
+                    <EyeOff size={16} color="var(--text-muted)" />
+                    <span style={{ fontSize: '13px' }}>Not Interested</span>
+                  </button>
+
+                  <button className="sidebar-nav-item" onClick={handleHidePost} style={{ padding: '8px' }}>
+                    <Ban size={16} color="var(--text-muted)" />
+                    <span style={{ fontSize: '13px' }}>Hide Post</span>
+                  </button>
+                </>
+              )}
+
               {!isAuthor && currentUser && (
                 <button
                   className="sidebar-nav-item"
@@ -728,10 +860,68 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
                 <ShieldOff size={16} color="#b91c1c" />
                 <span style={{ fontSize: '13px' }}>Report Cruelty Concern</span>
               </button>
+
+              {post.ranking_debug && (
+                <button
+                  className="sidebar-nav-item"
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowDebugScore(!showDebugScore);
+                  }}
+                  style={{ padding: '8px', color: 'var(--brand-primary)', borderTop: '1px solid var(--border-subtle)' }}
+                >
+                  <Sliders size={16} color="var(--brand-primary)" />
+                  <span style={{ fontSize: '13px' }}>Explain Ranking ({post.ranking_score})</span>
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Developer / Admin Ranking Explanation Panel */}
+      {showDebugScore && post.ranking_debug && (
+        <div
+          className="card"
+          style={{
+            padding: '12px 16px',
+            marginBottom: '12px',
+            backgroundColor: 'var(--bg-secondary)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-focus, #2E7D32)',
+            fontSize: '12px',
+            lineHeight: 1.6,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <strong style={{ color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <Sliders size={14} /> Feeder Recommendation Engine v1 Score
+            </strong>
+            <button
+              onClick={() => setShowDebugScore(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              &times;
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '6px' }}>
+            <div>Interest: <strong>{post.ranking_debug.interestScore}</strong> (w: 0.22)</div>
+            <div>Watch/Dwell: <strong>{post.ranking_debug.watchScore}</strong> (w: 0.18)</div>
+            <div>Engagement: <strong>{post.ranking_debug.engagementScore}</strong> (w: 0.15)</div>
+            <div>Author Affinity: <strong>{post.ranking_debug.authorAffinityScore}</strong> (w: 0.12)</div>
+            <div>Share: <strong>{post.ranking_debug.shareScore}</strong> (w: 0.10)</div>
+            <div>Save: <strong>{post.ranking_debug.saveScore}</strong> (w: 0.08)</div>
+            <div>Freshness: <strong>{post.ranking_debug.freshnessScore}</strong> (w: 0.06)</div>
+            <div>Quality: <strong>{post.ranking_debug.qualityScore}</strong> (w: 0.05)</div>
+            <div>Discovery: <strong>{post.ranking_debug.discoveryScore}</strong> (w: 0.04)</div>
+            <div>Penalty: <strong>{post.ranking_debug.negativePenalty}</strong></div>
+          </div>
+          <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between' }}>
+            <span>Topics: <strong>{post.ranking_debug.topics.join(', ') || 'general'}</strong></span>
+            <span style={{ fontWeight: 700, color: 'var(--brand-primary)' }}>Final Score: {post.ranking_debug.finalScore}</span>
+          </div>
+        </div>
+      )}
 
       {/* 2. Post Content */}
       <div

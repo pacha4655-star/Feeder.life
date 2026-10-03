@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const lonParam = searchParams.get('lon');
     const userLat = latParam ? parseFloat(latParam) : undefined;
     const userLon = lonParam ? parseFloat(lonParam) : undefined;
+    const isDebug = searchParams.get('debug') === 'true' || (user as any)?.role === 'PLATFORM_ADMIN';
 
     const result = await FeedRankingService.getRankedFeedPaginated({
       userId: user ? user.id : 'guest',
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest) {
       cursor,
       userLat,
       userLon,
+      debug: isDebug,
     });
 
     return NextResponse.json({
