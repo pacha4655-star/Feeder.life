@@ -61,7 +61,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Increment post stats (views, video watch) if relevant
+    // 3. Persist telemetry event record in platform_data for real-world metrics audit
+    try {
+      await supabase.from('platform_data').insert({
+        data_type: 'audit',
+        user_id: userId !== 'guest' ? userId : null,
+        target_id: postId,
+        data: {
+          subtype: 'recommendation_telemetry',
+          event_type: eventType,
+          author_id: authorId || null,
+          duration_ms: durationMs || null,
+          completion_ratio: completionRatio || null,
+          topics,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (auditErr) {
+      console.warn('[FeedEvents] Non-fatal audit log write error:', auditErr);
+    }
+
+    // 4. Increment post stats (views, video watch) if relevant
     if (eventType === 'view' || eventType === 'video_complete') {
       try {
         const { data: postData } = await supabase

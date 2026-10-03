@@ -106,6 +106,13 @@ export default async function AdminPage() {
     user_name: a.users?.display_name || 'System',
   }));
 
+  // Fetch recommendation report if PLATFORM_ADMIN
+  let recommendationReport = null;
+  if (user.role === 'PLATFORM_ADMIN') {
+    const { RecommendationMetricsService } = await import('@/lib/recommendation/metrics-service');
+    recommendationReport = await RecommendationMetricsService.getMetricsReport('30d').catch(() => null);
+  }
+
   return (
     <AppShell user={user} activeTab="admin" showRightSidebar={false}>
       <AdminClient
@@ -114,6 +121,7 @@ export default async function AdminPage() {
         initialUsers={users}
         initialCommunities={communities}
         initialAuditLogs={auditLogs}
+        initialRecommendationReport={recommendationReport}
       />
     </AppShell>
   );
