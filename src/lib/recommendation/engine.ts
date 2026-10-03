@@ -149,10 +149,10 @@ export class FeederRecommendationEngine {
         }
         const interestScore = Math.min(1.0, rawInterest / Math.max(1, topics.length));
 
-        // 2. Watch Score: expected video completion / dwell affinity
+        // 2. Watch / Dwell Score: expected video completion / dwell affinity
         const isVideo = postContentType === 'VIDEO' || mediaUrls.some((u: string) => /\.(mp4|webm|mov)/i.test(u));
-        const watchScore = isVideo
-          ? Math.min(1.0, 0.4 + (userProfile.topicAffinities['educational'] || 0.2) * 0.5)
+        let watchScore = isVideo
+          ? Math.min(1.0, 0.4 + (userProfile.topicAffinities['education'] || 0.2) * 0.5)
           : Math.min(1.0, 0.5 + (mediaList.length > 0 ? 0.2 : 0));
 
         // 3. Engagement Velocity Score
@@ -180,8 +180,21 @@ export class FeederRecommendationEngine {
         const authorAffinityScore = Math.min(1.0, (isFollowed ? 0.5 : 0) + priorAuthorAffinity * 0.5);
 
         // 5. Share & Save Scores
-        const shareScore = Math.min(1.0, shareCount / 10);
-        const saveScore = Math.min(1.0, savesCount / 8);
+        let shareScore = Math.min(1.0, shareCount / 10);
+        let saveScore = Math.min(1.0, savesCount / 8);
+
+        // Content-Type Modifiers (Section 21)
+        if (isVideo) {
+          watchScore = Math.min(1.0, watchScore * 1.25);
+          shareScore = Math.min(1.0, shareScore * 1.15);
+        } else if (topics.includes('education') || postContentType === 'EDUCATIONAL') {
+          saveScore = Math.min(1.0, saveScore * 1.35);
+        } else if (topics.includes('adoption') || postContentType === 'ADOPTION') {
+          saveScore = Math.min(1.0, saveScore * 1.30);
+        } else if (mediaList.length > 0) {
+          saveScore = Math.min(1.0, saveScore * 1.15);
+          shareScore = Math.min(1.0, shareScore * 1.10);
+        }
 
         // 6. Freshness Score with exponential decay
         const freshnessScore = Math.exp(-postAgeHours / this.config.freshnessDecayHours);
@@ -194,7 +207,7 @@ export class FeederRecommendationEngine {
           hashtags: tags,
         });
 
-        // 8. Discovery Score: Exploration boost for new/fresh content with low interactions
+        // 8. Discovery & Collaborative Exploration Score
         const isFreshColdStart = postAgeHours < 48 && reactionCount < 5 && commentCount < 2;
         const discoveryScore = isFreshColdStart ? 0.85 : 0.15;
 
@@ -213,8 +226,8 @@ export class FeederRecommendationEngine {
           weights.watch * watchScore +
           weights.engagement * engagementScore +
           weights.authorAffinity * authorAffinityScore +
-          weights.share * shareScore +
           weights.save * saveScore +
+          weights.share * shareScore +
           weights.freshness * freshnessScore +
           weights.quality * qualityScore +
           weights.discovery * discoveryScore -
@@ -234,8 +247,8 @@ export class FeederRecommendationEngine {
           watchScore: Math.round(watchScore * 100) / 100,
           engagementScore: Math.round(engagementScore * 100) / 100,
           authorAffinityScore: Math.round(authorAffinityScore * 100) / 100,
-          shareScore: Math.round(shareScore * 100) / 100,
           saveScore: Math.round(saveScore * 100) / 100,
+          shareScore: Math.round(shareScore * 100) / 100,
           freshnessScore: Math.round(freshnessScore * 100) / 100,
           qualityScore: Math.round(qualityScore * 100) / 100,
           discoveryScore: Math.round(discoveryScore * 100) / 100,
@@ -316,14 +329,50 @@ export class FeederRecommendationEngine {
       return { items, nextCursor, hasMore };
     } catch (err) {
       console.error('[FeederRecommendationEngine] Error generating personalized feed:', err);
-      return { items: [], nextCursor: null, hasMore: false };
+      // Graceful Fallback (Section 45): Return basic chronological feed
+      try {
+        const { data: fallbackRows } = await supabase
+          .from('social_posts')
+          .select('*')
+          .eq('record_type', 'post')
+          .eq('is_active', true)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false })
+          .limit(limit);
+
+        const items: RankedPostItem[] = (fallbackRows || []).map((row: any) => ({
+          id: row.id,
+          author_id: row.user_id,
+          author_name: 'Feeder Guardian',
+          author_username: 'feeder',
+          author_avatar: '',
+          author_role: 'USER',
+          author_feeder_level: 'Grassroots Feeder',
+          content_type: 'TEXT',
+          body: row.content || '',
+          media_urls: [],
+          tags: row.hashtags || [],
+          visibility: row.visibility || 'public',
+          reaction_count: row.likes_count || 0,
+          comment_count: row.comments_count || 0,
+          share_count: 0,
+          user_reaction: null,
+          is_saved: false,
+          created_at: row.created_at,
+          ranking_score: 0.5,
+        }));
+
+        return { items, nextCursor: null, hasMore: false };
+      } catch {
+        return { items: [], nextCursor: null, hasMore: false };
+      }
     }
   }
 
   /**
    * Applies diversity rules:
-   * - Limits consecutive posts from the same author to maxConsecutiveSameAuthor (default 2).
-   * - Blends exploration candidates to avoid cold-start starvation.
+   * - Limits consecutive posts from the same author to maxConsecutiveSameAuthor (default 3).
+   * - Interleaves topics and content formats to prevent feed fatigue.
    */
   private static applyDiversityReranking(items: RankedPostItem[]): RankedPostItem[] {
     if (items.length <= 3) return items;
@@ -332,6 +381,8 @@ export class FeederRecommendationEngine {
     const remaining = [...items];
     const authorConsecutiveCount: Record<string, number> = {};
     let lastAuthorId: string | null = null;
+    let lastTopic: string | null = null;
+    let topicConsecutiveCount: Record<string, number> = {};
 
     while (remaining.length > 0) {
       let chosenIndex = -1;
@@ -339,11 +390,20 @@ export class FeederRecommendationEngine {
       for (let i = 0; i < remaining.length; i++) {
         const candidate = remaining[i];
         const authorId = candidate.author_id;
+        const primaryTopic = candidate.ranking_debug?.topics?.[0] || 'general';
 
+        // Check author diversity
         if (authorId === lastAuthorId) {
           const currentCount = authorConsecutiveCount[authorId] || 1;
           if (currentCount >= this.config.diversity.maxConsecutiveSameAuthor) {
-            // Skip this candidate for now to preserve author diversity
+            continue;
+          }
+        }
+
+        // Check topic diversity
+        if (primaryTopic === lastTopic && primaryTopic !== 'general') {
+          const currentTopicCount = topicConsecutiveCount[primaryTopic] || 1;
+          if (currentTopicCount >= this.config.diversity.maxConsecutiveSameTopic) {
             continue;
           }
         }
@@ -352,7 +412,7 @@ export class FeederRecommendationEngine {
         break;
       }
 
-      // Fallback if all candidates are from the same author
+      // Fallback if all candidates violate diversity criteria
       if (chosenIndex === -1) {
         chosenIndex = 0;
       }
@@ -360,11 +420,21 @@ export class FeederRecommendationEngine {
       const [selected] = remaining.splice(chosenIndex, 1);
       result.push(selected);
 
+      // Update author counters
       if (selected.author_id === lastAuthorId) {
         authorConsecutiveCount[selected.author_id] = (authorConsecutiveCount[selected.author_id] || 1) + 1;
       } else {
         lastAuthorId = selected.author_id;
         authorConsecutiveCount[selected.author_id] = 1;
+      }
+
+      // Update topic counters
+      const selectedTopic = selected.ranking_debug?.topics?.[0] || 'general';
+      if (selectedTopic === lastTopic) {
+        topicConsecutiveCount[selectedTopic] = (topicConsecutiveCount[selectedTopic] || 1) + 1;
+      } else {
+        lastTopic = selectedTopic;
+        topicConsecutiveCount[selectedTopic] = 1;
       }
     }
 

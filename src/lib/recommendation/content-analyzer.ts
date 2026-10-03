@@ -7,13 +7,18 @@ const TOPIC_KEYWORDS: Record<AnimalWelfareTopic, RegExp> = {
   cattle: /\b(cow|cows|calf|cattle|bull|buffalo|goat|sheep)\b/i,
   wildlife: /\b(wildlife|monkey|squirrel|deer|snake|reptile|forest)\b/i,
   rescue: /\b(rescue|rescued|injured|emergency|treatment|ambulance|rehab|saved|critical)\b/i,
-  adoption: /\b(adoption|adopt|foster|forever home|rehome|puppy adoption|kitten adoption)\b/i,
   feeding: /\b(feeding|fed|stray feeding|food drive|kibble|rice|meals|hungry|nourish)\b/i,
-  welfare: /\b(welfare|rights|advocate|guardian|protection|care|shelter|sanctuary)\b/i,
+  adoption: /\b(adoption|adopt|foster|forever home|rehome|puppy adoption|kitten adoption)\b/i,
+  welfare: /\b(welfare|advocate|guardian|protection|care|shelter|sanctuary)\b/i,
   veterinary: /\b(vet|veterinary|vaccine|vaccination|surgery|doctor|medicine|sterilization|neutered|spayed)\b/i,
+  pet_care: /\b(pet care|grooming|brushing|leash|dog training|cat care|pet health)\b/i,
+  street_animals: /\b(street animal|stray|strays|community dog|community cat|free roaming)\b/i,
   lost_found: /\b(lost|found|missing|reunited|collar|lost dog|lost cat)\b/i,
+  animal_rights: /\b(animal rights|cruelty|illegal|advocacy|justice|legal protection)\b/i,
   community: /\b(community|volunteer|meetup|volunteers|drive|group|team|event|local)\b/i,
-  educational: /\b(guide|tips|how to|education|training|nutrition|awareness|safety|learn)\b/i,
+  education: /\b(guide|tips|how to|education|training|nutrition|awareness|safety|learn)\b/i,
+  animal_safety: /\b(safety|first aid|heatstroke|toxic food|poison|emergency care)\b/i,
+  emergency_rescue: /\b(emergency rescue|sos|critical condition|hit and run|trapped|distress)\b/i,
 };
 
 export interface ContentAnalysisResult {
