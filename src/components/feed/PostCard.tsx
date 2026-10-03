@@ -957,7 +957,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <strong style={{ color: 'var(--brand-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Sliders size={14} /> Feeder Recommendation Engine v1 Score
+              <Sliders size={14} /> FeederSense V1.0 Score
             </strong>
             <button
               onClick={() => setShowDebugScore(false)}
@@ -968,14 +968,14 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '6px' }}>
             <div>Interest: <strong>{post.ranking_debug.interestScore}</strong> (w: 0.22)</div>
-            <div>Watch/Dwell: <strong>{post.ranking_debug.watchScore}</strong> (w: 0.18)</div>
-            <div>Engagement: <strong>{post.ranking_debug.engagementScore}</strong> (w: 0.15)</div>
+            <div>Watch/Dwell: <strong>{post.ranking_debug.watchScore}</strong> (w: 0.16)</div>
+            <div>Engagement: <strong>{post.ranking_debug.engagementScore}</strong> (w: 0.14)</div>
             <div>Author Affinity: <strong>{post.ranking_debug.authorAffinityScore}</strong> (w: 0.12)</div>
-            <div>Share: <strong>{post.ranking_debug.shareScore}</strong> (w: 0.10)</div>
-            <div>Save: <strong>{post.ranking_debug.saveScore}</strong> (w: 0.08)</div>
-            <div>Freshness: <strong>{post.ranking_debug.freshnessScore}</strong> (w: 0.06)</div>
+            <div>Save: <strong>{post.ranking_debug.saveScore}</strong> (w: 0.10)</div>
+            <div>Share: <strong>{post.ranking_debug.shareScore}</strong> (w: 0.08)</div>
+            <div>Freshness: <strong>{post.ranking_debug.freshnessScore}</strong> (w: 0.07)</div>
             <div>Quality: <strong>{post.ranking_debug.qualityScore}</strong> (w: 0.05)</div>
-            <div>Discovery: <strong>{post.ranking_debug.discoveryScore}</strong> (w: 0.04)</div>
+            <div>Discovery: <strong>{post.ranking_debug.discoveryScore}</strong> (w: 0.06)</div>
             <div>Penalty: <strong>{post.ranking_debug.negativePenalty}</strong></div>
           </div>
           <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between' }}>

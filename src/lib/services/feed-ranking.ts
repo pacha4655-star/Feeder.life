@@ -49,7 +49,7 @@ export interface PostWithAuthor {
 
 export class FeedRankingService {
   /**
-   * Main entry point for paginated personalized feed ranking (Feeder Recommendation Engine v1).
+   * Main entry point for paginated personalized feed ranking powered by FeederSense V1.0.
    */
   static async getRankedFeedPaginated(options: FeedQueryOptions): Promise<FeedResponse> {
     return FeederRecommendationEngine.getPersonalizedFeed(options);

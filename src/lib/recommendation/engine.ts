@@ -441,3 +441,9 @@ export class FeederRecommendationEngine {
     return result;
   }
 }
+
+/**
+ * Official Alias: FeederSense — Feeder.life's Hybrid Personalized Recommendation Engine
+ */
+export const FeederSenseEngine = FeederRecommendationEngine;
+export const FeederSense = FeederRecommendationEngine;

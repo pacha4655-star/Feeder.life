@@ -1,9 +1,18 @@
 /**
- * Feeder Recommendation Engine v1 — Configuration & Parameters
+ * FeederSense — Feeder.life’s Hybrid Personalized Recommendation Engine
  *
- * Configurable, versioned scoring weights and hyperparameters for personalized
- * content ranking inspired by transparent recommendation principles.
+ * FeederSense is Feeder.life’s hybrid personalized recommendation engine that ranks
+ * content using user interests, engagement, watch/dwell time, author affinity, freshness,
+ * discovery, negative feedback, content quality, and diversity signals.
+ *
+ * Product Version: FeederSense V1.0
+ * Technical Version: v1.0.0
  */
+
+export const ALGORITHM_NAME = 'FeederSense';
+export const ALGORITHM_FULL_NAME = "FeederSense — Feeder.life’s Hybrid Personalized Recommendation Engine";
+export const ALGORITHM_PRODUCT_VERSION = 'FeederSense V1.0';
+export const ALGORITHM_TECHNICAL_VERSION = 'v1.0.0';
 
 export interface RankingWeights {
   interest: number;
@@ -19,6 +28,7 @@ export interface RankingWeights {
 }
 
 export interface RecommendationConfig {
+  algorithmName?: string;
   algorithmVersion: string;
   weights: RankingWeights;
   freshnessDecayHours: number;
@@ -31,7 +41,8 @@ export interface RecommendationConfig {
 }
 
 export const FEEDER_RECOMMENDATION_CONFIG_V1: RecommendationConfig = {
-  algorithmVersion: 'v1.0.0',
+  algorithmName: ALGORITHM_NAME,
+  algorithmVersion: ALGORITHM_TECHNICAL_VERSION,
   weights: {
     interest: 0.22,
     watch: 0.16,
@@ -52,6 +63,8 @@ export const FEEDER_RECOMMENDATION_CONFIG_V1: RecommendationConfig = {
   },
   dwellTimeThresholdMs: 2000, // 2 seconds threshold for meaningful image/text dwell
 };
+
+export const FEEDERSENSE_CONFIG_V1 = FEEDER_RECOMMENDATION_CONFIG_V1;
 
 export const ANIMAL_WELFARE_TOPICS = [
   'dogs',

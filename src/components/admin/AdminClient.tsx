@@ -106,7 +106,7 @@ export default function AdminClient({
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
               <Sparkles size={14} color="#f59e0b" />
-              Recommendation Engine v1
+              FeederSense V1.0
             </button>
           )}
         </div>
@@ -274,10 +274,10 @@ export default function AdminClient({
             <div>
               <h2 style={{ fontSize: '16px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Sparkles size={18} color="#f59e0b" />
-                Feeder Recommendation Engine v1 — Real-World Performance
+                FeederSense V1.0 — Real-World Performance
               </h2>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Auditing candidate generation, engagement velocity, dwell times, and algorithmic pipeline health.
+                Feeder.life’s Hybrid Personalized Recommendation Engine &bull; Auditing candidate generation, engagement velocity, dwell times, and algorithmic pipeline health.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
