@@ -33,13 +33,19 @@ function PostMediaItem({
   url,
   alt = 'Animal welfare post media',
   style = {},
+  postId,
+  authorId,
 }: {
   url: string;
   alt?: string;
   style?: React.CSSProperties;
+  postId?: string;
+  authorId?: string;
 }) {
   const [hasError, setHasError] = useState(false);
   const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+  const videoStartedRef = useRef(false);
+  const milestonesRef = useRef({ p25: false, p50: false, p75: false, p100: false });
 
   if (hasError) {
     return (
@@ -67,11 +73,67 @@ function PostMediaItem({
   }
 
   if (isVideo) {
+    const handlePlay = () => {
+      if (!videoStartedRef.current && postId) {
+        videoStartedRef.current = true;
+        fetch('/api/feed/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventType: 'video_start', postId, authorId }),
+        }).catch(() => {});
+      }
+    };
+
+    const handleTimeUpdate = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      if (!postId) return;
+      const v = e.currentTarget;
+      if (!v.duration || isNaN(v.duration) || v.duration <= 0) return;
+      const ratio = v.currentTime / v.duration;
+
+      if (ratio >= 0.25 && !milestonesRef.current.p25) {
+        milestonesRef.current.p25 = true;
+        fetch('/api/feed/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventType: 'video_25', postId, authorId, completionRatio: 0.25, durationMs: Math.round(v.currentTime * 1000) }),
+        }).catch(() => {});
+      } else if (ratio >= 0.5 && !milestonesRef.current.p50) {
+        milestonesRef.current.p50 = true;
+        fetch('/api/feed/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventType: 'video_50', postId, authorId, completionRatio: 0.5, durationMs: Math.round(v.currentTime * 1000) }),
+        }).catch(() => {});
+      } else if (ratio >= 0.75 && !milestonesRef.current.p75) {
+        milestonesRef.current.p75 = true;
+        fetch('/api/feed/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventType: 'video_75', postId, authorId, completionRatio: 0.75, durationMs: Math.round(v.currentTime * 1000) }),
+        }).catch(() => {});
+      }
+    };
+
+    const handleEnded = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      if (postId && !milestonesRef.current.p100) {
+        milestonesRef.current.p100 = true;
+        const v = e.currentTarget;
+        fetch('/api/feed/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventType: 'video_complete', postId, authorId, completionRatio: 1.0, durationMs: Math.round((v.duration || 5) * 1000) }),
+        }).catch(() => {});
+      }
+    };
+
     return (
       <video
         src={url}
         controls
         playsInline
+        onPlay={handlePlay}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
         onError={() => setHasError(true)}
         style={{
           width: '100%',
@@ -1007,7 +1069,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       {/* 3. Post Media Layout */}
       {post.media_urls && post.media_urls.length === 1 ? (
         <div className="post-media-box" style={{ borderRadius: '10px', overflow: 'hidden', margin: '10px 0' }}>
-          <PostMediaItem url={post.media_urls[0]} style={{ maxHeight: '440px' }} />
+          <PostMediaItem url={post.media_urls[0]} style={{ maxHeight: '440px' }} postId={post.id} authorId={post.author_id} />
         </div>
       ) : post.media_urls && post.media_urls.length === 2 ? (
         <div
@@ -1022,8 +1084,8 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
             height: '280px',
           }}
         >
-          <PostMediaItem url={post.media_urls[0]} />
-          <PostMediaItem url={post.media_urls[1]} />
+          <PostMediaItem url={post.media_urls[0]} postId={post.id} authorId={post.author_id} />
+          <PostMediaItem url={post.media_urls[1]} postId={post.id} authorId={post.author_id} />
         </div>
       ) : post.media_urls && post.media_urls.length === 3 ? (
         <div
@@ -1039,14 +1101,14 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
           }}
         >
           <div style={{ height: '100%', overflow: 'hidden' }}>
-            <PostMediaItem url={post.media_urls[0]} />
+            <PostMediaItem url={post.media_urls[0]} postId={post.id} authorId={post.author_id} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', height: '100%' }}>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <PostMediaItem url={post.media_urls[1]} />
+              <PostMediaItem url={post.media_urls[1]} postId={post.id} authorId={post.author_id} />
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <PostMediaItem url={post.media_urls[2]} />
+              <PostMediaItem url={post.media_urls[2]} postId={post.id} authorId={post.author_id} />
             </div>
           </div>
         </div>
@@ -1065,7 +1127,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         >
           {post.media_urls.slice(0, 4).map((url, idx) => (
             <div key={idx} style={{ height: '100%', overflow: 'hidden', position: 'relative' }}>
-              <PostMediaItem url={url} />
+              <PostMediaItem url={url} postId={post.id} authorId={post.author_id} />
               {idx === 3 && post.media_urls.length > 4 && (
                 <div
                   style={{
