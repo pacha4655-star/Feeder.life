@@ -20,11 +20,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { eventType, postId, authorId, durationMs, completionRatio, topics: rawTopics } = body;
+    const { eventType, postId: rawPostId, authorId, durationMs: rawDuration, completionRatio: rawRatio, topics: rawTopics } = body;
 
+    const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
     if (!eventType || !postId) {
       return NextResponse.json({ error: 'eventType and postId are required' }, { status: 400 });
     }
+
+    // Data-quality sanitization: prevent negative or impossible durations & ratios
+    const durationMs = typeof rawDuration === 'number' && rawDuration > 0 && rawDuration < 86400000
+      ? Math.round(rawDuration)
+      : null;
+    const completionRatio = typeof rawRatio === 'number' && rawRatio >= 0 && rawRatio <= 1.0
+      ? Math.round(rawRatio * 1000) / 1000
+      : null;
 
     const supabase = getSupabaseServerClient();
 
@@ -56,8 +65,8 @@ export async function POST(request: NextRequest) {
         topics,
         authorId,
         postId,
-        durationMs,
-        completionRatio,
+        durationMs: durationMs ?? undefined,
+        completionRatio: completionRatio ?? undefined,
       });
     }
 

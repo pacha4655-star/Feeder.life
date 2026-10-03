@@ -26,7 +26,7 @@ export default function AdminClient({
   const isPlatformAdmin = user.role === 'PLATFORM_ADMIN';
   const [activeTab, setActiveTab] = useState<'reports' | 'users' | 'communities' | 'audit' | 'recommendation'>('reports');
   const [reports, setReports] = useState(initialReports);
-  const [recRange, setRecRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [recRange, setRecRange] = useState<'7d' | '14d' | '30d' | '90d'>('30d');
   const [recReport, setRecReport] = useState<RecommendationMetricsReport | null>(initialRecommendationReport || null);
   const [loadingRec, setLoadingRec] = useState(false);
 
@@ -36,7 +36,7 @@ export default function AdminClient({
     );
   };
 
-  const handleRangeChange = async (range: '7d' | '30d' | '90d') => {
+  const handleRangeChange = async (range: '7d' | '14d' | '30d' | '90d') => {
     setRecRange(range);
     setLoadingRec(true);
     try {
@@ -274,14 +274,14 @@ export default function AdminClient({
             <div>
               <h2 style={{ fontSize: '16px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Sparkles size={18} color="#f59e0b" />
-                FeederSense V1.0 — Real-World Performance
+                FeederSense V1.0 — Observation & Learning Phase
               </h2>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Feeder.life’s Hybrid Personalized Recommendation Engine &bull; Auditing candidate generation, engagement velocity, dwell times, and algorithmic pipeline health.
+                Feeder.life’s Hybrid Personalized Recommendation Engine (v1.0.0 Baseline Frozen). Observational telemetry streaming for human-reviewed V1.1 preparation.
               </p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
-              {(['7d', '30d', '90d'] as const).map((r) => (
+              {(['7d', '14d', '30d', '90d'] as const).map((r) => (
                 <button
                   key={r}
                   onClick={() => handleRangeChange(r)}
@@ -297,7 +297,7 @@ export default function AdminClient({
                     cursor: 'pointer',
                   }}
                 >
-                  {r === '7d' ? 'Last 7 Days' : r === '30d' ? 'Last 30 Days' : 'Last 90 Days'}
+                  {r === '7d' ? '7 Days' : r === '14d' ? '14 Days' : r === '30d' ? '30 Days' : '90 Days'}
                 </button>
               ))}
             </div>
@@ -305,6 +305,93 @@ export default function AdminClient({
 
           {recReport ? (
             <>
+              {/* V1.1 Readiness Review Gate Banner */}
+              <div
+                className="card"
+                style={{
+                  padding: '20px',
+                  background:
+                    recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                      ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.05) 100%)'
+                      : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(147, 51, 234, 0.05) 100%)',
+                  border:
+                    recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                      : '1px solid rgba(59, 130, 246, 0.25)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                          background:
+                            recReport.v11Readiness?.status === 'READY FOR V1.1 REVIEW'
+                              ? '#10b981'
+                              : 'var(--brand-primary)',
+                          color: '#ffffff',
+                        }}
+                      >
+                        {recReport.v11Readiness?.status || 'OBSERVATION IN PROGRESS'}
+                      </span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
+                        Window: {recReport.timeRange.toUpperCase()} ({recReport.startDate.split('T')[0]} to {recReport.endDate.split('T')[0]})
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+                      {recReport.v11Readiness?.recommendationNote}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>Algorithm Safety Lock</div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#10b981', marginTop: '2px' }}>
+                      LOCKED (Zero Auto-tuning)
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                    gap: '12px',
+                    marginTop: '16px',
+                    paddingTop: '16px',
+                    borderTop: '1px solid var(--border-subtle)',
+                    fontSize: '12px',
+                  }}
+                >
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Audit Telemetry:</span>{' '}
+                    <strong>{recReport.v11Readiness?.totalTelemetryEvents.toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Active Creators:</span>{' '}
+                    <strong>{recReport.v11Readiness?.activeCreatorsCount}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>New Creators:</span>{' '}
+                    <strong>{recReport.v11Readiness?.newCreatorsCount}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Video Sessions:</span>{' '}
+                    <strong>{recReport.v11Readiness?.videoSessions.toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Sufficient Data:</span>{' '}
+                    <strong style={{ color: recReport.v11Readiness?.isDatasetSufficient ? '#10b981' : '#f59e0b' }}>
+                      {recReport.v11Readiness?.isDatasetSufficient ? 'YES' : 'COLLECTING'}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
               {/* Top KPI Cards Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                 <div className="card" style={{ padding: '16px' }}>
@@ -320,7 +407,7 @@ export default function AdminClient({
                 </div>
 
                 <div className="card" style={{ padding: '16px' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Video Watch Time</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Video Watch & Completion</div>
                   <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>{recReport.summary.avgVideoWatchTimeSec}s</div>
                   <div style={{ fontSize: '11px', color: '#10b981', marginTop: '2px' }}>{recReport.summary.videoCompletionRate}% completion rate</div>
                 </div>
@@ -332,9 +419,9 @@ export default function AdminClient({
                 </div>
 
                 <div className="card" style={{ padding: '16px' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Save / Share Rate</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Save / Share / Follow</div>
                   <div style={{ fontSize: '24px', fontWeight: 800, marginTop: '4px' }}>{recReport.summary.saveRate}% / {recReport.summary.shareRate}%</div>
-                  <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>High advocacy signals</div>
+                  <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '2px' }}>{recReport.summary.followConversionRate}% follow conversion</div>
                 </div>
 
                 <div className="card" style={{ padding: '16px' }}>
@@ -344,6 +431,99 @@ export default function AdminClient({
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                     {recReport.summary.notInterestedRate}% not interested &bull; {recReport.summary.hideRate}% hide
+                  </div>
+                </div>
+              </div>
+
+              {/* 9-Signal Performance Observation Matrix */}
+              {recReport.signalObservation && (
+                <div className="card" style={{ padding: '18px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={16} color="var(--brand-primary)" />
+                    FeederSense V1.0 Signal Performance Observation (Baseline Frozen)
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="admin-table" style={{ width: '100%', fontSize: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th>Signal Name</th>
+                          <th>V1.0 Weight</th>
+                          <th>Status</th>
+                          <th>Observed Impression Share</th>
+                          <th>Engagement Lift</th>
+                          <th>Observation Telemetry Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(recReport.signalObservation).map(([key, sig]) => (
+                          <tr key={key}>
+                            <td><strong>{sig.name}</strong></td>
+                            <td><span style={{ fontWeight: 800, color: 'var(--brand-primary)' }}>{sig.weightPct}%</span></td>
+                            <td><span className="badge badge-neutral" style={{ fontSize: '10px' }}>{sig.status}</span></td>
+                            <td>{sig.observedImpressionShare}%</td>
+                            <td><strong style={{ color: '#10b981' }}>{sig.observedEngagementLift}</strong></td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>{sig.observationNote}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* New Creators vs Established Creators & Diversity */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                <div className="card" style={{ padding: '18px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px' }}>
+                    New Creator vs Established Creator Observation
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
+                    <div style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span><strong>New Creators (&lt; 30d)</strong></span>
+                        <span style={{ fontWeight: 800, color: 'var(--brand-primary)' }}>
+                          {recReport.byCreatorType.newCreators.impressionShare}% impression share
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Engagement: <strong>{recReport.byCreatorType.newCreators.engagementRate}%</strong> &bull; Save: <strong>{recReport.byCreatorType.newCreators.saveRate}%</strong> &bull; Follow: <strong>{recReport.byCreatorType.newCreators.followConversionRate}%</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span><strong>Established Creators</strong></span>
+                        <span style={{ fontWeight: 800, color: '#3b82f6' }}>
+                          {recReport.byCreatorType.establishedCreators.impressionShare}% impression share
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        Engagement: <strong>{recReport.byCreatorType.establishedCreators.engagementRate}%</strong> &bull; Save: <strong>{recReport.byCreatorType.establishedCreators.saveRate}%</strong> &bull; Follow: <strong>{recReport.byCreatorType.establishedCreators.followConversionRate}%</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '18px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px' }}>
+                    Content Diversity & Concentration
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <span>Same Author Constraint</span>
+                      <strong>Max {recReport.contentDiversityObservation?.sameCreatorMaxPerSession || 2} posts/session</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <span>Consecutive Topic Limit</span>
+                      <strong>Max {recReport.contentDiversityObservation?.sameTopicMaxConsecutive || 3} posts</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
+                      <span>Format Distribution</span>
+                      <span>Video: {recReport.contentDiversityObservation?.formatDistribution.video}% &bull; Photo: {recReport.contentDiversityObservation?.formatDistribution.photo}% &bull; Text: {recReport.contentDiversityObservation?.formatDistribution.text}%</span>
+                    </div>
+                    <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      {recReport.contentDiversityObservation?.diversityAssessment}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -382,55 +562,25 @@ export default function AdminClient({
                 </div>
               </div>
 
-              {/* Recommendation Candidate Source Breakdown */}
-              <div className="card" style={{ padding: '18px' }}>
-                <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px' }}>
-                  Recommendation Candidate Sources Distribution
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-                  {Object.entries(recReport.byRecommendationSource).map(([src, pct]) => (
-                    <div key={src} style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{src.replace(/([A-Z])/g, ' $1')}</div>
-                      <div style={{ fontSize: '16px', fontWeight: 800, marginTop: '4px', color: 'var(--brand-primary)' }}>{pct}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content Type & Format Matrices */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {/* Negative Feedback Breakdown */}
+              {recReport.negativeFeedbackBreakdown && (
                 <div className="card" style={{ padding: '18px' }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px' }}>By Content Format</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <span><strong>Video & Reels</strong> ({recReport.byFormat.video.count} active)</span>
-                      <span>Watch: {recReport.byFormat.video.avgWatchSec}s ({recReport.byFormat.video.completionRate}% complete)</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <span><strong>Photo / Media</strong> ({recReport.byFormat.photo.count} active)</span>
-                      <span>Dwell: {recReport.byFormat.photo.avgDwellSec}s ({recReport.byFormat.photo.saveRate}% saves)</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span><strong>Text / Guides</strong> ({recReport.byFormat.text.count} active)</span>
-                      <span>Dwell: {recReport.byFormat.text.avgDwellSec}s ({recReport.byFormat.text.commentRate}% comments)</span>
-                    </div>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShieldAlert size={16} color="var(--brand-sos)" />
+                    Negative Feedback Distribution by Source & Content
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', fontSize: '12px' }}>
+                    {Object.entries(recReport.negativeFeedbackBreakdown.byRecommendationSource).map(([src, item]) => (
+                      <div key={src} style={{ padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                        <div style={{ fontWeight: 800, marginBottom: '4px' }}>Source: {src}</div>
+                        <div style={{ color: 'var(--text-muted)' }}>
+                          Not Interested: <strong>{item.notInterested}</strong> &bull; Hide: <strong>{item.hide}</strong> &bull; Reports: <strong>{item.report}</strong>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                <div className="card" style={{ padding: '18px' }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: 800, marginBottom: '12px' }}>New vs Existing Creators</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-subtle)' }}>
-                      <span><strong>New Creators (&lt; 30d)</strong> ({recReport.byCreatorType.newCreators.postCount} posts)</span>
-                      <span style={{ color: '#10b981', fontWeight: 700 }}>{recReport.byCreatorType.newCreators.avgEngagementRate}% engagement</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span><strong>Established Creators</strong> ({recReport.byCreatorType.existingCreators.postCount} posts)</span>
-                      <span style={{ color: 'var(--brand-primary)', fontWeight: 700 }}>{recReport.byCreatorType.existingCreators.avgEngagementRate}% engagement</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* Telemetry Health Diagnostics */}
               <div className="card" style={{ padding: '16px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
@@ -439,7 +589,7 @@ export default function AdminClient({
                   <strong style={{ fontSize: '14px' }}>Telemetry Event Stream Active & Verified</strong>
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  Total audit records verified: {recReport.telemetryHealth.totalEventsRecorded.toLocaleString()} events. Continuous dwell tracking and video completion milestone events are actively streaming and learning user topic affinities.
+                  Total audit records verified: {recReport.telemetryHealth.totalEventsRecorded.toLocaleString()} events. Invalid/corrupt events discarded: {recReport.telemetryHealth.invalidEventsDiscarded}. Continuous dwell tracking and video completion milestone events are actively streaming and learning user topic affinities.
                 </div>
               </div>
             </>

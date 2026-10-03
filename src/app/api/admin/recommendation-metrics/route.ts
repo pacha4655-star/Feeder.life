@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const rangeParam = searchParams.get('range');
-    const range: '7d' | '30d' | '90d' =
-      rangeParam === '7d' ? '7d' : rangeParam === '90d' ? '90d' : '30d';
+    const range: '7d' | '14d' | '30d' | '90d' =
+      rangeParam === '7d' ? '7d' : rangeParam === '14d' ? '14d' : rangeParam === '90d' ? '90d' : '30d';
 
     const report = await RecommendationMetricsService.getMetricsReport(range);
 
