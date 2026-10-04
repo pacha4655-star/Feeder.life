@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PostComposerTrigger from './PostComposerTrigger';
 import PostCard from './PostCard';
 import StoriesRail from './StoriesRail';
@@ -23,33 +23,103 @@ export default function FeedList({ user, onOpenComposer, onOpenStory }: FeedList
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchFeed = async (tab = activeTab, reset = true) => {
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isFetchingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const tabCacheRef = useRef<Record<string, { posts: PostWithAuthor[]; nextCursor: string | null; hasMore: boolean; timestamp: number }>>({});
+
+  const handlePostMutated = useCallback((updatedPost: Partial<PostWithAuthor> & { id: string }) => {
+    setPosts((prev) =>
+      prev.map((p) => (p.id === updatedPost.id ? { ...p, ...updatedPost } : p))
+    );
+  }, []);
+
+  const handlePostDeleted = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  }, []);
+
+  const fetchFeed = async (tab = activeTab, reset = true, background = false) => {
+    if (isFetchingRef.current && !reset) return;
+
+    // Abort previous in-flight request on new tab/refresh
+    if (reset && abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    const controller = new AbortController();
     if (reset) {
+      abortControllerRef.current = controller;
+    }
+
+    // Check cache on tab switch
+    if (reset && !background) {
+      const cached = tabCacheRef.current[tab];
+      if (cached && Date.now() - cached.timestamp < 45_000) {
+        setPosts(cached.posts);
+        setNextCursor(cached.nextCursor);
+        setHasMore(cached.hasMore);
+        setIsLoading(false);
+        setError('');
+        // Revalidate softly in background
+        fetchFeed(tab, true, true);
+        return;
+      }
       setIsLoading(true);
       setError('');
-    } else {
+    } else if (!reset) {
       setIsLoadingMore(true);
     }
 
+    isFetchingRef.current = true;
+
     try {
       const cursorParam = !reset && nextCursor ? `&cursor=${encodeURIComponent(nextCursor)}` : '';
-      const res = await fetch(`/api/feed?tab=${tab}&limit=10${cursorParam}`);
+      const res = await fetch(`/api/feed?tab=${tab}&limit=10${cursorParam}`, {
+        signal: controller.signal,
+      });
       const data = await res.json();
 
+      if (controller.signal.aborted) return;
+
       if (data.success) {
+        const fetchedPosts: PostWithAuthor[] = data.posts || [];
         if (reset) {
-          setPosts(data.posts || []);
+          setPosts(fetchedPosts);
+          tabCacheRef.current[tab] = {
+            posts: fetchedPosts,
+            nextCursor: data.nextCursor || null,
+            hasMore: !!data.hasMore,
+            timestamp: Date.now(),
+          };
         } else {
-          setPosts((prev) => [...prev, ...(data.posts || [])]);
+          setPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const fresh = fetchedPosts.filter((p) => !existingIds.has(p.id));
+            const merged = [...prev, ...fresh];
+            tabCacheRef.current[tab] = {
+              posts: merged,
+              nextCursor: data.nextCursor || null,
+              hasMore: !!data.hasMore,
+              timestamp: Date.now(),
+            };
+            return merged;
+          });
         }
         setNextCursor(data.nextCursor || null);
         setHasMore(!!data.hasMore);
       } else {
-        setError(data.error || 'Failed to load feed');
+        if (reset && posts.length === 0) {
+          setError(data.error || 'Failed to load feed');
+        }
       }
     } catch (err: any) {
-      setError('Network error: Could not reach Feeder.life feed service');
+      if (err.name === 'AbortError') return;
+      if (reset && posts.length === 0) {
+        setError('Network error: Could not reach Feeder.life feed service');
+      }
     } finally {
+      isFetchingRef.current = false;
       setIsLoading(false);
       setIsLoadingMore(false);
     }
@@ -63,8 +133,31 @@ export default function FeedList({ user, onOpenComposer, onOpenStory }: FeedList
     };
 
     window.addEventListener('feeder:feed-refresh', handleRefresh);
-    return () => window.removeEventListener('feeder:feed-refresh', handleRefresh);
+    return () => {
+      window.removeEventListener('feeder:feed-refresh', handleRefresh);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [activeTab]);
+
+  // Infinite prefetch sentinel observer
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || isLoading || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasMore && !isFetchingRef.current) {
+          fetchFeed(activeTab, false);
+        }
+      },
+      { rootMargin: '350px' }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isLoadingMore, activeTab, nextCursor]);
 
   return (
     <div>
@@ -247,9 +340,13 @@ export default function FeedList({ user, onOpenComposer, onOpenStory }: FeedList
               key={post.id}
               post={post}
               currentUser={user}
-              onPostUpdated={() => fetchFeed(activeTab, true)}
+              onPostUpdated={() => handlePostMutated(post)}
+              onPostDeleted={() => handlePostDeleted(post.id)}
             />
           ))}
+
+          {/* Prefetch sentinel element */}
+          {hasMore && <div ref={sentinelRef} style={{ height: '20px', margin: '-10px 0' }} />}
 
           {/* Cursor Pagination Trigger */}
           {hasMore && (

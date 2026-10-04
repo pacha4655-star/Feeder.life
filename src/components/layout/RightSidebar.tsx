@@ -27,6 +27,20 @@ export default function RightSidebar({}: RightSidebarProps) {
   const [isLoadingNearby, setIsLoadingNearby] = useState(true);
 
   useEffect(() => {
+    const cachedCommJson = typeof window !== 'undefined' ? sessionStorage.getItem('feeder_cached_comm') : null;
+    if (cachedCommJson) {
+      try {
+        const parsed = JSON.parse(cachedCommJson);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSuggestedCommunities(parsed.slice(0, 4));
+          const map: Record<string, boolean> = {};
+          parsed.forEach((c: any) => { map[c.id] = !!c.is_joined; });
+          setJoinedMap(map);
+          setIsLoadingComm(false);
+        }
+      } catch {}
+    }
+
     fetch('/api/communities')
       .then((res) => res.json())
       .then((data) => {
@@ -37,6 +51,9 @@ export default function RightSidebar({}: RightSidebarProps) {
             map[c.id] = !!c.is_joined;
           });
           setJoinedMap(map);
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('feeder_cached_comm', JSON.stringify(data.communities.slice(0, 4)));
+          }
         } else {
           setSuggestedCommunities([]);
         }

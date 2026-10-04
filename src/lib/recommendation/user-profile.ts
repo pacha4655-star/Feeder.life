@@ -12,6 +12,9 @@ export interface UserAffinityProfile {
   lastUpdated: string;
 }
 
+const affinityCache = new Map<string, { profile: UserAffinityProfile; expiresAt: number }>();
+const CACHE_TTL_MS = 30_000; // 30s cache
+
 export class UserProfileService {
   /**
    * Retrieves or builds the aggregated affinity profile for a user.
@@ -31,6 +34,11 @@ export class UserProfileService {
 
     if (!userId || userId === 'guest') {
       return defaultProfile;
+    }
+
+    const cached = affinityCache.get(userId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.profile;
     }
 
     try {
@@ -63,7 +71,7 @@ export class UserProfileService {
 
       if (affinityRecord && affinityRecord.data) {
         const stored = (typeof affinityRecord.data === 'object' ? affinityRecord.data : {}) as any;
-        return {
+        const resolvedProfile: UserAffinityProfile = {
           userId,
           topicAffinities: stored.topicAffinities || {},
           authorAffinities: stored.authorAffinities || {},
@@ -73,13 +81,17 @@ export class UserProfileService {
           totalInteractions: stored.totalInteractions || 0,
           lastUpdated: stored.lastUpdated || new Date().toISOString(),
         };
+        affinityCache.set(userId, { profile: resolvedProfile, expiresAt: Date.now() + CACHE_TTL_MS });
+        return resolvedProfile;
       }
 
       // If no stored profile exists yet, return default with followed author set
-      return {
+      const defaultWithFollows = {
         ...defaultProfile,
         followedAuthorIds,
       };
+      affinityCache.set(userId, { profile: defaultWithFollows, expiresAt: Date.now() + CACHE_TTL_MS });
+      return defaultWithFollows;
     } catch (err) {
       console.warn('[UserProfileService] Error fetching user affinity:', err);
       return defaultProfile;
@@ -177,6 +189,7 @@ export class UserProfileService {
         });
         if (insertErr) console.error('[UserProfileService] insert error:', insertErr);
       }
+      affinityCache.delete(userId);
     } catch (err) {
       console.warn('[UserProfileService] Error recording interaction:', err);
     }

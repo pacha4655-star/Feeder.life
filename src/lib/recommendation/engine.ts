@@ -52,21 +52,20 @@ export class FeederRecommendationEngine {
     const supabase = getSupabaseServerClient();
 
     try {
-      // 1. Fetch user's affinity profile
-      const userProfile: UserAffinityProfile = await UserProfileService.getUserAffinityProfile(userId);
-
-      // 2. STAGE 1: Candidate Generation
-      // Query recent active posts
-      let query = supabase
+      // 1. Fetch user's affinity profile & candidates in parallel
+      const candidateQuery = supabase
         .from('social_posts')
-        .select('*')
+        .select('id, user_id, community_id, record_type, content, data, media, hashtags, mentions, visibility, is_active, is_deleted, stats, reactions, comments, created_at')
         .eq('record_type', 'post')
         .eq('is_active', true)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
-        .limit(120);
+        .limit(100);
 
-      const { data: candidateRows, error: candError } = await query;
+      const [userProfile, { data: candidateRows, error: candError }] = await Promise.all([
+        UserProfileService.getUserAffinityProfile(userId),
+        candidateQuery,
+      ]);
 
       if (candError || !candidateRows || candidateRows.length === 0) {
         return { items: [], nextCursor: null, hasMore: false };
@@ -157,13 +156,13 @@ export class FeederRecommendationEngine {
 
         // 3. Engagement Velocity Score
         const reactionsObj = (row.reactions && typeof row.reactions === 'object' ? row.reactions : {}) as Record<string, any>;
-        const reactionCount = typeof row.likes_count === 'number'
-          ? row.likes_count
+        const reactionCount = typeof (row as any).likes_count === 'number'
+          ? (row as any).likes_count
           : (typeof row.stats?.likes_count === 'number'
               ? row.stats.likes_count
               : Object.keys(reactionsObj).length);
-        const commentCount = typeof row.comments_count === 'number'
-          ? row.comments_count
+        const commentCount = typeof (row as any).comments_count === 'number'
+          ? (row as any).comments_count
           : (typeof row.comments?.count === 'number'
               ? row.comments.count
               : (typeof row.stats?.comments_count === 'number' ? row.stats.comments_count : 0));
@@ -274,8 +273,8 @@ export class FeederRecommendationEngine {
           media_urls: mediaUrls,
           tags,
           location_name: postData.location_name || undefined,
-          approx_lat: postData.approx_lat ?? row.location?.lat,
-          approx_lon: postData.approx_lon ?? row.location?.lon,
+          approx_lat: postData.approx_lat ?? (row as any).location?.lat,
+          approx_lon: postData.approx_lon ?? (row as any).location?.lon,
           visibility: row.visibility || 'public',
           reaction_count: reactionCount,
           comment_count: commentCount,
@@ -333,7 +332,7 @@ export class FeederRecommendationEngine {
       try {
         const { data: fallbackRows } = await supabase
           .from('social_posts')
-          .select('*')
+          .select('id, user_id, content, hashtags, visibility, stats, reactions, comments, created_at')
           .eq('record_type', 'post')
           .eq('is_active', true)
           .eq('is_deleted', false)

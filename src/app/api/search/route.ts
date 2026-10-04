@@ -164,16 +164,60 @@ export async function GET(request: NextRequest) {
     const dbLimit = (fetchAll || isHeaderMode || isContentMode) ? 8 : 20;
     const extLimit = (fetchAll || isHeaderMode || isContentMode) ? 6 : 20;
 
-    // 1. Search Real Users (public profile fields only)
-    if (fetchPeople) {
-      const { data: userRows } = await supabase
-        .from('users')
-        .select('id, username, display_name, avatar_url, city, is_verified, profile_data')
-        .eq('is_active', true)
-        .or(`display_name.ilike.%${sanitized}%,username.ilike.%${sanitized}%`)
-        .limit(dbLimit);
+    // Parallel execution of all independent search targets
+    const peoplePromise = fetchPeople
+      ? supabase
+          .from('users')
+          .select('id, username, display_name, avatar_url, city, is_verified, profile_data')
+          .eq('is_active', true)
+          .or(`display_name.ilike.%${sanitized}%,username.ilike.%${sanitized}%`)
+          .limit(dbLimit)
+      : Promise.resolve({ data: [] });
 
-      people = (userRows || [])
+    const commPromise = fetchCommunities
+      ? supabase
+          .from('communities')
+          .select('id, name, slug, description, community_type, city, avatar_url, members, stats')
+          .eq('is_active', true)
+          .or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
+          .limit(dbLimit)
+      : Promise.resolve({ data: [] });
+
+    const postsPromise = (fetchPosts || fetchPhotos || fetchVideos)
+      ? supabase
+          .from('social_posts')
+          .select('id, user_id, content, media, data, stats, created_at')
+          .eq('record_type', 'post')
+          .eq('is_active', true)
+          .eq('is_deleted', false)
+          .ilike('content', `%${sanitized}%`)
+          .order('created_at', { ascending: false })
+          .limit(dbLimit * 2)
+      : Promise.resolve({ data: [] });
+
+    const newsPromise = fetchNews ? searchNews(sanitized, extLimit) : Promise.resolve([]);
+    const imagesPromise = fetchImages ? searchImages(sanitized, extLimit) : Promise.resolve([]);
+
+    const [
+      { data: userRows },
+      { data: commRows },
+      { data: postRows },
+      newsResults,
+      imageResults,
+    ] = await Promise.all([
+      peoplePromise,
+      commPromise,
+      postsPromise,
+      newsPromise,
+      imagesPromise,
+    ]);
+
+    news = newsResults || [];
+    images = imageResults || [];
+
+    // 1. Process People
+    if (userRows && userRows.length > 0) {
+      people = userRows
         .filter((u: any) => u.username)
         .map((u: any) => ({
           id: u.id,
@@ -186,16 +230,9 @@ export async function GET(request: NextRequest) {
         }));
     }
 
-    // 2. Search Real Communities
-    if (fetchCommunities) {
-      const { data: commRows } = await supabase
-        .from('communities')
-        .select('id, name, slug, description, community_type, city, avatar_url, members, stats')
-        .eq('is_active', true)
-        .or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
-        .limit(dbLimit);
-
-      communities = (commRows || []).map((c: any) => ({
+    // 2. Process Communities
+    if (commRows && commRows.length > 0) {
+      communities = commRows.map((c: any) => ({
         id: c.id,
         name: c.name,
         slug: c.slug,
@@ -207,105 +244,85 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // 3. Search Real Posts, Photos, and Videos from social_posts
-    if (fetchPosts || fetchPhotos || fetchVideos) {
-      const { data: postRows } = await supabase
-        .from('social_posts')
-        .select('id, user_id, content, media, data, stats, created_at')
-        .eq('record_type', 'post')
-        .eq('is_active', true)
-        .eq('is_deleted', false)
-        .ilike('content', `%${sanitized}%`)
-        .order('created_at', { ascending: false })
-        .limit(dbLimit * 2);
+    // 3. Process Posts, Photos, and Videos
+    if (postRows && postRows.length > 0) {
+      const userIds = Array.from(new Set(postRows.map((p: any) => p.user_id).filter(Boolean)));
+      const { data: authors } = userIds.length > 0
+        ? await supabase
+            .from('users')
+            .select('id, username, display_name, avatar_url')
+            .in('id', userIds)
+        : { data: [] };
 
-      if (postRows && postRows.length > 0) {
-        const userIds = Array.from(new Set(postRows.map((p) => p.user_id).filter(Boolean)));
-        const { data: authors } = await supabase
-          .from('users')
-          .select('id, username, display_name, avatar_url')
-          .in('id', userIds);
+      const authorMap = new Map((authors || []).map((a: any) => [a.id, a]));
 
-        const authorMap = new Map((authors || []).map((a: any) => [a.id, a]));
+      for (const p of postRows) {
+        const author = authorMap.get(p.user_id);
+        const mediaList = Array.isArray(p.media)
+          ? p.media
+          : p.data?.images
+          ? p.data.images
+          : p.data?.media_url
+          ? [p.data.media_url]
+          : [];
+        const mediaUrls = mediaList.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean);
+        const photoUrls = mediaUrls.filter((u: string) => !/\.(mp4|webm|mov|m4v)/i.test(u));
+        const videoUrls = mediaUrls.filter((u: string) => /\.(mp4|webm|mov|m4v)/i.test(u));
 
-        for (const p of postRows) {
-          const author = authorMap.get(p.user_id);
-          const mediaList = Array.isArray(p.media)
-            ? p.media
-            : p.data?.images
-            ? p.data.images
-            : p.data?.media_url
-            ? [p.data.media_url]
-            : [];
-          const mediaUrls = mediaList.map((m: any) => (typeof m === 'string' ? m : m.url)).filter(Boolean);
-          const photoUrls = mediaUrls.filter((u: string) => !/\.(mp4|webm|mov|m4v)/i.test(u));
-          const videoUrls = mediaUrls.filter((u: string) => /\.(mp4|webm|mov|m4v)/i.test(u));
+        if (fetchPosts && posts.length < dbLimit) {
+          posts.push({
+            id: p.id,
+            title: p.data?.title || '',
+            body: p.content || '',
+            content_type: p.data?.content_type || (videoUrls.length > 0 ? 'VIDEO' : photoUrls.length > 0 ? 'PHOTO' : 'GENERAL'),
+            media_url: photoUrls[0] || videoUrls[0] || null,
+            media_urls: mediaUrls,
+            location_name: p.data?.location_name || '',
+            reaction_count: p.stats?.likes_count || 0,
+            comment_count: p.stats?.comments_count || 0,
+            author_name: author?.display_name || author?.username || 'Animal Guardian',
+            author_username: author?.username || '',
+            author_avatar: author?.avatar_url || '',
+            created_at: p.created_at,
+          });
+        }
 
-          if (fetchPosts && posts.length < dbLimit) {
-            posts.push({
-              id: p.id,
-              title: p.data?.title || '',
-              body: p.content || '',
-              content_type: p.data?.content_type || (videoUrls.length > 0 ? 'VIDEO' : photoUrls.length > 0 ? 'PHOTO' : 'GENERAL'),
-              media_url: photoUrls[0] || videoUrls[0] || null,
-              media_urls: mediaUrls,
-              location_name: p.data?.location_name || '',
-              reaction_count: p.stats?.likes_count || 0,
-              comment_count: p.stats?.comments_count || 0,
-              author_name: author?.display_name || author?.username || 'Animal Guardian',
-              author_username: author?.username || '',
-              author_avatar: author?.avatar_url || '',
-              created_at: p.created_at,
-            });
-          }
-
-          if (fetchPhotos && photoUrls.length > 0 && photos.length < dbLimit) {
-            for (const imgUrl of photoUrls) {
-              if (photos.length < dbLimit) {
-                photos.push({
-                  id: `${p.id}-${photos.length}`,
-                  post_id: p.id,
-                  url: imgUrl,
-                  thumbnail_url: imgUrl,
-                  title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Photo Post'),
-                  author_name: author?.display_name || author?.username || 'Animal Guardian',
-                  author_username: author?.username || '',
-                  author_avatar: author?.avatar_url || '',
-                  created_at: p.created_at,
-                });
-              }
+        if (fetchPhotos && photoUrls.length > 0 && photos.length < dbLimit) {
+          for (const imgUrl of photoUrls) {
+            if (photos.length < dbLimit) {
+              photos.push({
+                id: `${p.id}-${photos.length}`,
+                post_id: p.id,
+                url: imgUrl,
+                thumbnail_url: imgUrl,
+                title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Photo Post'),
+                author_name: author?.display_name || author?.username || 'Animal Guardian',
+                author_username: author?.username || '',
+                author_avatar: author?.avatar_url || '',
+                created_at: p.created_at,
+              });
             }
           }
+        }
 
-          if (fetchVideos && videoUrls.length > 0 && videos.length < dbLimit) {
-            for (const vidUrl of videoUrls) {
-              if (videos.length < dbLimit) {
-                videos.push({
-                  id: `${p.id}-${videos.length}`,
-                  post_id: p.id,
-                  url: vidUrl,
-                  thumbnail_url: photoUrls[0] || null,
-                  title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Video Post'),
-                  author_name: author?.display_name || author?.username || 'Animal Guardian',
-                  author_username: author?.username || '',
-                  author_avatar: author?.avatar_url || '',
-                  created_at: p.created_at,
-                });
-              }
+        if (fetchVideos && videoUrls.length > 0 && videos.length < dbLimit) {
+          for (const vidUrl of videoUrls) {
+            if (videos.length < dbLimit) {
+              videos.push({
+                id: `${p.id}-${videos.length}`,
+                post_id: p.id,
+                url: vidUrl,
+                thumbnail_url: photoUrls[0] || null,
+                title: p.data?.title || (p.content ? p.content.slice(0, 80) : 'Video Post'),
+                author_name: author?.display_name || author?.username || 'Animal Guardian',
+                author_username: author?.username || '',
+                author_avatar: author?.avatar_url || '',
+                created_at: p.created_at,
+              });
             }
           }
         }
       }
-    }
-
-    // 4. Search Real News (Google News RSS server-side integration)
-    if (fetchNews) {
-      news = await searchNews(sanitized, extLimit);
-    }
-
-    // 5. Search Real Images (Wikimedia Commons authentic media)
-    if (fetchImages) {
-      images = await searchImages(sanitized, extLimit);
     }
 
     return NextResponse.json({

@@ -59,13 +59,14 @@ export default function GlobalContentSearch({
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const searchCacheRef = useRef<Map<string, any>>(new Map());
 
   // When variant changes, reset tab to 'all'
   useEffect(() => {
     setSearchTab('all');
   }, [isHomeVariant]);
 
-  // Execute Search with AbortController and strict API separation
+  // Execute Search with AbortController, client cache and strict API separation
   const executeSearch = (query: string, tab: string) => {
     const trimmed = query.trim();
 
@@ -83,17 +84,26 @@ export default function GlobalContentSearch({
       return;
     }
 
-    setIsSearching(true);
-    setSearchError('');
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
     // Resolve API type parameter: header uses 'header' or specific tab; home uses 'content' or specific tab
     let apiType = tab;
     if (tab === 'all') {
       apiType = isHomeVariant ? 'content' : 'header';
     }
+
+    const cacheKey = `${apiType}:${trimmed.toLowerCase()}`;
+    const cached = searchCacheRef.current.get(cacheKey);
+    if (cached) {
+      setSearchResults(cached);
+      setIsSearching(false);
+      setShowSearchDropdown(true);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError('');
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     fetch(`/api/search?q=${encodeURIComponent(trimmed)}&type=${apiType}`, {
       signal: controller.signal,
@@ -105,6 +115,11 @@ export default function GlobalContentSearch({
       .then((data) => {
         if (controller.signal.aborted) return;
         if (data.success) {
+          searchCacheRef.current.set(cacheKey, data.results);
+          if (searchCacheRef.current.size > 50) {
+            const firstKey = searchCacheRef.current.keys().next().value;
+            if (firstKey) searchCacheRef.current.delete(firstKey);
+          }
           setSearchResults(data.results);
           setShowSearchDropdown(true);
         } else {

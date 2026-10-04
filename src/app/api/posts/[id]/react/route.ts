@@ -77,7 +77,7 @@ export async function POST(
     // Check existing reaction in platform_data for audit/cross-consistency
     const { data: existingRows } = await supabase
       .from('platform_data')
-      .select('*')
+      .select('id, data, target_id')
       .eq('data_type', 'post_reaction')
       .eq('user_id', user.id)
       .eq('target_id', postId);

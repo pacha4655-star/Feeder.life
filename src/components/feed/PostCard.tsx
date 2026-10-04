@@ -44,8 +44,27 @@ function PostMediaItem({
 }) {
   const [hasError, setHasError] = useState(false);
   const isVideo = /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const videoStartedRef = useRef(false);
   const milestonesRef = useRef({ p25: false, p50: false, p75: false, p100: false });
+
+  // Auto-pause video when it scrolls out of the viewport
+  useEffect(() => {
+    if (!isVideo || typeof window === 'undefined' || !videoRef.current) return;
+
+    const el = videoRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting && !el.paused) {
+          el.pause();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isVideo]);
 
   if (hasError) {
     return (
@@ -128,9 +147,11 @@ function PostMediaItem({
 
     return (
       <video
+        ref={videoRef}
         src={url}
         controls
         playsInline
+        preload="metadata"
         onPlay={handlePlay}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleEnded}
@@ -151,11 +172,13 @@ function PostMediaItem({
       src={url}
       alt={alt}
       loading="lazy"
+      decoding="async"
       onError={() => setHasError(true)}
       style={{
         width: '100%',
         height: '100%',
         objectFit: 'cover',
+        contentVisibility: 'auto',
         ...style,
       }}
     />
@@ -166,9 +189,10 @@ interface PostCardProps {
   post: PostWithAuthor;
   currentUser: UserSession | null;
   onPostUpdated?: () => void;
+  onPostDeleted?: () => void;
 }
 
-export default function PostCard({ post, currentUser, onPostUpdated }: PostCardProps) {
+export default function PostCard({ post, currentUser, onPostUpdated, onPostDeleted }: PostCardProps) {
   const [reactionCount, setReactionCount] = useState(post.reaction_count || 0);
   const [userReaction, setUserReaction] = useState<string | null>(post.user_reaction || null);
   const [isSaved, setIsSaved] = useState(post.is_saved || false);
@@ -273,7 +297,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
     };
   }, []);
 
-  // Supabase Realtime: Sync likes & comment counts when another user updates this post
+  // Supabase Realtime: Sync likes & comment counts when comments are open or actively being interacted with
   useRealtimeSubscription({
     table: 'social_posts',
     filter: `id=eq.${post.id}`,
@@ -288,7 +312,7 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
         }
       }
     },
-    enabled: typeof window !== 'undefined',
+    enabled: showComments && typeof window !== 'undefined',
   });
 
   // Supabase Realtime: Sync new comments live if comments are currently visible
@@ -573,7 +597,11 @@ export default function PostCard({ post, currentUser, onPostUpdated }: PostCardP
       const data = await res.json();
       if (data.success) {
         setIsDeleted(true);
-        onPostUpdated?.();
+        if (onPostDeleted) {
+          onPostDeleted();
+        } else {
+          onPostUpdated?.();
+        }
       } else {
         showToast(data.error || "Couldn't delete post. Please try again.");
       }

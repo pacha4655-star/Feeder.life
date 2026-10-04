@@ -36,13 +36,14 @@ export default function FeedListWrapper({ user }: FeedListWrapperProps) {
   };
 
   const handlePostCreated = () => {
-    setFeedKey((k) => k + 1);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('feeder:feed-refresh'));
+    }
   };
 
   return (
     <>
       <FeedList
-        key={feedKey}
         user={user}
         onOpenComposer={handleOpenComposer}
         onOpenStory={handleOpenStory}
