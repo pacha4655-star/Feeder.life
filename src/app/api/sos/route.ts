@@ -6,7 +6,7 @@ import { checkRateLimit, createRateLimitResponse, RATE_LIMIT_CONFIG } from '@/li
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     const searchParams = request.nextUrl.searchParams;
     const latParam = searchParams.get('lat');
     const lonParam = searchParams.get('lon');
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }

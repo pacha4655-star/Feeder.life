@@ -8,7 +8,7 @@ import logger from '@/lib/monitoring/logger';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     const searchParams = request.nextUrl.searchParams;
     const tab = (searchParams.get('tab') as any) || 'FOR_YOU';
     const limit = parseInt(searchParams.get('limit') || '20', 10);
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }

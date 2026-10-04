@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id: postId } = await context.params;
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }

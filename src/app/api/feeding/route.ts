@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth/session';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     const logs = await FeedingService.getRecentLogs(30, user ? user.id : undefined);
     const stats = user
       ? await FeedingService.getUserStats(user.id)
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     if (!user) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Please sign in.' }, { status: 401 });
     }

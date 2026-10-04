@@ -4,7 +4,7 @@ import { ImpactService } from '@/lib/services/impact';
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUser(request);
     const community = await ImpactService.getCommunityImpact();
 
     let userImpact = null;

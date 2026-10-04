@@ -45,7 +45,7 @@ export async function resolveAuthenticatedUser(
 
   // 2. Check signed session cookie
   try {
-    const sessionUser = await getCurrentUser();
+    const sessionUser = await getCurrentUser(request);
     if (sessionUser) {
       return {
         id: sessionUser.id,

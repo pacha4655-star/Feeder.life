@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveAuthenticatedUser } from '@/lib/auth/unified-auth';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { invalidateUserSessionCache } from '@/lib/auth/session';
 import type { DbUser } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseServerClient();
     const { data: supaUser, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, firebase_uid, email, username, display_name, avatar_url, bio, city, onboarding_completed, interests, created_at, profile_data')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -129,6 +130,8 @@ export async function PUT(request: NextRequest) {
     if (updateErr) {
       return NextResponse.json({ success: false, error: updateErr.message }, { status: 400 });
     }
+
+    invalidateUserSessionCache(user.id);
 
     return NextResponse.json({
       success: true,
