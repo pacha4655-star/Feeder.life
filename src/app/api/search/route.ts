@@ -158,8 +158,8 @@ export async function GET(request: NextRequest) {
     const fetchPosts = !isHeaderMode && (fetchAll || isContentMode || type === 'posts');
     const fetchPhotos = !isHeaderMode && (fetchAll || isContentMode || type === 'photos');
     const fetchVideos = !isHeaderMode && (fetchAll || isContentMode || type === 'videos');
-    const fetchNews = !isHeaderMode && !isContentMode && (fetchAll || type === 'news');
-    const fetchImages = !isHeaderMode && !isContentMode && (fetchAll || type === 'images');
+    const fetchNews = type === 'news';
+    const fetchImages = type === 'images';
 
     const dbLimit = (fetchAll || isHeaderMode || isContentMode) ? 8 : 20;
     const extLimit = (fetchAll || isHeaderMode || isContentMode) ? 6 : 20;
@@ -325,12 +325,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      query: rawQuery,
-      type,
-      results: { people, communities, posts, photos, videos, news, images },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        query: rawQuery,
+        type,
+        results: { people, communities, posts, photos, videos, news, images },
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+        },
+      }
+    );
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

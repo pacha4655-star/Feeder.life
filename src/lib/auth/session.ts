@@ -21,6 +21,18 @@ export interface UserSession {
   firebaseUid?: string;
 }
 
+// High-speed In-Memory Session Cache (TTL: 30s) to prevent redundant database lookups under 10k concurrency
+interface CachedSession {
+  user: UserSession;
+  expiresAt: number;
+}
+const sessionMemoryCache = new Map<string, CachedSession>();
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
+export function invalidateUserSessionCache(userId: string) {
+  sessionMemoryCache.delete(userId);
+}
+
 /**
  * Generates a tamper-proof cryptographically signed session token for a user.
  * Encodes the Supabase UUID and Firebase UID.
@@ -60,7 +72,7 @@ export function verifySessionToken(token: string): { id: string; uid?: string; e
 
 /**
  * Returns the currently authenticated user session from Supabase PostgreSQL.
- * Uses cryptographically verified session token.
+ * Uses cryptographically verified session token with in-memory caching.
  * Returns null if no valid session cookie exists.
  * ZERO fake or hardcoded fallbacks.
  */
@@ -96,23 +108,34 @@ export async function getCurrentUser(request?: NextRequest): Promise<UserSession
     return null;
   }
 
+  const lookupKey = payload.id || payload.uid;
+  if (!lookupKey) {
+    return null;
+  }
+
+  // Check In-Memory Cache first to avoid hitting database under high load
+  const cached = sessionMemoryCache.get(lookupKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.user;
+  }
+
   try {
     const supabase = getSupabaseServerClient();
-    let query = supabase.from('users').select('*');
+    let query = supabase
+      .from('users')
+      .select('id, email, username, display_name, avatar_url, bio, city, is_active, onboarding_completed, firebase_uid, profile_data');
 
     if (payload.id) {
       query = query.eq('id', payload.id);
     } else if (payload.uid) {
       query = query.eq('firebase_uid', payload.uid);
-    } else {
-      return null;
     }
 
     const { data: dbUser, error } = await query.maybeSingle();
 
     if (!error && dbUser && dbUser.is_active) {
-      const u = dbUser as DbUser;
-      return {
+      const u = dbUser as any;
+      const sessionUser: UserSession = {
         id: u.id,
         email: u.email || '',
         username: u.username || '',
@@ -128,6 +151,14 @@ export async function getCurrentUser(request?: NextRequest): Promise<UserSession
         onboardingCompleted: u.onboarding_completed ?? false,
         firebaseUid: u.firebase_uid,
       };
+
+      // Store in memory cache
+      sessionMemoryCache.set(lookupKey, {
+        user: sessionUser,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+
+      return sessionUser;
     }
   } catch (supaErr) {
     console.warn('[getCurrentUser] Supabase lookup error:', supaErr);

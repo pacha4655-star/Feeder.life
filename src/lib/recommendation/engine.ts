@@ -23,6 +23,10 @@ export interface RankedPostItem extends PostWithAuthor {
   ranking_debug?: ScoreBreakdown;
 }
 
+// In-memory Short-TTL caches for bulk entity enrichment during feed ranking
+const authorProfileCache = new Map<string, { data: any; expiresAt: number }>();
+const communityMetaCache = new Map<string, { data: any; expiresAt: number }>();
+
 export class FeederRecommendationEngine {
   private static config: RecommendationConfig = FEEDER_RECOMMENDATION_CONFIG_V1;
 
@@ -75,27 +79,58 @@ export class FeederRecommendationEngine {
       const hiddenSet = new Set(userProfile.hiddenPostIds);
       const activeCandidates = candidateRows.filter((p) => !hiddenSet.has(p.id));
 
-      // 3. Bulk fetch author profiles & communities in parallel
+      // 3. Bulk fetch author profiles & communities with high-speed in-memory caching
+      const nowMs = Date.now();
       const authorIds = Array.from(new Set(activeCandidates.map((p) => p.user_id).filter(Boolean)));
       const communityIds = Array.from(new Set(activeCandidates.map((p) => p.community_id).filter(Boolean)));
 
+      const usersMap = new Map<string, any>();
+      const commsMap = new Map<string, any>();
+
+      const missingAuthorIds: string[] = [];
+      for (const id of authorIds) {
+        const cached = authorProfileCache.get(id);
+        if (cached && cached.expiresAt > nowMs) {
+          usersMap.set(id, cached.data);
+        } else {
+          missingAuthorIds.push(id);
+        }
+      }
+
+      const missingCommunityIds: string[] = [];
+      for (const id of communityIds) {
+        const cached = communityMetaCache.get(id);
+        if (cached && cached.expiresAt > nowMs) {
+          commsMap.set(id, cached.data);
+        } else {
+          missingCommunityIds.push(id);
+        }
+      }
+
       const [usersResult, commsResult] = await Promise.all([
-        authorIds.length > 0
+        missingAuthorIds.length > 0
           ? supabase
               .from('users')
               .select('id, username, display_name, avatar_url, is_verified, profile_data')
-              .in('id', authorIds)
+              .in('id', missingAuthorIds)
           : Promise.resolve({ data: [] }),
-        communityIds.length > 0
+        missingCommunityIds.length > 0
           ? supabase
               .from('communities')
               .select('id, name, slug, avatar_url, is_verified')
-              .in('id', communityIds)
+              .in('id', missingCommunityIds)
           : Promise.resolve({ data: [] }),
       ]);
 
-      const usersMap = new Map<string, any>((usersResult.data || []).map((u: any) => [u.id, u]));
-      const commsMap = new Map<string, any>((commsResult.data || []).map((c: any) => [c.id, c]));
+      for (const u of usersResult.data || []) {
+        usersMap.set(u.id, u);
+        authorProfileCache.set(u.id, { data: u, expiresAt: nowMs + 60000 }); // 60s TTL
+      }
+
+      for (const c of commsResult.data || []) {
+        commsMap.set(c.id, c);
+        communityMetaCache.set(c.id, { data: c, expiresAt: nowMs + 120000 }); // 120s TTL
+      }
 
       // 4. STAGE 2 & 3: Feature Extraction and Multi-Factor Scoring
       const scoredItems: RankedPostItem[] = [];
